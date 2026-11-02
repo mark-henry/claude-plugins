@@ -1,7 +1,6 @@
 ---
 name: make
-description: >-
-  Turn a result into a self-contained figure image or slide: a claim as the title, a caption that explains and qualifies it, then the chart or table that proves it. Use when the user says "figure", "chart image", "work this up into a chart", "turn the table into an image", "finding charts", or "make slides of the results".
+description: "Turn a result into a self-contained figure or slide: the claim as title, a qualifying caption, then the chart or table that proves it. Use for \"figure\", \"chart image\", \"turn the table into an image\", \"make slides of the results\"."
 ---
 
 # Claim-first figures

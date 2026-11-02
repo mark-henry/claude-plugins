@@ -1,9 +1,6 @@
 ---
 name: last-night
-description: >-
-  Infer last night's bedtime and wake time from the Mac's lid/display power log
-  (pmset), cross-checked against Chrome history. Use when the user asks when
-  they went to bed, slept, or woke up, or how long the laptop was closed overnight.
+description: "Infer last night's bedtime and wake time from the Mac lid log, cross-checked with Chrome history. Use when the user asks when they slept or woke."
 ---
 
 # Last night's sleep from the lid log

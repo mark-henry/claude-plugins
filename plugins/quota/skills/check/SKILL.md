@@ -1,6 +1,6 @@
 ---
 name: check
-description: Quota left on the Claude and ChatGPT (Codex) subscriptions behind CLIProxyAPI, vs an even-spend target; also rebalances Claude account weights. Use before big fan-outs or bulk LLM jobs, when choosing a model family or account, or when the user asks about quota or limits.
+description: "Quota left on Claude and ChatGPT subscriptions behind CLIProxyAPI vs an even-spend target, plus Claude account rebalancing. Use before big fan-outs or bulk LLM jobs, when picking a model family or account, or when asked about quota."
 ---
 
 Run `quota` (~0.1s, on PATH from this plugin). `quota --dry-run` shows the Claude weights a rebalance would set; `quota --rebalance` sets them. A SessionStart hook runs `quota --quiet`, so the report is usually already in context.
