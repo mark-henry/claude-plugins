@@ -1,6 +1,6 @@
 {
   "name": "sleep",
-  "description": "Infer last night's bedtime and wake time from the Mac lid log and fill daily-note fields.",
+  "description": "Infer last night's bedtime and wake time from the Mac lid log, cross-checked against Chrome history.",
   "author": {
     "name": "Mark Henry"
   },
