@@ -18,6 +18,10 @@
 #   a family (claude, codex) is low when even its best account is behind pace by more than LOW_SLACK
 #   the protected account is low when it is behind pace and within LOW_MARGIN points of its reserve
 #
+# Session affinity: claude-mitm's addon records the auth_index CLIProxyAPI picked for each Claude Code
+# session (from the X-CPA-TRACE-ID response header) in $QUOTA_SESSION_AUTH_DIR/<session id>; the
+# account matching $CLAUDE_CODE_SESSION_ID is marked "← this session". Absent before the first request.
+#
 # --quiet: print nothing and exit 0 if the proxy is unreachable (for hooks)
 # --rebalance: also PATCH changed weights via the management API; changes are appended to $LOG
 # --dry-run: show the weights --rebalance would set, without setting them
@@ -34,10 +38,12 @@ set -euo pipefail
 : "${QUOTA_LOW_SLACK:=10}"                              # family note: best account this many points behind pace
 : "${QUOTA_LOW_MARGIN:=5}"                               # protected note: this close to its reserve
 : "${QUOTA_LOG:=~/Library/Logs/quota-rebalance.log}"
+: "${QUOTA_SESSION_AUTH_DIR:=~/.cache/claude-mitm/session-auth}"  # written by claude-mitm's addon
 [[ -f ~/.config/quota.env ]] && source ~/.config/quota.env
 API=$QUOTA_PROXY_URL/v0/management
 PROTECTED_EMAIL=$QUOTA_PROTECTED_EMAIL RESERVE=$QUOTA_RESERVE FLOOR=$QUOTA_FLOOR
 LOW_SLACK=$QUOTA_LOW_SLACK LOW_MARGIN=$QUOTA_LOW_MARGIN
+SESSION_AUTH_DIR=${QUOTA_SESSION_AUTH_DIR/#\~/$HOME}
 LOG=${QUOTA_LOG/#\~/$HOME} KEY_FILE=${QUOTA_MANAGEMENT_KEY_FILE/#\~/$HOME}
 export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
 
@@ -84,9 +90,16 @@ if ! json=$(curl -sf -m 4 -H "Authorization: Bearer $key" "$API/auth-files"); th
   exit 1
 fi
 
+session_auth=
+if [[ -d $SESSION_AUTH_DIR ]]; then
+  find "$SESSION_AUTH_DIR" -type f -mtime +7 -delete 2>/dev/null || true
+  [[ -n ${CLAUDE_CODE_SESSION_ID:-} && -r $SESSION_AUTH_DIR/$CLAUDE_CODE_SESSION_ID ]] &&
+    session_auth=$(<"$SESSION_AUTH_DIR/$CLAUDE_CODE_SESSION_ID")
+fi
+
 # Emits tab-separated rows: "L<TAB>report line", "N<TAB>low-quota note" and
 # "W<TAB>name<TAB>email<TAB>old<TAB>new<TAB>why"
-rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" \
+rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg mine "$session_auth" \
   --argjson reserve "$RESERVE" --argjson floor "$FLOOR" \
   --argjson lowslack "$LOW_SLACK" --argjson lowmargin "$LOW_MARGIN" '
   def week: 604800;
@@ -103,8 +116,8 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" \
 
   # One record per enabled credential, from its newest observation.
   [ .files[] | select(.disabled | not)
-    | ([.quota // {}] + [(.model_quotas // {})[]] | map(select(.signals)) | max_by(.observed_at | epoch)) as $o
-    | {name, provider, email: (.email // "?"), weight, sig: $o.signals, seen: ($o.observed_at // null | if . then epoch else null end)}
+    | ([.quota // {}] + [(.model_quotas // {})[]] | map(select((.signals // {}) | length > 0)) | max_by(.observed_at | epoch)) as $o
+    | {name, provider, auth_index, email: (.email // "?"), weight, sig: $o.signals, seen: ($o.observed_at // null | if . then epoch else null end)}
     | if .sig == null then .
       elif .provider == "claude" then
         .used = (.sig["Anthropic-Ratelimit-Unified-7d-Utilization"] | num | if . then . * 100 else null end)
@@ -133,7 +146,8 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" \
                 + (if .reset then ", \(resets)" else "" end)
               end)
            + ", seen \(.seen | ago)"
-         end)),
+         end)
+      + (if $mine != "" and .auth_index == $mine then "  ← this session" else "" end)),
 
   # Low-quota notes
   ([ $creds[] | select(.left != null and .target != null) ] | group_by(.provider)[]
