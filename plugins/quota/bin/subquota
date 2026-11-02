@@ -1,5 +1,5 @@
 #!/bin/bash
-# quota: report weekly quota left on each subscription behind CLIProxyAPI against a linear-use
+# subquota: report weekly quota left on each subscription behind CLIProxyAPI against a linear-use
 # target, and with --rebalance, set the Claude credentials' routing weights to match.
 #
 # Numbers are the rate-limit headers CLIProxyAPI last saw per credential (management API
@@ -61,19 +61,19 @@ PLIST
       launchctl bootstrap "gui/$(id -u)" "$plist"
       echo "installed $plist (runs $self --rebalance every 15 min; log $LOG)"
       exit 0 ;;
-    *) echo "usage: quota [--quiet] [--rebalance | --dry-run | --install-launchd]" >&2; exit 2 ;;
+    *) echo "usage: subquota [--quiet] [--rebalance | --dry-run | --install-launchd]" >&2; exit 2 ;;
   esac
 done
 
 if [[ ! -r $KEY_FILE ]]; then
   ((quiet)) && exit 0
-  echo "quota: no CLIProxyAPI management key at $QUOTA_MANAGEMENT_KEY_FILE (set QUOTA_MANAGEMENT_KEY_FILE in ~/.config/quota.env)" >&2
+  echo "subquota: no CLIProxyAPI management key at $QUOTA_MANAGEMENT_KEY_FILE (set QUOTA_MANAGEMENT_KEY_FILE in ~/.config/quota.env)" >&2
   exit 1
 fi
 key=$(<"$KEY_FILE")
 if ! json=$(curl -sf -m 4 -H "Authorization: Bearer $key" "$API/auth-files"); then
   ((quiet)) && exit 0
-  echo "quota: can't reach CLIProxyAPI management API" >&2
+  echo "subquota: can't reach CLIProxyAPI management API" >&2
   exit 1
 fi
 
