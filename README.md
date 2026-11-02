@@ -34,11 +34,14 @@ On macOS, `quota --install-launchd` rebalances every 15 minutes in the backgroun
 
 ## Developing
 
-Clone the repo and add the clone as a local marketplace. Edits then take effect at the next session start, or after `/reload-plugins`:
+Clone the repo and add the clone as a local marketplace:
 
 ```
 git clone https://github.com/mark-henry/claude-tools ~/claude-tools
-/plugin marketplace add ~/claude-tools
+claude plugin marketplace add ~/claude-tools
+claude plugin install quota@mark-henry
 ```
+
+Installs are copied into Claude Code's plugin cache and versioned by commit, so after editing, commit and then run `claude plugin marketplace update mark-henry && claude plugin update quota@mark-henry`. To try uncommitted edits, start a session with `claude --plugin-dir ~/claude-tools/plugins/quota`.
 
 MIT licensed.
