@@ -1,0 +1,44 @@
+# claude-tools
+
+Small [Claude Code](https://claude.com/claude-code) plugins I use every day, published as a plugin marketplace. Each plugin installs on its own, so take only what you need.
+
+```
+/plugin marketplace add mark-henry/claude-tools
+/plugin install video@mark-henry
+```
+
+| Plugin | Command | What it does |
+|---|---|---|
+| `quota` | `/quota:check` | Weekly quota left on Claude and ChatGPT subscriptions behind [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI), against an even-spend target. Rebalances weights across Claude accounts so quota that's about to reset gets used, and a protected main account doesn't run out. Adds a `quota` command and a SessionStart report. |
+| `video` | `/video:clip` | Download and clip videos with yt-dlp and ffmpeg, including clipping a past window ("40 to 30 minutes ago") from a YouTube stream that is still live. Adds `live-clip`. |
+| `flights` | `/flights:calendar` | Scrape the Google Flights date-picker price calendar (cheapest fare per day across months) through the browser-use MCP. Adds `flights-tfs` and `flights-roundtrip-tfs` URL builders. |
+| `sleep` | `/sleep:last-night` | Infer last night's bedtime and wake time from the Mac's lid log, cross-checked against Chrome history, and fill `[asleep:: ] [wake:: ]` fields in a daily note. macOS only. |
+| `gordian` | `/gordian:cut` | Step back from a codebase that has grown by many small edits and find the one simplification that removes the most branches. |
+| `figure` | `/figure:make` | Turn a result into a figure that stands alone: the claim as the title, a caption that qualifies it, then the chart or table that proves it. |
+
+Claude also picks up each skill on its own when a request matches, so you rarely need to type the commands.
+
+## Setup notes
+
+**quota.** Requires CLIProxyAPI with its management API enabled, plus `jq` and `curl`. Settings live in `~/.config/quota.env`; the defaults are at the top of `plugins/quota/bin/quota`. For example:
+
+```bash
+QUOTA_PROTECTED_EMAIL=me@example.com   # main account: keep a 15% reserve, never route it dry
+```
+
+On macOS, `quota --install-launchd` rebalances every 15 minutes in the background.
+
+**sleep.** Set `DAILY_NOTES_DIR` to the folder that holds your `YYYY-MM-DD.md` daily notes, for example in the `env` block of `~/.claude/settings.json`.
+
+**flights.** Needs the browser-use plugin and a running Chrome.
+
+## Developing
+
+Clone the repo and add the clone as a local marketplace. Edits then take effect at the next session start, or after `/reload-plugins`:
+
+```
+git clone https://github.com/mark-henry/claude-tools ~/claude-tools
+/plugin marketplace add ~/claude-tools
+```
+
+MIT licensed.

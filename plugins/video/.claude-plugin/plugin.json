@@ -1,0 +1,8 @@
+{
+  "name": "video",
+  "version": "1.0.0",
+  "description": "Download and clip videos with yt-dlp and ffmpeg, including past windows of streams that are still live.",
+  "author": { "name": "Mark Henry" },
+  "homepage": "https://github.com/mark-henry/claude-tools",
+  "license": "MIT"
+}

@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+"""Build a Google Flights ROUND-TRIP search URL (tfs) for IATA airports, economy.
+Usage: flights-roundtrip-tfs ORIGIN DEST OUTBOUND_DATE RETURN_DATE [--adults N]
+Both legs: nonstop, departure 8-19 (8AM-8PM), arrival 0-23.
+Tested only: SFO<->MEX and SFO<->CUN, 4 adults, economy. See the calendar skill's references/roundtrip.md.
+"""
+import argparse, base64
+def varint(n):
+    o=b''
+    while True:
+        b=n&0x7f; n>>=7
+        o+=bytes([b|(0x80 if n else 0)])
+        if not n: return o
+def f(num,wire,val): return varint(num<<3|wire)+val
+def ld(num,b): return f(num,2,varint(len(b))+b)
+def vi(num,n): return f(num,0,varint(n))
+def place(c): return b'\x08\x01\x12'+bytes([len(c)])+c.encode()
+def leg(date,o,d):
+    return ld(2,date.encode())+vi(5,0)+vi(8,8)+vi(9,19)+vi(10,0)+vi(11,23)+ld(13,place(o))+ld(14,place(d))
+def build(origin,dest,out,ret,adults=1):
+    m=vi(1,28)+vi(2,2)+ld(3,leg(out,origin,dest))+ld(3,leg(ret,dest,origin))
+    m+=b''.join(vi(8,1) for _ in range(adults))+vi(9,1)+vi(14,1)+ld(16,b'\x08'+b'\xff'*9+b'\x01')
+    return 'https://www.google.com/travel/flights/search?tfs='+base64.urlsafe_b64encode(m).decode().rstrip('=')+'&tfu=EgYIABAAGAA&hl=en&curr=USD'
+if __name__=='__main__':
+    a=argparse.ArgumentParser();a.add_argument('origin');a.add_argument('dest');a.add_argument('out');a.add_argument('ret');a.add_argument('--adults',type=int,default=1)
+    x=a.parse_args(); print(build(x.origin,x.dest,x.out,x.ret,x.adults))

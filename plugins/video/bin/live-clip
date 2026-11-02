@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Clip a past window out of a YouTube stream that is STILL LIVE, by fetching HLS segments by sequence number.
+# Usage: live-clip <url> <start_min_ago> <end_min_ago> <out.mp4> [max_height]
+#   e.g. live-clip 'https://www.youtube.com/watch?v=XXXX' 40 30 ~/Downloads/clips/clip.mp4
+# Only reaches back as far as the HLS playlist does (~60 min on YouTube; see playlist_duration in segment URLs).
+set -euo pipefail
+
+url=$1 start_ago=$2 end_ago=$3 out=$4 max_h=${5:-1080}
+work=$(mktemp -d "${TMPDIR:-/tmp}/live-clip.XXXXXX")
+mkdir -p "$work/v" "$work/a"
+echo "work dir: $work"
+
+# Without --live-from-start, a live YouTube video exposes only HLS formats.
+urls=$(yt-dlp --no-update -g -f "bv*[height<=$max_h]+ba" "$url") || { echo "ERROR: yt-dlp could not get stream URLs" >&2; exit 1; }
+read -r vurl aurl <<< "$(echo "$urls" | tr '\n' ' ')"
+curl -sf "$vurl" > "$work/v.m3u8"
+curl -sf "$aurl" > "$work/a.m3u8"
+
+seg=$(grep -m1 '^#EXTINF:' "$work/v.m3u8" | sed 's/#EXTINF:\([0-9.]*\).*/\1/')
+last=$(grep -o '/sq/[0-9]*/' "$work/v.m3u8" | tail -1 | tr -dc 0-9)
+first=$(grep -o '/sq/[0-9]*/' "$work/v.m3u8" | head -1 | tr -dc 0-9)
+from=$(awk -v l="$last" -v m="$start_ago" -v s="$seg" 'BEGIN{printf "%d", l - m*60/s}')
+to=$(awk -v l="$last" -v m="$end_ago" -v s="$seg" 'BEGIN{printf "%d", l - m*60/s - 1}')
+echo "segment=${seg}s playlist sq=$first..$last clip sq=$from..$to"
+if (( from < first )); then
+  echo "ERROR: start is older than the playlist window (oldest sq $first). Use ypb or wait for the VOD." >&2
+  exit 1
+fi
+
+for kind in v a; do
+  grep '^https' "$work/$kind.m3u8" | while read -r u; do
+    n=$(echo "$u" | grep -o '/sq/[0-9]*/' | tr -dc 0-9)
+    if (( n >= from && n <= to )); then
+      echo "url = \"$u\""
+      echo "output = \"$work/$kind/$(printf %06d "$n").ts\""
+    fi
+  done > "$work/$kind.curlcfg"
+done
+
+curl -sf --retry 3 -Z --parallel-max 16 -K "$work/v.curlcfg" &
+curl -sf --retry 3 -Z --parallel-max 16 -K "$work/a.curlcfg"
+wait
+
+cat "$work"/v/*.ts > "$work/v.ts"
+cat "$work"/a/*.ts > "$work/a.ts"
+mkdir -p "$(dirname "$out")"
+ffmpeg -loglevel error -y -i "$work/v.ts" -i "$work/a.ts" -map 0:v -map 1:a -c copy -movflags +faststart "$out"
+ffprobe -v error -show_entries format=duration,size -of compact "$out"
+rm -rf "$work"

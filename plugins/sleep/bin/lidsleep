@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""Infer last night's bedtime and wake time from the Mac power log (lid/display
+events) and Chrome history, then compare with or fill the daily note's
+`[asleep:: ] [wake:: ]` fields (Obsidian Dataview inline fields) in
+$DAILY_NOTES_DIR/YYYY-MM-DD.md.
+
+Usage:
+  lidsleep            # report for today
+  lidsleep --fill     # also write empty asleep/wake fields in today's note
+  lidsleep --date 2026-09-17
+  lidsleep --json
+"""
+import argparse, datetime as dt, json, os, re, shutil, sqlite3, subprocess, sys, tempfile
+
+NOTES_DIR = os.path.expanduser(os.environ.get("DAILY_NOTES_DIR", "~/Documents/daily-notes"))
+CHROME_HISTORY = os.path.expanduser("~/Library/Application Support/Google/Chrome/Default/History")
+
+# ---------- power log ----------
+LINE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [-+]\d{4} (\w+)\s+(.*)$")
+
+def pmset_events():
+    """User-visible display on/off events only. DarkWakes, maintenance sleeps and
+    'Wake Requests' bookkeeping lines never turn the display on, so they are ignored."""
+    out = subprocess.run(["pmset", "-g", "log"], capture_output=True, text=True).stdout
+    for line in out.splitlines():
+        m = LINE.match(line)
+        if not m or m.group(2) != "Notification" or "Display is turned" not in m.group(3):
+            continue
+        ts = dt.datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
+        yield ts, ("display_on" if "turned on" in m.group(3) else "display_off"), m.group(3).strip()
+
+def night_gap(day):
+    """Longest gap in user-visible activity between 18:00 the day before and 12:00 on `day`."""
+    lo = dt.datetime.combine(day - dt.timedelta(days=1), dt.time(18))
+    hi = min(dt.datetime.combine(day, dt.time(12)), dt.datetime.now())
+    ev = [e for e in pmset_events() if lo <= e[0] <= hi]
+    if len(ev) < 2:
+        return None
+    best = None
+    for a, b in zip(ev, ev[1:]):
+        if b[0] < dt.datetime.combine(day, dt.time(0)):
+            continue                                  # gap must end on `day`
+        if a[1] != "display_off" or b[1] != "display_on":
+            continue
+        if best is None or (b[0] - a[0]) > (best[1][0] - best[0][0]):
+            best = (a, b)
+    return best
+
+# ---------- chrome ----------
+def chrome_visits(lo, hi):
+    if not os.path.exists(CHROME_HISTORY):
+        return []
+    tmp = tempfile.mkdtemp()
+    dst = os.path.join(tmp, "History")
+    shutil.copy(CHROME_HISTORY, dst)
+    epoch = 11644473600
+    q = """SELECT v.visit_time, u.url FROM visits v JOIN urls u ON u.id=v.url
+           WHERE v.visit_time BETWEEN ? AND ? ORDER BY v.visit_time"""
+    args = [(int(t.timestamp()) + epoch) * 1_000_000 for t in (lo, hi)]
+    rows = sqlite3.connect(dst).execute(q, args).fetchall()
+    shutil.rmtree(tmp, ignore_errors=True)
+    out = []
+    for t, url in rows:
+        if "autorel=1" in url:                        # Google Calendar self-refresh
+            continue
+        out.append((dt.datetime.fromtimestamp(t / 1_000_000 - epoch), url))
+    return out
+
+# ---------- daily note ----------
+FIELD = re.compile(r"\[(asleep|wake)::\s*([^\]]*)\]")
+
+def note_path(day):
+    return os.path.join(NOTES_DIR, f"{day:%Y-%m-%d}.md")
+
+def read_fields(path):
+    if not os.path.exists(path):
+        return None, {}
+    text = open(path).read()
+    return text, {k: v.strip() for k, v in FIELD.findall(text)}
+
+def fmt_bed(t):     # 12h without am/pm, midnight = 0000
+    h = t.hour - 12 if t.hour >= 13 else t.hour
+    return f"{h:02d}{t.minute:02d}"
+
+def fmt_wake(t):
+    return f"{t.hour:02d}{t.minute:02d}"
+
+def round15(t):
+    m = (t.minute + 7) // 15 * 15
+    return (t.replace(minute=0, second=0) + dt.timedelta(minutes=m))
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--date", type=lambda s: dt.date.fromisoformat(s), default=dt.date.today())
+    ap.add_argument("--fill", action="store_true", help="write empty asleep/wake fields")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args()
+    day = a.date
+
+    gap = night_gap(day)
+    if not gap:
+        print("no lid/display events found for that night", file=sys.stderr)
+        sys.exit(1)
+    (t_bed, k_bed, d_bed), (t_wake, k_wake, d_wake) = gap
+    bed_r, wake_r = round15(t_bed), round15(t_wake)
+
+    visits = chrome_visits(t_bed - dt.timedelta(hours=6), t_wake + dt.timedelta(hours=6))
+    before = [v for v in visits if v[0] <= t_bed]
+    inside = [v for v in visits if t_bed < v[0] < t_wake]
+    after = [v for v in visits if v[0] >= t_wake]
+
+    path = os.path.expanduser(note_path(day))
+    text, fields = read_fields(path)
+    suggest = {"asleep": fmt_bed(bed_r), "wake": fmt_wake(wake_r)}
+    status, wrote = {}, []
+    for k in ("asleep", "wake"):
+        cur = fields.get(k)
+        if cur is None:
+            status[k] = "no field"
+        elif cur == "":
+            status[k] = "empty"
+            if a.fill and text is not None:
+                text = text.replace(f"[{k}:: ]", f"[{k}:: {suggest[k]}]", 1)
+                wrote.append(k)
+                status[k] = "filled"
+        elif cur == suggest[k]:
+            status[k] = "match"
+        else:
+            status[k] = f"differs (note {cur}, lid {suggest[k]})"
+    if wrote:
+        open(path, "w").write(text)
+
+    if a.json:
+        print(json.dumps({
+            "date": str(day), "lid_close": t_bed.isoformat(), "lid_open": t_wake.isoformat(),
+            "close_event": d_bed, "open_event": d_wake, "suggest": suggest,
+            "note": {k: fields.get(k) for k in ("asleep", "wake")}, "status": status,
+            "chrome_last_before": before[-1][0].isoformat() if before else None,
+            "chrome_during": [(t.isoformat(), u[:80]) for t, u in inside],
+            "chrome_first_after": after[0][0].isoformat() if after else None,
+        }, indent=1))
+        return
+
+    hrs = (t_wake - t_bed).total_seconds() / 3600
+    print(f"night of {day - dt.timedelta(days=1)} -> {day}")
+    print(f"  lid closed  {t_bed:%a %H:%M}   ({k_bed}: {d_bed[:60]})")
+    print(f"  lid opened  {t_wake:%a %H:%M}   ({k_wake}: {d_wake[:60]})")
+    print(f"  closed for  {hrs:.1f} h")
+    if before:
+        print(f"  chrome: last visit before close {before[-1][0]:%H:%M}  {before[-1][1][:70]}")
+    if inside:
+        print(f"  chrome: {len(inside)} visit(s) while closed (lid may not mean asleep):")
+        for t, u in inside[:5]:
+            print(f"      {t:%H:%M}  {u[:70]}")
+    if after:
+        print(f"  chrome: first visit after open  {after[0][0]:%H:%M}  {after[0][1][:70]}")
+    print(f"  suggest     [asleep:: {suggest['asleep']}] [wake:: {suggest['wake']}]")
+    print(f"  note        {os.path.basename(path)}: " + ", ".join(f"{k} {v}" for k, v in status.items()))
+
+if __name__ == "__main__":
+    main()

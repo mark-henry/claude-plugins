@@ -1,0 +1,8 @@
+{
+  "name": "quota",
+  "version": "1.0.0",
+  "description": "Weekly quota left on Claude and ChatGPT subscriptions behind CLIProxyAPI vs an even-spend target, plus automatic account-weight rebalancing.",
+  "author": { "name": "Mark Henry" },
+  "homepage": "https://github.com/mark-henry/claude-tools",
+  "license": "MIT"
+}

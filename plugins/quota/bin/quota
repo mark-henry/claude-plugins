@@ -1,0 +1,166 @@
+#!/bin/bash
+# quota: report weekly quota left on each subscription behind CLIProxyAPI against a linear-use
+# target, and with --rebalance, set the Claude credentials' routing weights to match.
+#
+# Numbers are the rate-limit headers CLIProxyAPI last saw per credential (management API
+# /v0/management/auth-files), as of that credential's last proxied request (`seen`), not live.
+#   left   = 100 - used%
+#   target = share of the window still to come = what `left` would be if spent evenly
+#   pace   = left - target; positive is slack, negative is spending ahead of pace
+#
+# Rebalance policy (Claude accounts; weights are relative, session-affine in the proxy):
+#   headroom = left, except the protected account keeps max(RESERVE, target) back
+#   rate     = headroom / hours to reset   (the burn rate the account can afford)
+#   weight   = share of total rate, at least FLOOR; 0 if no headroom
+#   if no account has headroom, the protected account takes everything (its reserve is for that)
+#
+# --quiet: print nothing and exit 0 if the proxy is unreachable (for hooks)
+# --rebalance: also PATCH changed weights via the management API; changes are appended to $LOG
+# --dry-run: show the weights --rebalance would set, without setting them
+# --install-launchd: (macOS) run --rebalance every 15 minutes in the background
+#
+# Settings: override the defaults below in the environment or in ~/.config/quota.env (sourced as bash).
+set -euo pipefail
+
+: "${QUOTA_PROXY_URL:=http://127.0.0.1:8317}"            # CLIProxyAPI base URL
+: "${QUOTA_MANAGEMENT_KEY_FILE:=~/.cli-proxy-api/management-key}"
+: "${QUOTA_PROTECTED_EMAIL:=}"                           # main account that must not run out; empty = none
+: "${QUOTA_RESERVE:=15}"                                 # % of its weekly quota the proxy leaves alone
+: "${QUOTA_FLOOR:=10}"                                   # minimum weight for an account with headroom
+: "${QUOTA_LOG:=~/Library/Logs/quota-rebalance.log}"
+[[ -f ~/.config/quota.env ]] && source ~/.config/quota.env
+API=$QUOTA_PROXY_URL/v0/management
+PROTECTED_EMAIL=$QUOTA_PROTECTED_EMAIL RESERVE=$QUOTA_RESERVE FLOOR=$QUOTA_FLOOR
+LOG=${QUOTA_LOG/#\~/$HOME} KEY_FILE=${QUOTA_MANAGEMENT_KEY_FILE/#\~/$HOME}
+export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
+
+quiet=0 rebalance=0 dry=0
+for a in "$@"; do
+  case $a in
+    --quiet) quiet=1 ;;
+    --rebalance) rebalance=1 ;;
+    --dry-run) rebalance=1 dry=1 ;;
+    --install-launchd)
+      label=io.github.mark-henry.quota-rebalance
+      plist=~/Library/LaunchAgents/$label.plist
+      self=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+      mkdir -p "$(dirname "$LOG")"
+      cat >"$plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>$label</string>
+  <key>ProgramArguments</key><array><string>$self</string><string>--rebalance</string><string>--quiet</string></array>
+  <key>StartInterval</key><integer>900</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/dev/null</string>
+  <key>StandardErrorPath</key><string>$LOG</string>
+</dict></plist>
+PLIST
+      launchctl bootout "gui/$(id -u)/$label" 2>/dev/null || true
+      launchctl bootstrap "gui/$(id -u)" "$plist"
+      echo "installed $plist (runs $self --rebalance every 15 min; log $LOG)"
+      exit 0 ;;
+    *) echo "usage: quota [--quiet] [--rebalance | --dry-run | --install-launchd]" >&2; exit 2 ;;
+  esac
+done
+
+if [[ ! -r $KEY_FILE ]]; then
+  ((quiet)) && exit 0
+  echo "quota: no CLIProxyAPI management key at $QUOTA_MANAGEMENT_KEY_FILE (set QUOTA_MANAGEMENT_KEY_FILE in ~/.config/quota.env)" >&2
+  exit 1
+fi
+key=$(<"$KEY_FILE")
+if ! json=$(curl -sf -m 4 -H "Authorization: Bearer $key" "$API/auth-files"); then
+  ((quiet)) && exit 0
+  echo "quota: can't reach CLIProxyAPI management API" >&2
+  exit 1
+fi
+
+# Emits tab-separated rows: "L<TAB>report line" and "W<TAB>name<TAB>email<TAB>old<TAB>new<TAB>why"
+rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" \
+  --argjson reserve "$RESERVE" --argjson floor "$FLOOR" '
+  def week: 604800;
+  def epoch: (.[0:19] + "Z" | fromdateiso8601) -
+    ((.[19:] | capture("(?<s>[+-])(?<h>\\d\\d):(?<m>\\d\\d)$")) as $z
+     | ($z.h | tonumber) * 3600 + ($z.m | tonumber) * 60 | if $z.s == "-" then -. else . end)? // 0;
+  def ago: (($now - .) / 60 | floor) as $m
+    | if $m < 120 then "\($m)m" elif $m < 2880 then "\($m / 60 | floor)h" else "\($m / 1440 | floor)d" end;
+  def num: if . == null or . == "" then null else tonumber end;
+  def pct: round | tostring + "%";
+
+  # One record per enabled credential, from its newest observation.
+  [ .files[] | select(.disabled | not)
+    | ([.quota // {}] + [(.model_quotas // {})[]] | map(select(.signals)) | max_by(.observed_at | epoch)) as $o
+    | {name, provider, email: (.email // "?"), weight, sig: $o.signals, seen: ($o.observed_at // null | if . then epoch else null end)}
+    | if .sig == null then .
+      elif .provider == "claude" then
+        .used = (.sig["Anthropic-Ratelimit-Unified-7d-Utilization"] | num | if . then . * 100 else null end)
+        | .reset = (.sig["Anthropic-Ratelimit-Unified-7d-Reset"] | num) | .length = week
+      elif .provider == "codex" then
+        .used = (.sig["X-Codex-Primary-Used-Percent"] | num)
+        | .reset = (.sig["X-Codex-Primary-Reset-At"] | num)
+        | .mins = (.sig["X-Codex-Primary-Window-Minutes"] | num // 0)
+        | .length = (if .mins > 0 then .mins * 60 else null end)
+        | .plan = (.sig["X-Codex-Plan-Type"] // "?")
+      else . end
+    | .passed = (.reset != null and .reset <= $now)
+    | .left = (if .used == null then null elif .passed then 100 else 100 - .used end)
+    | .target = (if .passed or .reset == null or .length == null then null else 100 * (.reset - $now) / .length end)
+  ] as $creds
+
+  # Report lines
+  | ($creds[] | "L\t- \(.provider) \(.email | split("@")[0])" + (if .plan then " \(.plan)" else "" end)
+      + (if .weight != null then " (weight \(.weight))" else "" end) + ": "
+      + (if .sig == null then "no data yet"
+         elif .used == null then "format not understood"
+         else (if .provider == "codex" and .mins != 10080 then (if .mins > 0 then "\(.mins / 60 | round)h window " else "? window " end) else "" end)
+           + (if .passed then "reset since seen (~100%)"
+              else (.left | pct)
+                + (if .target then (.left - .target) as $p | " vs \(.target | pct) (\(if $p >= 0 then "+" else "" end)\($p | round))" else "" end)
+                + (if .reset then ((.reset - $now) / 3600) as $h
+                     | if $h >= 48 then ", resets \($h / 24 * 10 | round / 10)d" else ", resets \($h | round)h" end
+                   else "" end)
+              end)
+           + ", seen \(.seen | ago)"
+         end)),
+
+  # Rebalance proposals for Claude credentials with usable data
+  ([ $creds[] | select(.provider == "claude" and .left != null and .reset != null)
+     | .next = (if .passed then .reset + week * ((($now - .reset) / week | floor) + 1) else .reset end)
+     | .hrs = ([(.next - $now) / 3600, 1] | max)
+     | .tgt = 100 * (.next - $now) / week
+     | .head = (if .email == $prot then .left - ([$reserve, .tgt] | max) else .left end)
+     | .rate = ([.head, 0] | max) / .hrs ] as $c
+   | ($c | map(.rate) | add // 0) as $total
+   | $c[]
+   | .new = (if $total == 0 then (if .email == $prot then 100 else 0 end)
+             elif .rate == 0 then 0
+             else ([$floor, (100 * .rate / $total | round)] | max) end)
+   | "W\t\(.name)\t\(.email)\t\(.weight // 1)\t\(.new)\t\(.head | round)pts/\(.hrs | round)h"
+  )
+' <<<"$json")
+
+echo "Quota (weekly % left vs even-spend target, slack):"
+grep '^L' <<<"$rows" | cut -f2- || true
+
+((rebalance)) || exit 0
+changes=()
+while IFS=$'\t' read -r _ name email old new why; do
+  [[ $old == "$new" ]] && continue
+  if ((dry)); then changes+=("${email%@*} ${old}→${new} ($why)"); continue; fi
+  if curl -sf -m 4 -X PATCH -H "Authorization: Bearer $key" -H 'Content-Type: application/json' \
+       -d "$(jq -nc --arg n "$name" --argjson w "$new" '{name: $n, weight: $w}')" "$API/auth-files/fields" >/dev/null; then
+    changes+=("${email%@*} ${old}→${new} ($why)")
+  else
+    changes+=("${email%@*} ${old}→${new} FAILED")
+  fi
+done < <(grep '^W' <<<"$rows" || true)
+
+if ((${#changes[@]})); then
+  msg="$( ((dry)) && echo "would rebalance" || echo rebalanced): $(IFS=';'; echo "${changes[*]}" | sed 's/;/; /g')"
+  echo "$msg"
+  ((dry)) || echo "$(date '+%Y-%m-%d %H:%M:%S') $msg" >>"$LOG"
+else
+  echo "rebalance: weights already match"
+fi

@@ -1,0 +1,41 @@
+{
+  "name": "mark-henry",
+  "owner": {
+    "name": "Mark Henry"
+  },
+  "metadata": {
+    "description": "Small Claude Code tools and skills by Mark Henry."
+  },
+  "plugins": [
+    {
+      "name": "quota",
+      "source": "./plugins/quota",
+      "description": "Weekly quota left on Claude and ChatGPT subscriptions behind CLIProxyAPI vs an even-spend target, plus automatic account-weight rebalancing."
+    },
+    {
+      "name": "video",
+      "source": "./plugins/video",
+      "description": "Download and clip videos with yt-dlp and ffmpeg, including past windows of streams that are still live."
+    },
+    {
+      "name": "flights",
+      "source": "./plugins/flights",
+      "description": "Scrape the Google Flights price calendar (cheapest fare per day across months) via browser-use."
+    },
+    {
+      "name": "sleep",
+      "source": "./plugins/sleep",
+      "description": "Infer last night's bedtime and wake time from the Mac lid log and fill daily-note fields."
+    },
+    {
+      "name": "gordian",
+      "source": "./plugins/gordian",
+      "description": "Big-picture simplification audit for code that has accumulated complexity from many small edits."
+    },
+    {
+      "name": "figure",
+      "source": "./plugins/figure",
+      "description": "Turn a result into a self-contained figure: the claim as title, a qualifying caption, then the chart."
+    }
+  ]
+}
