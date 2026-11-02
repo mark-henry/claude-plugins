@@ -1,8 +1,9 @@
 {
   "name": "gordian",
-  "version": "1.0.0",
   "description": "Big-picture simplification audit for code that has accumulated complexity from many small edits.",
-  "author": { "name": "Mark Henry" },
+  "author": {
+    "name": "Mark Henry"
+  },
   "homepage": "https://github.com/mark-henry/claude-tools",
   "license": "MIT"
 }
