@@ -56,6 +56,11 @@
       "name": "court",
       "source": "./plugins/court",
       "description": "Hold court: present the user one decision at a time, each with the context needed to decide, choosing intelligently which comes next. Works for any kind of item."
+    },
+    {
+      "name": "amazon",
+      "source": "./plugins/amazon",
+      "description": "Read the Amazon Cart (with same-day windowed items flagged), Amazon Fresh Cart and Whole Foods Market Cart from a dedicated agent Chrome; hand items to your real Chrome to add."
     }
   ]
 }

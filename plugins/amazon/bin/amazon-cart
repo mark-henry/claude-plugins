@@ -1,0 +1,19 @@
+#!/bin/zsh
+# amazon-cart [read]          JSON of all three carts, read from the agent Chrome (own tab, closed after)
+# amazon-cart open ASIN...    open product pages in the user's real Chrome for them to click Add to Cart
+set -e
+HERE=${0:A:h}
+cmd=${1:-read}; [[ $# -gt 0 ]] && shift
+case $cmd in
+  open)
+    for a in "$@"; do
+      [[ $a =~ '^[A-Z0-9]{10}$' ]] || { echo "not an ASIN: $a" >&2; exit 2; }
+      open -a "Google Chrome" "https://www.amazon.com/dp/$a"; sleep 1
+    done ;;
+  read)
+    BH=$(command -v browser-harness || ls -t ~/.cache/uv/archive-v0/*/bin/browser-harness 2>/dev/null | head -1)
+    [[ -x $BH ]] || { echo "browser-harness not found (install the browser-use plugin)" >&2; exit 1; }
+    export BU_NAME=agent BU_CDP_URL=$("$HERE/agent-chrome") BH_TAB_MARKER=0
+    "$BH" < "$HERE/../lib/read_carts.py" ;;
+  *) echo "usage: amazon-cart [read] | amazon-cart open ASIN..." >&2; exit 2 ;;
+esac

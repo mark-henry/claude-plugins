@@ -1,0 +1,20 @@
+#!/bin/zsh
+# Start (if needed) a dedicated Chrome for agents: own profile, CDP on a fixed port, so
+# browser-harness attaches with no "Allow remote debugging?" prompt and never touches
+# the everyday profile. Opens in the background (no focus steal). Prints the CDP URL.
+#   agent-chrome            ensure running
+#   agent-chrome --show     also bring its window forward (e.g. to sign in somewhere)
+PORT=${AGENT_CHROME_PORT:-9333}
+PROFILE=${AGENT_CHROME_PROFILE:-$HOME/.chrome-agent}
+URL=http://127.0.0.1:$PORT
+if ! curl -s -m 2 $URL/json/version >/dev/null; then
+  open -g -na "Google Chrome" --args --user-data-dir="$PROFILE" --remote-debugging-port=$PORT \
+    --no-first-run --no-default-browser-check
+  for i in {1..15}; do curl -s -m 1 $URL/json/version >/dev/null && break; sleep 1; done
+  curl -s -m 2 $URL/json/version >/dev/null || { echo "agent-chrome: failed to start on $PORT" >&2; exit 1; }
+fi
+if [[ $1 == --show ]]; then
+  pid=$(lsof -tiTCP:$PORT -sTCP:LISTEN | head -1)
+  osascript -e "tell application \"System Events\" to set frontmost of (first process whose unix id is $pid) to true" 2>/dev/null
+fi
+echo $URL

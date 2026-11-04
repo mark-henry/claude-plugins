@@ -1,0 +1,9 @@
+{
+  "name": "amazon",
+  "description": "Read the Amazon Cart, Amazon Fresh Cart and Whole Foods Market Cart from a dedicated agent Chrome, and hand items to the user's real Chrome to add.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}

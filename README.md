@@ -19,6 +19,7 @@ Small [Claude Code](https://claude.com/claude-code) plugins I use every day, pub
 | `diverge` | `/diverge:design` | Adversarial design as a multi-agent Workflow: independent brainstormers each take a stance (open, outside the obvious component, adversary, skeptic), a selector picks maximally distinct solution families, each is prototyped, red-teamed and repaired in its own sandbox, and a judge recommends. It starts by locking the brief with `brief:lock`. The rest of the skill is mostly guidance on writing the brief without anchoring the brainstorm. |
 | `naming` | `/naming:pick` | Choose a name for something other people or code will use: state its job, list the siblings it must not be confused with, brainstorm a dozen candidates in different styles (including a concrete metaphor), test them against the classic rules (Martin, Kernighan and Pike, Evans, Feitelson, Arnaoudova), and recommend one with a long and a short form. |
 | `court` | `/court:hold` | Hold court over a backlog of decisions: one small, self-contained item at a time, with the background, the cost and a recommendation; the ruling is carried out, and the next item is chosen by judgment (ready before pending, unblocking and time-sensitive first, related items together), not by arrival order. Works for any kind of item. |
+| `amazon` | `/amazon:cart` | Read the Amazon Cart, Amazon Fresh Cart and Whole Foods Market Cart, flagging same-day items that ride a delivery window inside the normal cart. Reads run in a dedicated agent Chrome (`agent-chrome`), so there is no remote-debugging prompt. Adding is done by you: Amazon flags automated adds, and its old add-to-cart link is dead, so `amazon-cart open ASIN...` opens the product pages for you to click. |
 
 Claude also picks up each skill on its own when a request matches, so you rarely need to type the commands.
 
@@ -34,16 +35,18 @@ On macOS, `subquota --install-launchd` rebalances every 15 minutes in the backgr
 
 **flights.** Needs the browser-use plugin and a running Chrome.
 
+**amazon.** Needs the browser-use plugin (for `browser-harness`) and Google Chrome. Run `agent-chrome --show` once and sign in to Amazon in that window; it keeps its own profile at `~/.chrome-agent`. macOS only.
+
 ## Developing
 
 Clone the repo and add the clone as a local marketplace:
 
 ```
-git clone https://github.com/mark-henry/claude-plugins ~/claude-tools
-claude plugin marketplace add ~/claude-tools
+git clone https://github.com/mark-henry/claude-plugins ~/claude-plugins
+claude plugin marketplace add ~/claude-plugins
 claude plugin install quota@mark-henry
 ```
 
-Installs are copied into Claude Code's plugin cache and versioned by commit, so after editing, commit and then run `claude plugin marketplace update mark-henry && claude plugin update quota@mark-henry`. To try uncommitted edits, start a session with `claude --plugin-dir ~/claude-tools/plugins/quota`.
+Installs are copied into Claude Code's plugin cache and versioned by commit, so after editing, commit and then run `claude plugin marketplace update mark-henry && claude plugin update quota@mark-henry`. To try uncommitted edits, start a session with `claude --plugin-dir ~/claude-plugins/plugins/quota`.
 
 MIT licensed.
