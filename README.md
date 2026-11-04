@@ -1,9 +1,9 @@
-# claude-tools
+# claude-plugins
 
 Small [Claude Code](https://claude.com/claude-code) plugins I use every day, published as a plugin marketplace. Each plugin installs on its own, so take only what you need.
 
 ```
-/plugin marketplace add mark-henry/claude-tools
+/plugin marketplace add mark-henry/claude-plugins
 /plugin install video@mark-henry
 ```
 
@@ -39,7 +39,7 @@ On macOS, `subquota --install-launchd` rebalances every 15 minutes in the backgr
 Clone the repo and add the clone as a local marketplace:
 
 ```
-git clone https://github.com/mark-henry/claude-tools ~/claude-tools
+git clone https://github.com/mark-henry/claude-plugins ~/claude-tools
 claude plugin marketplace add ~/claude-tools
 claude plugin install quota@mark-henry
 ```
