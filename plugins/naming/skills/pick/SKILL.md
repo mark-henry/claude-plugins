@@ -45,7 +45,7 @@ A name is the first thing a reader learns about a thing, and often the only thin
    - **Right length for its scope** (Kernighan and Pike): the farther a name travels, the more specific it must be. `i` is fine in a three-line loop; a public module needs a real name.
    - **Consistent:** one word per concept across the codebase (Martin). If siblings say `fetch`, don't say `retrieve`; if `retrieve` means something else, don't use it for this.
    - **Survives the rename test:** in six months, does the name still make sense when read in a log line, a CLI listing or a stack trace, away from the code that defines it?
-6. **Recommend.** Give the top 2–3 with one line each on why, pick one, and give its long form (for docs and conversation) and short form (for code, files, flags). If the rename would touch existing code, say what moves: modules, flags, file names, saved results, docs. Clear beats clever: brainstorm jokes freely, but ship the name a newcomer can guess, even if it's long. Have the owner lock the choice explicitly, and record it.
+6. **Recommend.** Give the top 2–3 with one line each on why, pick one, and give its long form (for docs and conversation) and short form (for code, files, flags). If the rename would touch existing code, say what moves: modules, flags, file names, saved results, docs. Flavor and jokes are welcome when they also clear every test above. A vivid name is easier to remember and say, but it has to stay guessable and true to the mechanism. "Understudy test" was loved but lost, because it didn't say how the world's response is measured. A long, literal name beats a flavorful one that fails a test. Have the owner lock the choice explicitly, and record it.
 
 ## When no name fits, or the old one is already in use
 
