@@ -36,6 +36,11 @@
       "name": "figure",
       "source": "./plugins/figure",
       "description": "Turn a result into a self-contained figure: the claim as title, a qualifying caption, then the chart."
+    },
+    {
+      "name": "naming",
+      "source": "./plugins/naming",
+      "description": "Choose a name that travels: state its job, list the siblings it must not be confused with, brainstorm widely, test candidates against the classic rules, recommend one."
     }
   ]
 }

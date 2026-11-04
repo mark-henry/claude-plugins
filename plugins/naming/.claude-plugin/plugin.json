@@ -1,0 +1,9 @@
+{
+  "name": "naming",
+  "description": "Choose a name that travels: state the job, list the siblings it must not be confused with, brainstorm widely, test candidates against the classic rules, recommend one.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-tools",
+  "license": "MIT"
+}
