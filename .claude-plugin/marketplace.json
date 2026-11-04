@@ -38,6 +38,16 @@
       "description": "Turn a result into a self-contained figure: the claim as title, a qualifying caption, then the chart."
     },
     {
+      "name": "brief",
+      "source": "./plugins/brief",
+      "description": "Interview the user until a goal and its success bar are locked: definitions, denominators, threats, fallback bar, hard constraints. Use before any costly run, experiment, or multi-agent workflow."
+    },
+    {
+      "name": "diverge",
+      "source": "./plugins/diverge",
+      "description": "Diverge-then-converge adversarial design: unanchored brainstorm, pick maximally distinct families, prototype, red-team, repair, blind judge. Runs as a Workflow."
+    },
+    {
       "name": "naming",
       "source": "./plugins/naming",
       "description": "Choose a name that travels: state its job, list the siblings it must not be confused with, brainstorm widely, test candidates against the classic rules, recommend one."

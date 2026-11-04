@@ -1,0 +1,9 @@
+{
+  "name": "brief",
+  "description": "Interview the user until a goal and its success bar are locked: definitions, denominators, threats, fallback bar, hard constraints. Use before any costly run, experiment, or multi-agent workflow.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-tools",
+  "license": "MIT"
+}
