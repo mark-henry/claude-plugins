@@ -15,10 +15,16 @@ A name is the first thing a reader learns about a thing, and often the only thin
 - **Committing to the first candidate.** *Fix:* never ship candidate #1 without at least ten rivals.
 - **Qualifier pile-up.** `SemanticPairwiseJudgedComparisonScorer` stacks every concept instead of choosing among them. *Fix:* include only the concepts that distinguish it (step 3 below).
 
+## Signals that a rename is due
+
+- **Its owner had to ask what it is.** That's a bug report, not a matter of taste. One question is enough.
+- **Two siblings keep getting confused.** That confusion often means the boundary between them is drawn wrong, not just the names (see step 2).
+- **Nobody can say what it measures or produces.** Then it's a design problem that shows up as a naming problem. Settle the design first. Sometimes the fix is a better baseline or a different arm, not a new word.
+
 ## Procedure
 
-1. **State the job in one sentence**, in terms of the question the thing answers or the outcome it produces, not its implementation. Name the audience: a newcomer reading code? a user at a CLI? a teammate scanning a task list? Most names should work for someone arriving with no context.
-2. **List the siblings:** the other names in the same namespace, or in the reader's head, that this one must be distinguishable from. Include things that sound similar, things that use the same mechanism, and the thing's own parts (a frame vs its methods; a family vs a member). If two layers share one name, that is often the real problem: split them (e.g. the contest frame vs the method that decides each contest).
+1. **State the job in one sentence**, in terms of the question the thing answers or the outcome it produces, not its implementation. Name the audience: a newcomer reading code? a user at a CLI? a teammate scanning a task list? Most names should work for someone arriving with no context. Explain it in plain words before naming it: if the sentence won't come, the job isn't settled, so stop and settle it.
+2. **List the siblings:** the other names in the same namespace, or in the reader's head, that this one must be distinguishable from. Include things that sound similar, things that use the same mechanism, and the thing's own parts (a frame vs its methods; a family vs a member). If two layers share one name, that is often the real problem: split them (e.g. the contest frame vs the method that decides each contest). When two siblings share the same math, find the axis that separates them: often the *role* (the model as judge vs as actor; where vs what), and put that axis in the names. Siblings that share their items or inputs should share a stem (`spot-the-original`, `spot-the-original by consequence`).
 3. **Choose the concepts first, then the words** (Feitelson's three-step model). Of everything true about the thing, which one or two concepts would let a reader pick it out of the sibling list? Leave the rest for the docstring.
 4. **Brainstorm 10–15 candidates in deliberately different styles:**
    - literal (what it does, plainly);
@@ -32,12 +38,20 @@ A name is the first thing a reader learns about a thing, and often the only thin
    - **Guessable:** would a newcomer guess roughly what it does from the name alone?
    - **Distinct:** could it be confused with any sibling? Say the two names aloud together.
    - **True:** does it promise anything the thing doesn't do, or hide something it does? (Martin's *avoid disinformation*; Arnaoudova's linguistic antipatterns: a `get` that does work, an `is_x` that returns a non-boolean, a singular name holding a collection, a "check" that changes state.)
+   - **The metaphor is literally true:** check every implication of a metaphor against the mechanism. A "lineup" implies that candidates are compared side by side. If each one is scored alone, the metaphor is false, however catchy it is.
+   - **Says what changes the reading:** if how the items were chosen, or who judges, changes how a reader should take the numbers (curated vs sampled, a fixed ruler vs self-judged), the name says so.
    - **Role, not mechanism:** would it still fit if the implementation changed?
    - **Searchable and pronounceable:** can you grep for it without false hits, and say it in a meeting?
    - **Right length for its scope** (Kernighan and Pike): the farther a name travels, the more specific it must be. `i` is fine in a three-line loop; a public module needs a real name.
    - **Consistent:** one word per concept across the codebase (Martin). If siblings say `fetch`, don't say `retrieve`; if `retrieve` means something else, don't use it for this.
    - **Survives the rename test:** in six months, does the name still make sense when read in a log line, a CLI listing or a stack trace, away from the code that defines it?
-6. **Recommend.** Give the top 2–3 with one line each on why, pick one, and give its long form (for docs and conversation) and short form (for code, files, flags). If the rename would touch existing code, say what moves: modules, flags, file names, saved results, docs.
+6. **Recommend.** Give the top 2–3 with one line each on why, pick one, and give its long form (for docs and conversation) and short form (for code, files, flags). If the rename would touch existing code, say what moves: modules, flags, file names, saved results, docs. Clear beats clever: brainstorm jokes freely, but ship the name a newcomer can guess, even if it's long. Have the owner lock the choice explicitly, and record it.
+
+## When no name fits, or the old one is already in use
+
+- **Split it, delete it, or move a name.** A thing that won't take a name may be two things (split them and name each), or redundant once looked at alone (delete it rather than name it). A good name rejected for one thing may fit a sibling exactly: reassign it rather than throw it away.
+- **Rename before results are keyed to the name.** Sealed datasets, metric keys, saved results and dashboards all freeze a name. Before any exist, a rename is cheap, so do it now.
+- **After that, put up a sign.** Accept old names only through one alias table: old name, new name, date, what still depends on it, and the condition for deleting it. Add a check that reports, for each alias, whether anything still uses the old name, and a test that no old name is accepted outside the table.
 
 ## Conventions worth keeping
 
