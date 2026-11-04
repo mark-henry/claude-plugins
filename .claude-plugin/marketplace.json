@@ -41,6 +41,11 @@
       "name": "naming",
       "source": "./plugins/naming",
       "description": "Choose a name that travels: state its job, list the siblings it must not be confused with, brainstorm widely, test candidates against the classic rules, recommend one."
+    },
+    {
+      "name": "court",
+      "source": "./plugins/court",
+      "description": "Hold court: present the user one decision at a time, each with the context needed to decide, choosing intelligently which comes next. Works for any kind of item."
     }
   ]
 }
