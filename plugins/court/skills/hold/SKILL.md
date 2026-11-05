@@ -7,7 +7,7 @@ description: "Hold court: work through a backlog of the user's decisions one at 
 
 The user is the judge. Items come before them one at a time. Each item arrives with everything needed to rule on it, the ruling is carried out, and the next item is called. The user should never have to remember earlier items, hold the whole docket in their head, or dig for context.
 
-The skill doesn't care what the items are. It might be pull requests, open questions in a design, emails to answer, tasks to triage, purchases to approve, or findings from a review. Anything that waits on the user's judgment fits.
+This skill doesn't care what the items are. It might be pull requests, open questions in a design, emails to answer, tasks to triage, purchases to approve, or findings from a review. Anything that waits on the user's judgment fits.
 
 ## The loop
 
@@ -32,7 +32,7 @@ Between rulings, background work keeps finishing: agent hand-backs, CI results, 
 
 Every presentation stands alone. Assume the user remembers nothing about it, even if they saw an earlier version ten minutes ago. When an item comes back reworked, present the whole current version: the original problem, what it does now, and what is left to decide. Never present only what changed.
 
-Before an item reaches the user, give it a quick challenge pass: is there a simpler or more standard way to get the same result, and does it rebuild something that already exists (a stdlib feature, a library option, a helper already in the codebase)? If so, prepare that version first, so the user rules on what would actually be carried out: a hand-written argument scrubber becomes one standard parser option, a hand-written extraction guard becomes the stdlib's safe mode. Also spot-check the facts the ruling hinges on against the source (what a file contains, what a count is, what a command does). Don't fact-check everything, since speed matters too, but mark unverified claims and estimates as such.
+Before an item reaches the user, give it a quick challenge pass: is there a simpler or more standard way to get the same result, and does it rebuild something that already exists (a stdlib feature, a library option, a helper already in the codebase), has the PR already had adversarial review? If so, prepare that version first, so the user rules on what would actually be carried out: a hand-written argument scrubber becomes one standard parser option, a hand-written extraction guard becomes the stdlib's safe mode. Also spot-check the facts the ruling hinges on against the source (what a file contains, what a count is, what a command does). Don't fact-check everything, since speed matters too, but mark unverified claims and estimates as such.
 
 Shape (adapt the headings to the kind of item):
 
