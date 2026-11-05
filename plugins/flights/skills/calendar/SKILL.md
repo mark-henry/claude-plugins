@@ -7,7 +7,7 @@ description: "Scrape the Google Flights price calendar (cheapest one-way fare pe
 
 The calendar in the departure-date field shows one price per day for ~1 year, filtered by the active stops/times/passenger settings. It is the cheapest way to sweep many dates (one page load). One-way only; this is NOT the "Date grid" button (round-trip matrix).
 
-Round-trip totals: this calendar stays the primary sweep tool. For true round-trip quotes use `flights-roundtrip-tfs` (on PATH from this plugin; tested only for 4 adults, SFO to MEX/CUN). Scope, verification and limits (return times not retrieved): `${CLAUDE_PLUGIN_ROOT}/skills/calendar/references/roundtrip.md`.
+Round-trip totals: this calendar stays the primary sweep tool. For true round-trip quotes use `flights-roundtrip-tfs` (on PATH from this plugin; tested only for 4 adults, SFO to MEX/CUN). Scope, verification, pricing nonstop returns, and editing a saved tfs for multi-city/open-jaw: `${CLAUDE_PLUGIN_ROOT}/skills/calendar/references/roundtrip.md`.
 
 ## Trust level of a calendar number
 - A price is Google's cheapest-fare indication for that day under the active filters, for the passenger count in the search (1 adult unless the tfs says otherwise).

@@ -9,7 +9,10 @@ The calendar workflow in SKILL.md (one-way) stays primary for sweeping many date
 - Prices are round-trip totals for all passengers (divide for per head), scraped from visible `li` rows after a ~6 s wait. Rows show outbound times only.
 
 ## Limits
-- Return flight times not obtained: clicking a result did not open the return-selection page in the smoke run (main thread once saw "Oops, something went wrong"). Price = cheapest return passing the filter.
+- The first price on a round-trip or multi-city page pairs that outbound with the cheapest return, often a one-stop flight landing near midnight: the Nonstop filter does not restrict the return list. Headline prices understated real nonstop itineraries by $30-165 a head (Oct 2026). To price nonstop returns, click the outbound card with `click_at_xy` at the center of its `getBoundingClientRect()` (JS `element.click()` does nothing; one earlier attempt hit "Oops, something went wrong"), then read the return `li` rows, which show entire-trip totals for all passengers. Rows tagged "Separate tickets" are two one-ways. Keep the focus-emulation wrapper around every wait.
 - Return-leg arrival time is unconstrained (arrival 0-23 on both legs); overnight arrivals on the return were not checked.
 - Fares exclude bag fees; many United fares are basic (no carry-on).
 - Field meanings beyond those in SKILL.md "tfs fields" are not understood; outer field 2 = 2 is what the UI emitted for this round-trip URL. Other passenger counts, cabins, origins untested.
+
+## Searches the builders can't express (multi-city, open-jaw, other filters)
+Configure one search in the Google Flights UI (or reuse a saved one), then base64url-decode its `tfs=` value and byte-replace the dates (`b"2026-12-29"`) and airport codes (`b"\x03MEX"` to `b"\x03CUN"`). Assert each target occurs exactly once, re-encode, and append `&hl=en&curr=USD`. Passenger count, Nonstop, departure window, and round trip vs multi-city/open-jaw all survived this edit across dozens of 4-adult open-jaw searches (Oct 2026). Natural-language `q=` URLs can't express nonstop plus a time window, multi-city, or more than 1 adult.
