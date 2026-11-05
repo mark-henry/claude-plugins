@@ -20,7 +20,7 @@ This skill doesn't care what the items are. It might be pull requests, open ques
    - **"Is there a better way?" or another request for rework:** send the rework off. The item goes back on the docket, and is presented again **in full** when the rework returns.
    - **"Next" without a decision:** defer the item. Bring it back later, after other items, in full. If it is deferred a second time, ask whether to drop it.
    - **A change of mind about an earlier ruling:** the newest ruling wins. If the old one is already carried out, say what undoing it involves before you undo it.
-   - **A request for a reminder** ("remind me about X in a couple of turns"): put it on the docket with its due point, and once it falls due, present it as the next item, like any other.
+   - **A request for a reminder** ("remind me about X in a couple of turns", "bury this until Y comes back"): put it on the docket with its due point, and once it falls due, present it as the next item, like any other.
    - **A new instruction that changes the rules** (a cap, a preference, "always do X", "approve anything like this"): adopt it for the rest of the session. If it sounds durable beyond the session, offer to remember it.
 4. **Present the next item**, unless the user is busy with something else or asked to pause. A ruling counts as "next". If nothing is ready, say so in one line and say what is being prepared.
 
