@@ -67,7 +67,7 @@ The plan names the framings (one line each), the number of picks and why, the mo
 
 ## Sandboxes
 
-Prepare one disposable copy per pick before launching (e.g. `rsync -a --exclude .git --exclude .venv --exclude logs <repo>/ <scratch>/copy-N/`). Check that imports in a copy resolve to the copy, not the original, and that the test command runs in it (excluding `.venv` breaks `uv run`). Pass absolute paths in `sandboxes`. Prototypes and attackers edit only their sandbox.
+Prepare one disposable copy per pick before launching (e.g. `rsync -a --exclude .git --exclude .venv --exclude logs <repo>/ <scratch>/copy-N/`). Check that imports in a copy resolve to the copy, not the original, and that the test command runs in it (excluding `.venv` breaks `uv run`). Pass absolute paths in `sandboxes`. Prototypes and attackers edit only their sandbox. Prefer a git worktree per pick on its own branch, so porting the winner is a cherry-pick: run 4's history-less copies had to be ported by hand, and two families had built the same shared requirement with different flag spellings.
 
 **Share the CPU.** All sandboxes run at once on one machine. Give each at most (cores ÷ picks) worker processes and write that cap into `measure`, e.g. "use at most 2 processes" on an 8-core machine with 3 picks. Run 3 let each sandbox use every core; load hit 163 and the run took 7 hours instead of about 1.
 
@@ -77,6 +77,9 @@ Prepare one disposable copy per pick before launching (e.g. `rsync -a --exclude 
 - Run it once at full size with the per-sandbox process cap, to see its real wall time and that it doesn't hang under load.
 - Run the test command inside a sandbox copy, not the original. Excluding `.venv` from the copy broke `uv run pytest` for ten agents in run 3. Paste the invocation that actually works into `measure`.
 - Keep numbers the script derives (baselines, fixed-rule rates) out of `context`. Put them in a file it regenerates and point to that file, so a fix to the script corrects them for everyone.
+- Measure the numbers the bar's feasibility hinges on (sample sizes, variances, baselines) yourself and put them in `context`, above all when the constraints stop agents from measuring them. In run 4 all twelve chain agents ended with "n not counted": the count needed data they weren't allowed to read, and the power verdict turned on it.
+
+A run that decides what to run, rather than fixing code, can skip the shared script once those numbers are in hand: run 4 used tests, numeric power estimates and dry runs only, and took 39 minutes.
 
 ## args
 

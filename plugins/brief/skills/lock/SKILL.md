@@ -25,7 +25,7 @@ Read the request and any stated bars critically, and attack even slight ambiguit
 - **What would change the user's mind.** What result would make them drop the problem or the bar?
 - **If it's impossible.** What's the fallback bar? Decide it now, before the disappointment, so the judge can report against it.
 
-**Consider an outside critique of the locked bar.** For a costly run or a bar with many moving parts, have a strong model (e.g. Fable) attack the drafted bar before you lock it: rank its holes and propose rewording. It isn't always needed; skip it when the bar is simple or the run is cheap. If you use it, strip any solution examples from its rewording before they reach the brief.
+**Consider an outside critique of the locked bar.** For a costly run or a bar with many moving parts, have a strong model (e.g. Fable) attack the drafted bar before you lock it: rank its holes and propose rewording. It isn't always needed; skip it when the bar is simple or the run is cheap. Don't skip it when the bar has several criteria that interact: check with the known numbers that they can all hold at once. In diverge run 4 a power criterion and a matched-control criterion couldn't both be met at any available sample size, and the judge had to bend one. If you use it, strip any solution examples from its rewording before they reach the brief.
 
 ## Output: the locked brief
 
