@@ -45,7 +45,7 @@
     {
       "name": "diverge",
       "source": "./plugins/diverge",
-      "description": "Diverge-then-converge adversarial design: unanchored brainstorm, pick maximally distinct families, prototype, red-team, repair, blind judge. Runs as a Workflow."
+      "description": "Diverge-then-converge adversarial design as Workflows: design (unanchored brainstorm, distinct families, prototype, red-team, repair, blind judge) and lite (five stances, a red-teamer each, a judge picks)."
     },
     {
       "name": "naming",
