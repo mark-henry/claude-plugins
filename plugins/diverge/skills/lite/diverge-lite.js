@@ -88,7 +88,7 @@ const VERDICT = {
   type: 'object',
   properties: {
     pick: { type: 'array', items: { type: 'string', enum: letters }, minItems: 1, description: 'The chosen option, or several letters for a combination' },
-    recommendation: { type: 'string', minLength: 300, maxLength: 2500, description: 'What to do, in plain words the asker can act on; for a combination, say which part comes from which option' },
+    recommendation: { type: 'string', minLength: 300, maxLength: 4000, description: 'What to do, in plain words the asker can act on; for a combination, say which part comes from which option' },
     per_option: { type: 'array', items: { type: 'string' }, description: 'One line per option, in letter order: why it won or lost' },
     first_check: { type: 'string' },
     confidence: { type: 'string', description: 'How sure, and on which parts' },
@@ -104,7 +104,7 @@ const judgePrompt =
   `Pick the best option, or a combination if grafting part of a runner-up clearly helps. ` +
   `Weigh the red team's evidence fields, not its verdict labels, and discount a red team that checked nothing. ` +
   `Re-check only the claims your pick depends on. Length is not merit. If no option meets the bar, say so and what would.\n\n${BRIEF}\n\n${dossier}`
-let judge = await agent(judgePrompt, opt('judge', { label: 'judge', phase: 'Judge', schema: VERDICT }))
+let judge = await agent(judgePrompt, opt('judge', { label: 'judge', phase: 'Judge', schema: VERDICT })).catch(e => { log(`judge failed: ${e.message}`); return null })
 if (!judge || !judge.pick || !judge.pick.length) {
   log('judge returned nothing usable; rerunning once')
   judge = await agent(judgePrompt + '\n\n(Second attempt: the first returned nothing usable. Return the full object.)', opt('judge', { label: 'judge-retry', phase: 'Judge', schema: VERDICT }))

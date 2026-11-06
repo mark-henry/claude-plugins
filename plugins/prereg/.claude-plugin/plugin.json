@@ -1,0 +1,9 @@
+{
+  "name": "prereg",
+  "description": "Preregister a comparison before it runs: numeric predictions with fixed denominators, commit and diff stamped, arm-parity check, then predicted vs observed. Use before any run whose number gates, gets reported, or chooses between arms.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}

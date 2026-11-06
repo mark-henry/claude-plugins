@@ -43,6 +43,11 @@
       "description": "Interview the user until a goal and its success bar are locked: definitions, denominators, threats, fallback bar, hard constraints. Use before any costly run, experiment, or multi-agent workflow."
     },
     {
+      "name": "prereg",
+      "source": "./plugins/prereg",
+      "description": "Preregister a comparison before it runs: numeric predictions with fixed denominators, commit and diff stamped, arm-parity check, then predicted vs observed."
+    },
+    {
       "name": "diverge",
       "source": "./plugins/diverge",
       "description": "Diverge-then-converge adversarial design as Workflows: design (unanchored brainstorm, distinct families, prototype, red-team, repair, blind judge) and lite (five stances, a red-teamer each, a judge picks)."
