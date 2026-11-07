@@ -128,7 +128,7 @@ def cmd_open(a):
     rec["opened"] = {"utc": now(), "host": socket.gethostname(), "frozen_sha256": frozen_part(rec), **state}
     rec["status"] = "exploratory" if exploratory else "open"
     save(a.path, rec)
-    print(f"opened {a.path} at {state.get('commit', '?')[:8]}{' (dirty)' if diff else ''}; launch now. "
+    print(f"opened {a.path} at {(state.get('commit') or '?')[:8]}{' (dirty)' if diff else ''}; launch now. "
           f"Commit the record before launch if it gates a DESIGN.md row or the run costs over $10.")
 
 
