@@ -54,6 +54,10 @@ An LLM judge is a classifier that imitates one expert. It is only as trustworthy
 - **Fine-tuning a judge** is rarely worth it. Hand-tune the prompt first.
 - **If the judge won't converge**, the usual causes are a task scoped too broadly, a weak process (not the real expert, or terse critiques), or an unrealistic agreement target. Fix that cause, or keep humans labelling.
 
+## Relation to `evals:audit`
+
+Once the judge is in use, run `evals:audit` on its scores before the human review in steps 9–10. The audit clears out mechanical screwups, so the expert's time goes to questions of taste. The audit's verdicts are never used as validation labels.
+
 ## Minimum viable version
 
 When stakes are low, do this instead of the full procedure: whenever something significant changes, the expert spends 30 minutes reviewing 20–50 outputs, writing pass/fail with a note on each. "You can still never eliminate looking at your data."

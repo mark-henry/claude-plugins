@@ -7,6 +7,8 @@ description: "Audit an eval's scores before anyone trusts the aggregate: a subag
 
 An aggregate hides the items that produced it. A mean of 0.72 can be a judge passing empty outputs, a parser zeroing correct answers, or a reference answer that is wrong. Reading a stratified sample finds these every time, and it costs machine effort, not human attention. Run the audit in a subagent first, so the human only sees what survives it.
 
+This is a prescreen, not a substitute for the expert. It catches screwups in how an existing scorer was applied: parser bugs, empty outputs scored as passes, wrong references, leakage. It does not decide what "good" means, and its verdicts are not labels. Defining the criteria and validating a judge's TPR/TNR still need the expert's own labels (`evals:judge`). The human still looks; the audit means they look at an eval that has already been debugged.
+
 ## When it applies
 
 - A new eval, judge, metric, prompt or scoring change has produced its first real numbers.
