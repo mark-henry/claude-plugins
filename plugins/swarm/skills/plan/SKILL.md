@@ -1,6 +1,6 @@
 ---
 name: plan
-description: "A working method for shaping any piece of work for agents before spending on it: name what will check each piece, build missing checkers first, shape tasks so agents don't collide, pick a pattern with caps (oracle loop, bulk judge calls, best-of-N, research fan-out, fresh review), stop for a go-ahead, then gate, dispatch, review, and measure cost per accepted result. Writes a one-table swarm plan. Use for \"/swarm:plan\", \"plan this for agents\", \"how should I parallelize this\", \"fan this out\", \"spend more compute on this\", \"what can run unattended\", \"is this agent spend paying off\", or at the start of any multi-hour, multi-agent or unattended task. Not for a task one session finishes in about an hour with you watching, for generating design options (diverge:design, diverge:lite), or for challenging a proposal you already have (gauntlet:run)."
+description: "A working method for shaping any piece of work for agents before spending on it: name what will check each piece, build missing checkers first, shape tasks so agents don't collide, pick a pattern with caps (oracle loop, bulk judge calls, best-of-N, majority vote, research fan-out, fresh review), stop for a go-ahead, then gate, dispatch, review, and measure cost per accepted result. Writes a one-table swarm plan. Use for \"/swarm:plan\", \"plan this for agents\", \"how should I parallelize this\", \"fan this out\", \"spend more compute on this\", \"what can run unattended\", or at the start of any multi-hour, multi-agent or unattended task. Not for a task one session finishes in about an hour with you watching, for measuring spend already made (swarm:review), for generating design options (diverge:design, diverge:lite), or for challenging a proposal you already have (gauntlet:run)."
 ---
 
 # Plan work for a swarm
@@ -34,6 +34,7 @@ If the goal or its "done when" bar is vague, lock it with `brief:lock` first. Th
 | **Machine oracle**: tests, type checker, reference implementation, sealed eval | ports, migrations, refactors, harness builds, reproducing a result | loop |
 | **Validated judge**: an LLM judge with measured TPR and TNR against the expert's labels | labelling, grading outputs, filtering synthetic data | bulk calls |
 | **Selector**: a cheap check that picks the winner from many attempts | bug hunting, hard fixes, prompt variants | best-of-N |
+| **Agreement**: independent samples converge on a short, comparable answer | a label, a yes/no, a choice among fixed options, a number | majority vote |
 | **Checkable summary**: a conclusion with sources you can spot-check | literature, codebase archaeology, debugging hypotheses | fan-out |
 | **Only the human** | experiment design, taste, what to do next | you, with one lead agent |
 
@@ -48,6 +49,7 @@ Long unattended runs succeeded only where an external pass/fail signal existed t
 - **Oracle.** A spec with a "done when" bar, a ledger only the check can flip, and the scorer, test items and held-out set outside the agent's writable tree, because frontier models have modified tests and scoring code to raise scores [7]. Add a fast sampled mode. `swarm:loop` step 1 has the full setup.
 - **Judge.** Build and validate it with `evals:judge`. Before believing any aggregate it produces, run `evals:audit`.
 - **Selector.** A reproducer, a test or a validated judge that tells a real hit from noise. Raw samples are mostly noise: Heelan's novel kernel bug came at about one true report per 50 false ones [8].
+- **Agreement.** Answers that compare exactly (normalize them first) and samples that are truly independent: fresh contexts, none seeing another's answer. It is the weakest machine checker, because agreement is not correctness: use a selector or validated judge instead where one exists, and spot-check a few unanimous items.
 - **Summary.** A source for every claim, plus a planned spot check of a few claims.
 
 **Done when:** every machine checker runs from one command, gives pass/fail per item and is out of the agent's reach, and every summary piece has its spot checks named.
@@ -67,10 +69,11 @@ Long unattended runs succeeded only where an external pass/fail signal existed t
 
 - **Loop** (oracle): one prompt file, a fresh agent each pass, state on disk, and a supervisor that runs the check itself and stops on done, a cap or a stall [13]. Run it with `swarm:loop`.
 - **Bulk calls** (judge): one item per call, with the shared rubric first so it caches. Batch APIs halve the price when latency doesn't matter [14].
-- **Best-of-N** (selector): slice narrowly and sample many times. In 100 runs over kernel code, a known bug turned up 8 times on a 3.3k-line slice and once on the full 12k lines [8]. With a verifier, best-of-N needs about 1/Δ samples, against 1/Δ² for majority voting [15]. Extra samples pay only on problems the model already solves sometimes [16]: if the first attempts all fail, narrow the slice or fix the context instead of raising N.
+- **Best-of-N** (selector): slice narrowly and sample many times. In 100 runs over kernel code, a known bug turned up 8 times on a 3.3k-line slice and once on the full 12k lines [8]. Extra samples pay mainly on problems the model already solves sometimes [16]: if the first attempts all fail, narrow the slice or fix the context instead of raising N.
+- **Majority vote** (agreement): independent samples, most common answer wins. It needs about 1/Δ² samples where a verifier needs 1/Δ [15], so it costs more per item; stop sampling an item once its vote is confidently decided, which in one study raised accuracy at a fixed 16-sample budget [28].
 - **Fan-out** (summary): an orchestrator plus narrow subagents. In Anthropic's research system this beat a single agent by 90.2%, at about 15x the tokens [11].
 - **Fresh review**, before anything merges or gets reported. A reviewer that hasn't seen the reasoning helps; handing the same task to another agent doesn't [17]. Give each reviewer one lens (correctness, leakage, confounds, security). A reviewer asked for problems "will always find something" [17], so each flag carries evidence and a severity, and a flag that would change a decision gets a second fresh check.
-- **Debate is not a free upgrade.** At 9 responses on GSM8K, multi-agent debate scored 83.0% against 88.2% for self-consistency, and its gains came from aggregation, not discussion [18]. Prefer independent samples plus a selector, and check any adversarial workflow (`gauntlet:run`, `diverge:lite`) once against a matched-budget majority vote before relying on it.
+- **Debate is not a free upgrade.** At 9 responses on GSM8K, multi-agent debate scored 83.0% against 88.2% for a majority vote over the same number of samples, and its gains came from aggregation, not discussion [18]. A 2025 study found debate can leave answers worse than majority voting, especially with mixed agents [29]. Where answers compare, vote. Where they don't (a design, a plan, a fix), adversarial workflows (`gauntlet:run`, `diverge:lite`) are the tool, but check one once against independent drafts plus a judge's pick at the same budget before relying on it.
 
 Give each piece a budget and a **stop rule**, the condition that ends it even if it isn't done: an iteration cap, a cost cap, or "N passes with no new tests passing". Interactive sessions stay at 3–5 [2]; background runs carry the volume. Check quota before a big fan-out (`quota:check` if you route through a proxy). Weekly caps arrived in 2025 aimed at users running Claude Code "continuously in the background, 24/7" [19], so keep bulk jobs restartable and spread them across model families and providers.
 
@@ -92,7 +95,7 @@ Done when: <bar, with its denominator>. Brief: <locked / not needed>.
 
 | Piece (files it owns) | Checker | Build first? | Pattern | Agents × model; caps | Accepted when |
 |---|---|---|---|---|---|
-| <piece> (<files>) | <oracle / judge / selector / summary / human> | <yes: what / no> | <loop / bulk / best-of-N / fan-out / review / you> | <N × model; M iterations; $ or quota cap; stop rule> | <the check that passes> |
+| <piece> (<files>) | <oracle / judge / selector / agreement / summary / human> | <yes: what / no> | <loop / bulk / best-of-N / vote / fan-out / review / you> | <N × model; M iterations; $ or quota cap; stop rule> | <the check that passes> |
 
 Yours (only the human): <short list>
 Gates: prereg <yes / n/a>; second opinion <who / n/a>; checkers to build <list / none>; smoke <3 items of which piece>
@@ -163,3 +166,5 @@ Use `swarm:review` once enough Results lines have accumulated: cost per accepted
 25. Tom's Hardware, Oct 2026: https://www.tomshardware.com/tech-industry/artificial-intelligence/amazon-tells-engineers-to-stop-tokenmaxxing-to-look-productive-says-ai-will-be-central-to-software-development-but-usage-is-not-the-goal-new-guidelines-claim
 26. Willison, Jun 2026: https://simonwillison.net/2026/jun/3/uber-caps-usage
 27. Steinberger, Oct 2025: https://steipete.me/posts/just-talk-to-it
+28. Efficient Test-Time Scaling via Self-Calibration, NeurIPS 2025: https://arxiv.org/abs/2503.00031v1
+29. "Talk Isn't Always Cheap", 2025: https://arxiv.org/html/2509.05396v2

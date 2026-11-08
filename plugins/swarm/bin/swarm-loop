@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Supervisor for an oracle-gated agent loop (see the swarm:loop skill).
+# Each pass: a fresh agent reads PROMPT.md, then the supervisor (not the agent) runs the check.
+# The supervisor trusts only the check's exit code and count; it never reads the ledger or the agent's claims.
+#
+# usage: AGENT_CMD='...' CHECK_CMD='...' swarm-loop <loop-dir> [max-passes]
+#   <loop-dir>  the agent's working directory (usually the worktree root), holding PROMPT.md.
+#   AGENT_CMD   required. Reads the prompt on stdin. Run it inside a sandbox if it bypasses permissions.
+#   CHECK_CMD   required. Exit 0 when done; otherwise its last output line starts with the number passing.
+#   FINAL_CMD   optional. Run once when the loop stops for any reason (the full check, the held-out set).
+#   STALL       passes without a new best before stopping (default 3).
+#   STATE_DIR   where the supervisor keeps loop.log, logs/ and watches for STOP
+#               (default: <loop-dir>.swarm-loop, a sibling outside the agent's tree, so logs never
+#               reach git and held-out output from FINAL_CMD never reaches a later agent).
+# Exit codes: 0 done, 2 max passes, 3 stall, 4 STOP file in STATE_DIR, 5 check unusable before any pass.
+# The check runs once before pass 1: if it already passes, no agent runs.
+set -euo pipefail
+
+dir=${1:?usage: swarm-loop <loop-dir> [max-passes]}
+cap=${2:-20}
+stall=${STALL:-3}
+: "${AGENT_CMD:?set AGENT_CMD}" "${CHECK_CMD:?set CHECK_CMD}"
+case "$cap$stall" in *[!0-9]*) echo "max-passes and STALL must be whole numbers" >&2; exit 1 ;; esac
+
+cd "$dir"
+[ -f PROMPT.md ] || { echo "no PROMPT.md in $dir" >&2; exit 1; }
+state=${STATE_DIR:-$(pwd -P).swarm-loop}
+mkdir -p "$state/logs"
+log=$state/loop.log
+echo "swarm-loop: logs in $state; touch $state/STOP to stop after the current pass" >&2
+
+stop() { # stop <exit-code> <message>
+  echo "$2" | tee -a "$log"
+  if [ -n "${FINAL_CMD:-}" ]; then
+    if bash -c "$FINAL_CMD" > "$state/logs/final.log" 2>&1; then echo "final check: exit 0" | tee -a "$log"
+    else echo "final check: exit $? (see $state/logs/final.log)" | tee -a "$log"; fi
+  fi
+  exit "$1"
+}
+
+# Runs the check; sets ok=1 if it passed, else n to the count (empty if the last line has no number).
+check() {
+  ok=0
+  if out=$(bash -c "$CHECK_CMD" 2>&1); then ok=1; return; fi
+  n=$(printf '%s\n' "$out" | tail -n 1 | grep -Eo '^[0-9]+' || true)
+}
+
+echo "start $(date -u +%FT%TZ) dir $(pwd -P) cap $cap stall $stall" >> "$log"
+check
+[ "$ok" = 1 ] && stop 0 "baseline: check already passes, no agent run"
+[ -n "$n" ] || { printf '%s\n' "$out" > "$state/logs/baseline.log"; stop 5 "baseline: check failed without a count on its last line (see $state/logs/baseline.log); fix the check first"; }
+best=$n
+flat=0
+echo "baseline: $n passing" >> "$log"
+
+for ((i = 1; i <= cap; i++)); do
+  [ -f "$state/STOP" ] && stop 4 "STOP file found before pass $i"
+  echo "pass $i start $(date -u +%FT%TZ)" >> "$log"
+  # An agent that dies or exits nonzero is restarted by the next pass, not fatal.
+  bash -c "$AGENT_CMD" < PROMPT.md > "$state/logs/pass-$i.log" 2>&1 || echo "pass $i: agent exited $?" >> "$log"
+  check
+  [ "$ok" = 1 ] && stop 0 "pass $i: check passed, done"
+  if [ -z "$n" ]; then
+    printf '%s\n' "$out" > "$state/logs/check-$i.log"
+    echo "pass $i: check gave no count (see $state/logs/check-$i.log), counted as 0" >> "$log"
+    n=0
+  else
+    echo "pass $i: $n passing" >> "$log"
+  fi
+  if [ "$n" -gt "$best" ]; then best=$n; flat=0; else flat=$((flat + 1)); fi
+  [ "$flat" -ge "$stall" ] && stop 3 "stalled: $stall passes without a new best ($best)"
+done
+stop 2 "hit max passes ($cap), best $best"

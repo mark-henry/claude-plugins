@@ -14,7 +14,7 @@ Token counts say whether someone is using agents, not whether the agents are pro
    - acceptance from git or PR history (merged, reverted, closed unmerged).
 
    Mark every reconstructed number as an estimate.
-2. **Group by kind of work**, such as merged PR, kept experiment result, validated label set, confirmed finding, or research answer. Use the plan's checker types (oracle, judge, selector, summary) when nothing better fits.
+2. **Group by kind of work**, such as merged PR, kept experiment result, validated label set, confirmed finding, or research answer. Use the plan's checker types (oracle, judge, selector, agreement, summary) when nothing better fits.
 3. **For each kind, compute:**
    - **cost per accepted result**, as API-equivalent dollars or quota percent: total cost over the accepted count;
    - **accepted / attempted**;
