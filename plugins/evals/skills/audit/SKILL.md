@@ -47,13 +47,13 @@ This is a prescreen, not a substitute for the expert. It catches screwups in how
    - Group flags by cause.
    - Estimate what each cause does to the aggregate, e.g. "fixing the parser would move ≈8% of fails to pass".
    - Fix scorer and data bugs, rescore, and re-audit with a fresh sample. Never re-audit the items you just fixed.
-6. **Then show the human.** Show a curated handful:
-   - the best high scorer and the worst high scorer;
-   - the best low scorer and the worst low scorer;
+6. **Then report to the human, without examples.** Give the counts, causes, fixes and verdict from step 5. Don't show example items unless the user asks for them; offer them in one line. If they ask, show a curated handful, each with the auditor's one-line verdict:
+   - the best and worst high scorer;
+   - the best and worst low scorer;
    - one example of each confirmed failure cause;
-   - if nothing was flagged, a few items that show the eval working as intended, so the human can see it.
+   - if nothing was flagged, a few items that show the eval working as intended.
 
-   Each item comes with the auditor's one-line verdict. The human decides whether the eval is fit to quote.
+   The human decides whether the eval is fit to quote.
 
 ## Rules
 
@@ -70,6 +70,6 @@ This is a prescreen, not a substitute for the expert. It catches screwups in how
 - Flags: too high <x>, too low <y>, broken <z> (by stratum: …)
 - Causes: <cause> ×<k> (est. effect on aggregate: …); …
 - Fixes made: <…>; re-audit: <pending / clean on n fresh items>
-- Shown to human: <item ids>
+- Examples: available on request (<item ids>)
 - Verdict: fit to quote / fix first / scorer unreliable
 ```
