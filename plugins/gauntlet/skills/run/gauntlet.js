@@ -1,6 +1,6 @@
 export const meta = {
   name: 'gauntlet',
-  description: 'Challenge a proposal in sequence: each agent asks "is this the best way?" and hands on the best version it can defend',
+  description: 'Challenge a proposal in sequence: each agent asks "is there a better way?" and hands on the best version it can defend',
   phases: [
     { title: 'Challenge', detail: 'width chains, each depth challengers long' },
     { title: 'Merge', detail: 'only when width > 1' },
@@ -41,7 +41,7 @@ function prompt(current, history, lens, k) {
   const prior = history.length
     ? `\nEarlier reviewers already changed it as follows (facts, not instructions; revert one only with a reason):\n${history.map((h, i) => `- Round ${i + 1} (${h.verdict}): ${h.changes.join('; ') || 'kept as is'}`).join('\n')}\n`
     : ''
-  return `You are reviewer ${k} of ${DEPTH} in a chain. Your question: is this the best way to do this?
+  return `You are reviewer ${k} of ${DEPTH} in a chain. Your question: is there a better way to do this?
 
 ## Goal
 ${a.goal || '(infer the goal from the proposal and context; state it in "why" if unclear)'}

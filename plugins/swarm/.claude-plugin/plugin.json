@@ -1,6 +1,6 @@
 {
   "name": "swarm",
-  "description": "A working method for shaping work for agent swarms: name what checks each piece, build checkers before scaling, shape tasks so agents don't collide, pick a pattern with caps, stop for a go-ahead, then gate, dispatch, review and measure cost per accepted result. Sources cited.",
+  "description": "A working method for agent swarms: plan (name what checks each piece, build checkers before scaling, shape tasks, pick a pattern with caps, go-ahead, gates, review), loop (oracle-gated unattended Ralph loop with a supervisor script) and review (cost per accepted result by kind of work). Sources cited.",
   "author": {
     "name": "Mark Henry"
   },

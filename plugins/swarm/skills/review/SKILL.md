@@ -1,0 +1,57 @@
+---
+name: review
+description: "Measure whether agent spend is paying off: cost per accepted result for each kind of work, discard rate, review time, cost spread on the same task, and a matched half-budget comparison, ending in a scale / hold / build-a-better-checker call per kind of work. Reads the Results lines of swarm plans and fills gaps from ccusage and git/PR history, marked as estimates. Use for \"/swarm:review\", \"is this agent spend paying off\", \"where did the tokens go\", \"cost per PR\", \"should we scale this up\", or after a batch of swarm work finishes."
+---
+
+# Is the agent spend paying off?
+
+Token counts say whether someone is using agents, not whether the agents are producing anything. Across about 12,000 developers, the top decile used about 10x the median's tokens for about 2x the merged PRs, and cost per merged PR ran from $0.28 to $89.32 across usage tiers [1]. Self-reports point the wrong way: developers in METR's 2025 study were 19% slower with AI while believing they were faster [2]. So the measure is cost per accepted result, broken down by kind of work, with a check against a smaller budget.
+
+## Steps
+
+1. **Collect the results.** Read the Results lines of the `swarm:plan` plans in the period: one line per ruling, with piece, accepted / killed / redirected, cost and review minutes. Where lines are missing, reconstruct:
+   - cost from session logs with ccusage or ccwhy, which attribute tokens to sessions [3];
+   - acceptance from git or PR history (merged, reverted, closed unmerged).
+
+   Mark every reconstructed number as an estimate.
+2. **Group by kind of work**, such as merged PR, kept experiment result, validated label set, confirmed finding, or research answer. Use the plan's checker types (oracle, judge, selector, summary) when nothing better fits.
+3. **For each kind, compute:**
+   - **cost per accepted result**, as API-equivalent dollars or quota percent: total cost over the accepted count;
+   - **accepted / attempted**;
+   - **the share discarded or rewritten** after acceptance, counting reverts, follow-up fixes and results that did not replicate;
+   - **human review time** per accepted result;
+   - **the cost spread on one task type** (min, median, max). Runs on the same task vary up to 30x in tokens, and accuracy often peaks at intermediate spend [4], so a long tail is a target.
+4. **Where a comparison is cheap, run a matched half-budget test.** Give a comparable class of tasks half the budget (fewer samples, fewer agents, a smaller model) and compare cost per accepted result. Report it with its n; one pair of runs proves nothing.
+5. **Make one call per kind of work:**
+   - **scale:** cost per accepted result is flat or falling as spend grows;
+   - **hold:** acceptances are flat while cost grows, so the work is past the knee;
+   - **build a better checker:** the discard rate or review time is high, so the checker, not the agent count, is the bottleneck (`swarm:plan` step 2; `evals:judge` for judges).
+6. **Report** with the template below. Lead with the calls, then the table. If any input is an estimate, say so in the line under the table.
+
+## Output
+
+```markdown
+## Swarm review: <period>
+Calls: <kind → scale / hold / build a better checker>, …
+
+| Kind of work | Accepted / attempted | Cost per accepted | Discarded or rewritten | Review time per accepted | Cost spread (min / median / max) | Call |
+|---|---|---|---|---|---|---|
+| <kind> | <n / N> | <$ or quota %> | <share> | <minutes> | <…> | <call> |
+
+Half-budget test: <kind, n, result / none run>
+Estimates: <which numbers, from what / none>
+```
+
+## Pitfalls
+
+- **Token totals or leaderboards as the metric.** Meta took its leaderboard down within days of it being reported [5], and Amazon called token metrics disconnected from results "deeply flawed" [6].
+- **Counting acceptances without the later reverts and replication failures**, which flatters fast, sloppy work.
+- **Mixing kinds of work in one ratio.** A cheap label set and an expensive merged refactor are not the same unit.
+
+## Sources
+1. Jellyfish, via WorkOS, Aug 2026: https://workos.com/blog/nicholas-arcolano-jellyfish-token-maxing-diminishing-returns
+2. METR, Feb 2026 update (covers the 2025 study): https://metr.org/blog/2026-02-24-uplift-update/
+3. SingYee, Apr 2026: https://dev.to/singyee/i-analyzed-187-claude-code-sessions-6744-worth-of-tokens-heres-where-they-actually-went-2ae5
+4. Bai et al., Apr 2026: https://arxiv.org/abs/2604.22750
+5. Fortune, Apr 2026: https://fortune.com/2026/04/09/meta-killed-employee-ai-token-dashboard/
+6. Tom's Hardware, Oct 2026: https://www.tomshardware.com/tech-industry/artificial-intelligence/amazon-tells-engineers-to-stop-tokenmaxxing-to-look-productive-says-ai-will-be-central-to-software-development-but-usage-is-not-the-goal-new-guidelines-claim
