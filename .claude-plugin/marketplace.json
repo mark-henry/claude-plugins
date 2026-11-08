@@ -71,6 +71,11 @@
       "name": "evals",
       "source": "./plugins/evals",
       "description": "LLM eval hygiene: judge (build and validate an LLM judge by Hamel Husain's critique shadowing, TPR/TNR on a held-out split) and audit (a subagent reads a stratified high/middle/low sample of scored items and flags scores too high, too low or broken, before a human looks)."
+    },
+    {
+      "name": "gauntlet",
+      "source": "./plugins/gauntlet",
+      "description": "Run a proposal through a gauntlet of fresh subagents, each asking \"is this the best way to do this?\" and keeping it or handing on a better version; default one chain of two, parallel chains merged."
     }
   ]
 }

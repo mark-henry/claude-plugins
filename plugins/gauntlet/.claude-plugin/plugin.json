@@ -1,0 +1,9 @@
+{
+  "name": "gauntlet",
+  "description": "Run a proposal through a gauntlet of fresh subagents, each asking \"is this the best way to do this?\" and keeping it or handing on a better version; default one chain of two, parallel chains merged.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}
