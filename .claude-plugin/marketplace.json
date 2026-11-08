@@ -66,6 +66,11 @@
       "name": "amazon",
       "source": "./plugins/amazon",
       "description": "Read the Amazon Cart (with same-day windowed items flagged), Amazon Fresh Cart and Whole Foods Market Cart from a dedicated agent Chrome; hand items to your real Chrome to add."
+    },
+    {
+      "name": "evals",
+      "source": "./plugins/evals",
+      "description": "Build and validate an LLM judge by critique shadowing (Hamel Husain): expert pass/fail critiques, error analysis, few-shot judge, TPR/TNR on a held-out split."
     }
   ]
 }

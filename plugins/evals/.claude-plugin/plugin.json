@@ -1,0 +1,9 @@
+{
+  "name": "evals",
+  "description": "Build and validate an LLM judge by critique shadowing (Hamel Husain): expert pass/fail critiques, error analysis, few-shot judge, TPR/TNR on a held-out split.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}
