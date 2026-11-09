@@ -5,12 +5,12 @@ description: "Measure whether agent spend is paying off: cost per accepted resul
 
 # Is the agent spend paying off?
 
-Token counts say whether someone is using agents, not whether the agents are producing anything. Across about 12,000 developers, the top decile used about 10x the median's tokens for about 2x the merged PRs, and cost per merged PR ran from $0.28 to $89.32 across usage tiers [1]. Self-reports point the wrong way: developers in METR's 2025 study were 19% slower with AI while believing they were faster [2]. So the measure is cost per accepted result, broken down by kind of work, with a check against a smaller budget.
+Token counts say whether someone is using agents, not whether the agents are producing anything. Across about 12,000 developers, at 200 companies in Q1 2026, the top decile used about 10x the median's tokens for about 2x the output, and cost per merged PR ran from $0.28 to $89.32 across usage tiers [1]. Self-reports point the wrong way: developers in METR's early-2025 study took 19% longer with AI while estimating afterwards that it had sped them up by about 20% [2]. So the measure is cost per accepted result, broken down by kind of work, with a check against a smaller budget.
 
 ## Steps
 
 1. **Collect the results.** Read the Results lines of the `swarm:plan` plans in the period: one line per ruling, with piece, accepted / killed / redirected, cost and review minutes. Where lines are missing, reconstruct:
-   - cost from session logs with ccusage or ccwhy, which attribute tokens to sessions [3];
+   - cost from session logs with ccusage (how much was spent) or ccwhy (where it went) [3];
    - acceptance from git or PR history (merged, reverted, closed unmerged).
 
    Mark every reconstructed number as an estimate.
@@ -20,7 +20,7 @@ Token counts say whether someone is using agents, not whether the agents are pro
    - **accepted / attempted**;
    - **the share discarded or rewritten** after acceptance, counting reverts, follow-up fixes and results that did not replicate;
    - **human review time** per accepted result;
-   - **the cost spread on one task type** (min, median, max). Runs on the same task vary up to 30x in tokens, and accuracy often peaks at intermediate spend [4], so a long tail is a target.
+   - **the cost spread on one task type** (min, median, max). Runs on the same task vary by up to 30x in tokens (typically about 2x between cheapest and costliest), and accuracy often peaks at intermediate spend and saturates beyond it [4], so a long tail is a target. Measure spend rather than asking agents to forecast it: their forecasts run low [4].
 4. **Where a comparison is cheap, run a matched half-budget test.** Give a comparable class of tasks half the budget (fewer samples, fewer agents, a smaller model) and compare cost per accepted result. Report it with its n; one pair of runs proves nothing.
 5. **Make one call per kind of work:**
    - **scale:** cost per accepted result is flat or falling as spend grows;
@@ -44,13 +44,13 @@ Estimates: <which numbers, from what / none>
 
 ## Pitfalls
 
-- **Token totals or leaderboards as the metric.** Meta took its leaderboard down within days of it being reported [5], and Amazon called token metrics disconnected from results "deeply flawed" [6].
+- **Token totals or leaderboards as the metric.** An employee-built Meta leaderboard of token use encouraged "tokenmaxxing" and came down two days after it was reported [5], and Amazon's engineering guidelines called usage metrics such as token consumption "deeply flawed" when disconnected from results [6]. Token totals are a diagnostic, not a score.
 - **Counting acceptances without the later reverts and replication failures**, which flatters fast, sloppy work.
 - **Mixing kinds of work in one ratio.** A cheap label set and an expensive merged refactor are not the same unit.
 
 ## Sources
-1. Jellyfish, via WorkOS, Aug 2026: https://workos.com/blog/nicholas-arcolano-jellyfish-token-maxing-diminishing-returns
-2. METR, Feb 2026 update (covers the 2025 study): https://metr.org/blog/2026-02-24-uplift-update/
+1. Jellyfish research (Nicholas Arcolano), interviewed by WorkOS, Aug 2026: https://workos.com/blog/nicholas-arcolano-jellyfish-token-maxing-diminishing-returns
+2. METR, Becker et al., early-2025 RCT: https://arxiv.org/abs/2507.09089; Feb 2026 update: https://metr.org/blog/2026-02-24-uplift-update/
 3. SingYee, Apr 2026: https://dev.to/singyee/i-analyzed-187-claude-code-sessions-6744-worth-of-tokens-heres-where-they-actually-went-2ae5
 4. Bai et al., Apr 2026: https://arxiv.org/abs/2604.22750
 5. Fortune, Apr 2026: https://fortune.com/2026/04/09/meta-killed-employee-ai-token-dashboard/

@@ -7,7 +7,7 @@ description: "A working method for shaping any piece of work for agents before s
 
 **Checker first, width second, you last.**
 
-The limit on getting a lot done with agents is not tokens or models. It is your review attention, plus the quality of the checks a machine can run without you. Interactive, human-reviewed agent work tops out at a handful of parallel sessions per person: four agents wiped Willison out by 11am [1], the Claude Code docs recommend 3–5 teammates [2], and at 5–7 agents "most agents spend more time waiting for review than working" [3]. Beyond that, compute pays only where a machine checks the output [4][5]. Every step below moves work off your attention and onto a check.
+The limit on getting a lot done with agents is not tokens or models. It is your review attention, plus the quality of the checks a machine can run without you. Interactive, human-reviewed agent work tops out at a handful of parallel sessions per person: Willison runs four agents on four problems and is "wiped out" by 11am [1]; the Claude Code docs suggest starting agent teams at 3–5 teammates because coordination overhead grows and returns diminish [2]; and Paradev, running 5–7 agents in parallel, reports that "most of our agents spend more time waiting for us to review their work than they spend doing it" [3]. Beyond that, extra compute has paid off in the reported cases where a machine checks the output [4]. Every step below moves work off your attention and onto a check.
 
 ## How to use it
 
@@ -27,7 +27,7 @@ The plan is five questions, one per step:
 
 ## 1. Who says it's right? Sort the work by its checker
 
-If the goal or its "done when" bar is vague, lock it with `brief:lock` first. Then list the pieces. Split bundles: a refactor plus a perf fix plus test cleanup is three pieces [6]. A piece that needs two kinds of checker is two pieces: an experiment's code has tests, but its interpretation has only you. For each piece, name who or what will say it's right:
+If the goal or its "done when" bar is vague, lock it with `brief:lock` first. Then list the pieces. Split bundles: "refactor this service, improve performance, add analytics, and clean up tests" is four agent tasks, not one [6]. A piece that needs two kinds of checker is two pieces: an experiment's code has tests, but its interpretation has only you. For each piece, name who or what will say it's right:
 
 | Checker | Examples | Pattern (step 4) |
 |---|---|---|
@@ -44,11 +44,11 @@ The last row is the human's share; keep it short. A piece with no checker yet ge
 
 ## 2. Does the checker exist, out of reach? Build it before scaling
 
-Long unattended runs succeeded only where an external pass/fail signal existed that the agent could not fake: "the task verifier must be nearly perfect, or Claude solves the wrong problem" [4]. Mark each checker **exists** or **to build**. A checker to build is its piece's first task, for one agent, and no second agent starts on the piece until the checker runs.
+Long unattended runs have worked where an external pass/fail signal existed that the agent could not fake: "it's important that the task verifier is nearly perfect, otherwise Claude will solve the wrong problem" [4]. Mark each checker **exists** or **to build**. A checker to build is its piece's first task, for one agent, and no second agent starts on the piece until the checker runs.
 
-- **Oracle.** A spec with a "done when" bar, a ledger only the check can flip, and the scorer, test items and held-out set outside the agent's writable tree, because frontier models have modified tests and scoring code to raise scores [7]. Add a fast sampled mode. `swarm:loop` step 1 has the full setup.
+- **Oracle.** A spec with a "done when" bar, a ledger only the check can flip, and the scorer, test items and held-out set outside the agent's writable tree, and hidden rather than merely read-only: frontier models have modified tests and scoring code to raise scores, hacked far more often when they could see the scoring code, and kept hacking when told not to [7]. Add a fast sampled mode. `swarm:loop` step 1 has the full setup.
 - **Judge.** Build and validate it with `evals:judge`. Before believing any aggregate it produces, run `evals:audit`.
-- **Selector.** A reproducer, a test or a validated judge that tells a real hit from noise. Raw samples are mostly noise: Heelan's novel kernel bug came at about one true report per 50 false ones [8].
+- **Selector.** A reproducer, a test or a validated judge that tells a real hit from noise. Raw samples are mostly noise: Heelan put the signal-to-noise ratio of the run that found his novel kernel bug at roughly 1:50 [8].
 - **Agreement.** Answers that compare exactly (normalize them first) and samples that are truly independent: fresh contexts, none seeing another's answer. It is the weakest machine checker, because agreement is not correctness: use a selector or validated judge instead where one exists, and spot-check a few unanimous items.
 - **Summary.** A source for every claim, plus a planned spot check of a few claims.
 
@@ -56,32 +56,32 @@ Long unattended runs succeeded only where an external pass/fail signal existed t
 
 ## 3. How wide without collisions? Shape and isolate the tasks
 
-- One owner per file, module, failing test or item, claimed atomically through lock files or a task board [4]. Keep claims short: at Cursor, agents held locks too long, and 20 agents ran at the throughput of 2–3 [5].
-- Hierarchy, not a flat swarm: planners create tasks, workers don't coordinate with each other, and a judge ends each cycle with a fresh start [5].
-- Size each task so its diff can be reviewed in one sitting [6]. One task per fresh context, with a commit and a progress note at each step [9]. Quality drops at about 60% context fill [6], so long work gets fresh sessions, not one long one.
-- Keep briefs short and factual: a 1,500-word prompt made agents "slower and dumber" than a 103-word one [10]. Subagents write results to files and pass back references [11].
+- One owner per file, module, failing test or item, claimed atomically, e.g. by committing a lock file to a shared `current_tasks/` directory so git rejects a second claim [4], or through a task board. Keep claims short and release them on failure: at Cursor, self-coordinating agents held locks too long or forgot to release them, and 20 agents ran at the throughput of 2–3 [5].
+- Hierarchy, not a flat swarm: planners create tasks, workers don't coordinate with each other, and at the end of each cycle a judge decides whether to continue, with the next cycle starting fresh [5].
+- Size each task so its diff can be reviewed in one sitting [6]. One task per fresh context, with a commit and a progress note at each step [9]. In one Kilo engineer's experience, quality drops at around 60% context fill, well before auto-compaction [6], so long work gets fresh sessions or smaller subagents, not one long session.
+- Keep briefs short and factual: when RepoMirror let Claude "improve" its loop prompt to 1,500 words, the agent got "slower and dumber" until they went back to 103 words [10]. Short is not vague: each brief names an objective, an output format, the tools and sources to use, and its boundaries [11]. Subagents write results to files and pass back references [11].
 - Match width to the question: one agent for a simple fact, 2–4 for a comparison, more than 10 only for complex research. Anthropic's research system pairs a stronger lead model with cheaper subagents, and its early versions spawned 50 subagents for simple queries [11]. Pick a model per role.
-- Each agent gets its own worktree or container. Bypass permission prompts only inside a sandbox [12].
+- Each agent gets its own worktree or container; a worktree keeps agents' files apart but is not a security boundary. Bypass permission prompts only inside a container, a VM or the sandbox runtime, never with just the `/sandbox` Bash sandbox, which the docs call "not sufficient for fully unattended runs" [12].
 
 **Done when:** each task has an owner, its own checkout, a brief under a page and an output path.
 
 ## 4. Which pattern, with what caps?
 
-- **Loop** (oracle): one prompt file, a fresh agent each pass, state on disk, and a supervisor that runs the check itself and stops on done, a cap or a stall [13]. Run it with `swarm:loop`.
-- **Bulk calls** (judge): one item per call, with the shared rubric first so it caches. Batch APIs halve the price when latency doesn't matter [14].
-- **Best-of-N** (selector): slice narrowly and sample many times. In 100 runs over kernel code, a known bug turned up 8 times on a 3.3k-line slice and once on the full 12k lines [8]. Extra samples pay mainly on problems the model already solves sometimes [16]: if the first attempts all fail, narrow the slice or fix the context instead of raising N.
-- **Majority vote** (agreement): independent samples, most common answer wins. It needs about 1/Δ² samples where a verifier needs 1/Δ [15], so it costs more per item; stop sampling an item once its vote is confidently decided, which in one study raised accuracy at a fixed 16-sample budget [28].
-- **Fan-out** (summary): an orchestrator plus narrow subagents. In Anthropic's research system this beat a single agent by 90.2%, at about 15x the tokens [11].
+- **Loop** (oracle): one prompt file, a fresh agent each pass and state on disk [13], plus a supervisor that runs the check itself and stops on done, a cap or a stall. Run it with `swarm:loop`.
+- **Bulk calls** (judge): one item per call, with the shared rubric first so it caches. Batch APIs halve the price when latency doesn't matter; prompt-cache hits inside a batch are best-effort [14].
+- **Best-of-N** (selector): slice narrowly and sample many times. In 100 runs over kernel code, a known bug turned up 8 times on a 3.3k-line slice and once on the full 12k lines [8]. Extra samples pay mainly on problems the model already solves sometimes; on problems it almost never solves, more test-time compute barely helps and a stronger model does better [16]. If the first attempts all fail, narrow the slice, fix the context or move up a model instead of raising N.
+- **Majority vote** (agreement): independent samples, most common answer wins. In theory it needs about 1/Δ² samples, where Δ is the gap between the two likeliest answers' probabilities, against about 1/Δ for best-of-N with a perfect verifier [15], so it costs more per item when answers are close. Stopping an item's sampling once its vote is decided saves samples at about equal accuracy; weighting votes by a calibrated confidence is what raised accuracy in one study [28].
+- **Fan-out** (summary): an orchestrator plus narrow subagents. In Anthropic's research system this beat a single agent by 90.2% on an internal research eval, using about 15x the tokens of a chat, where a single agent uses about 4x [11].
 - **Fresh review**, before anything merges or gets reported. A reviewer that hasn't seen the reasoning helps; handing the same task to another agent doesn't [17]. Give each reviewer one lens (correctness, leakage, confounds, security). A reviewer asked for problems "will always find something" [17], so each flag carries evidence and a severity, and a flag that would change a decision gets a second fresh check.
-- **Debate is not a free upgrade.** At 9 responses on GSM8K, multi-agent debate scored 83.0% against 88.2% for a majority vote over the same number of samples, and its gains came from aggregation, not discussion [18]. A 2025 study found debate can leave answers worse than majority voting, especially with mixed agents [29]. Where answers compare, vote. Where they don't (a design, a plan, a fix), adversarial workflows (`gauntlet:run`, `diverge:lite`) are the tool, but check one once against independent drafts plus a judge's pick at the same budget before relying on it.
+- **Debate is not a free upgrade.** At 9 responses on GSM8K (gpt-3.5), multi-agent debate scored 83.0% against 88.2% for a majority vote over the same number of samples, and the authors attribute debate's gains to aggregation, not critique [18]. The same paper found that an agent revising its own answer without an external signal (tests, a verifier, ground truth) gets worse [18]. A 2025 study found debate often left a group's answer worse than a majority vote over its members' first answers, especially when weaker models were in the group: correct agents were talked out of right answers more often than the reverse [29]. Where answers compare, vote. Where they don't (a design, a plan, a fix), adversarial workflows (`gauntlet:run`, `diverge:lite`) are the tool, but check one once against independent drafts plus a judge's pick at the same budget before relying on it.
 
-Give each piece a budget and a **stop rule**, the condition that ends it even if it isn't done: an iteration cap, a cost cap, or "N passes with no new tests passing". Interactive sessions stay at 3–5 [2]; background runs carry the volume. Check quota before a big fan-out (`quota:check` if you route through a proxy). Weekly caps arrived in 2025 aimed at users running Claude Code "continuously in the background, 24/7" [19], so keep bulk jobs restartable and spread them across model families and providers.
+Give each piece a budget and a **stop rule**, the condition that ends it even if it isn't done: an iteration cap, a cost cap, or "N passes with no new tests passing". Keep interactive teams small, starting at 3–5 and growing only when the work truly runs in parallel [2]; background runs carry the volume. Check quota before a big fan-out (`quota:check` if you route through a proxy). Weekly caps arrived in 2025 aimed at users running Claude Code "continuously in the background, 24/7" [19], so keep bulk jobs restartable and spread them across model families and providers.
 
 **Done when:** each piece has a pattern, an agent count, a model, a budget and a stop rule.
 
 ## 5. What counts as accepted, and who reads it in what order?
 
-For each piece, write the acceptance check: the check that passes, not "looks done". Then fix the review order: audits, judges and reviewers first, you last. Every result will get one of three rulings: accept, kill or redirect.
+For each piece, write the acceptance check: the check that passes, not "looks done", including the tests that passed before, so a fix can't quietly break them [4]. Agents' own status is not a check: team leads declare work finished early and task status lags [2]. With agent teams, wire the check into a `TaskCompleted` hook, whose exit code 2 blocks completion and sends the feedback back to the teammate [2]. Then fix the review order: audits, judges and reviewers first, you last. Every result will get one of three rulings: accept, kill or redirect.
 
 **Done when:** every piece has an acceptance check and a place in the review order.
 
@@ -116,15 +116,15 @@ After the go-ahead, run these gates in order before any piece scales:
 3. **Build the missing checkers** (step 2), one agent each, and confirm each one runs.
 4. **Smoke test:** run three items, read what went wrong, fix the prompt, then run the rest [17].
 
-If a gate changes a piece's pattern, budget or done-bar, present the whole revised plan and wait again. Then dispatch. Once checkers exist, throughput is limited by the supply of well-specified tasks, not by agents: "you have to do a LOT of design and planning to keep the engine fed" [20]. ccusage and ccwhy attribute tokens to sessions [21], which fills in each result's cost.
+If a gate changes a piece's pattern, budget or done-bar, present the whole revised plan and wait again. Then dispatch. Once checkers exist, throughput is limited by the supply of well-specified tasks, not by agents: Yegge's Gas Town "churns through implementation plans so quickly that you have to do a LOT of design and planning to keep the engine fed" [20]. ccusage reports spend from local session logs and ccwhy breaks down where it went [21], which fills in each result's cost.
 
 ## Review what comes back
 
 - Read the filtered results first, in the planned order; you go last.
-- Distrust claims of completion. Agents overstated how finished their ports were [10], and a coordinating agent reported bugs fixed that were not, while one PR merged past failing tests and had to be reverted [22]. Check the oracle, not the summary.
+- Distrust claims of completion. Agents overstated how finished their ports were [10], and a coordinating agent reported all bugs fixed when only two PRs existed, while one PR merged past failing integration tests and the repository had to be reset and force-pushed [22]. Check the oracle and the repository state, not the summary.
 - Audit any result that looks too good for leakage before believing it.
 - Write each ruling as a Results line in the plan. For a backlog of rulings, use `court:hold`.
-- Stay engaged on the hard calls. Engineers who learned a library with AI scored 50% vs 67% on comprehension, with debugging hit hardest [23], and debugging is how you catch agent mistakes.
+- Stay engaged on the hard calls. In a randomized trial, engineers who learned a library with AI scored 50% vs 67% on comprehension, with debugging hit hardest and passive delegation hurting far more than question-driven use [23], and debugging is how you catch agent mistakes.
 - Report back in one list: accepted (with the check that passed), killed or redirected and why, still running with budget left, rulings waiting on the user in priority order, and whether the done-bar is met.
 
 ## Measure whether it pays
@@ -133,15 +133,15 @@ Use `swarm:review` once enough Results lines have accumulated: cost per accepted
 
 ## Anti-patterns
 
-- Token counts as a goal. Meta took down its token leaderboard within days of it being reported [24]; Amazon called token metrics disconnected from results "deeply flawed" [25]; Uber used up its 2026 AI-coding budget by about April and capped spend per engineer [26].
+- Token counts as a goal. An employee-built Meta leaderboard ranking staff by token use rewarded "tokenmaxxing" and came down two days after it was reported [24]; Amazon's engineering guidelines called usage metrics such as token consumption "deeply flawed" when disconnected from results [25]; Uber spent its 2026 AI budget in about four months, then capped spend at $1,500 per employee per month per agentic coding tool [26].
 - Fanning out implementation work faster than you can review it.
 - Subagents that inherit or rebuild a large context for a small job. In one audit of 187 sessions, 97% of tokens were cache reads, and 840 subagent calls each duplicated full context for what were essentially searches [21]. Use plain search for a grep.
-- Long MCP tool lists, giant plan files and long role prompts [27].
+- Large MCP tool sets, which cost context on every turn (prefer a CLI such as `gh`), and persona role prompts ("You are an expert..."), which add nothing over plain instructions with docs and examples [27].
 
 ## Sources
-1. Willison, via Axios, Apr 2026: https://www.axios.com/2026/04/04/ai-agents-burnout-addiction-claude-code-openclaw
+1. Willison on Lenny's Podcast, "An AI state of the union", Apr 2026: https://www.lennysnewsletter.com/p/an-ai-state-of-the-union
 2. Claude Code docs, agent teams: https://code.claude.com/docs/en/agent-teams
-3. Paradev, "Roadmap to 100 agents", updated Oct 2026: https://paradev.com/blog/roadmap-to-100-agents
+3. Satya Patel (Paradev), "Our Plan for Running 100 Coding Agents", Feb 2026, updated Oct 2026: https://paradev.com/blog/roadmap-to-100-agents
 4. Carlini, Anthropic, Feb 2026: https://www.anthropic.com/engineering/building-c-compiler
 5. Cursor, Jan 2026: https://cursor.com/blog/scaling-agents
 6. Kilo blog, May 2026: https://blog.kilo.ai/p/how-7-kilo-code-engineers-run-up
@@ -152,19 +152,19 @@ Use `swarm:review` once enough Results lines have accumulated: cost per accepted
 11. Anthropic, Jun 2025: https://www.anthropic.com/engineering/multi-agent-research-system
 12. Claude Code sandbox docs: https://code.claude.com/docs/en/sandbox-environments
 13. Huntley, Jul 2025: https://ghuntley.com/ralph/
-14. Anthropic batch processing: https://platform.claude.com/docs/en/build-with-claude/message-batches
-15. arXiv 2506.05295: https://export.arxiv.org/abs/2506.05295
+14. Anthropic batch processing: https://platform.claude.com/docs/en/build-with-claude/batch-processing
+15. Huang et al., "Sample Complexity and Representation Ability of Test-time Scaling Paradigms", 2025: https://export.arxiv.org/abs/2506.05295
 16. Snell et al., ICLR 2025: https://arxiv.org/abs/2408.03314v1
 17. Claude Code best practices: https://code.claude.com/docs/en/best-practices
 18. Huang et al., ICLR 2024: https://arxiv.org/pdf/2310.01798
 19. TechCrunch, Jul 2025: https://techcrunch.com/2025/07/28/anthropic-unveils-new-rate-limits-to-curb-claude-code-power-users
-20. Yegge's Gas Town, via a secondary summary: https://second-brain-nuxt.vercel.app/gas-towns-agent-patterns
+20. Yegge, "Welcome to Gas Town", Jan 2026, quoted in Maggie Appleton, "Gas Town's Agent Patterns, Design Bottlenecks, and Vibecoding at Scale": https://maggieappleton.com/gastown
 21. SingYee, Apr 2026: https://dev.to/singyee/i-analyzed-187-claude-code-sessions-6744-worth-of-tokens-heres-where-they-actually-went-2ae5
 22. DoltHub, Jan 2026: https://www.dolthub.com/blog/2026-01-15-a-day-in-gas-town/
-23. Anthropic skill-formation study, via Osmani: https://addyosmani.com/blog/comprehension-debt/
+23. Anthropic, "How AI Impacts Skill Formation", 2026: https://arxiv.org/abs/2601.20245 (discussed by Osmani: https://addyosmani.com/blog/comprehension-debt/)
 24. Fortune, Apr 2026: https://fortune.com/2026/04/09/meta-killed-employee-ai-token-dashboard/
 25. Tom's Hardware, Oct 2026: https://www.tomshardware.com/tech-industry/artificial-intelligence/amazon-tells-engineers-to-stop-tokenmaxxing-to-look-productive-says-ai-will-be-central-to-software-development-but-usage-is-not-the-goal-new-guidelines-claim
-26. Willison, Jun 2026: https://simonwillison.net/2026/jun/3/uber-caps-usage
+26. Willison, via Bloomberg, Jun 2026: https://simonwillison.net/2026/jun/3/uber-caps-usage
 27. Steinberger, Oct 2025: https://steipete.me/posts/just-talk-to-it
-28. Efficient Test-Time Scaling via Self-Calibration, NeurIPS 2025: https://arxiv.org/abs/2503.00031v1
+28. Huang et al., "Efficient Test-Time Scaling via Self-Calibration", 2025: https://arxiv.org/abs/2503.00031v1
 29. "Talk Isn't Always Cheap", 2025: https://arxiv.org/html/2509.05396v2
