@@ -34,7 +34,7 @@ When you are certain, write the brief in the conversation under the heading `## 
 - **Goal.** One or two sentences: what the user actually wants, which may differ from what they first asked for.
 - **Bar.** The success criterion, every key term defined with its borderline cases, how it is measured (population, split, n, command or procedure), and anything the user explicitly left open, marked open.
 - **Fallback bar.** What counts as success if the bar proves impossible.
-- **Constraints.** True hard limits only: spend, files that must not change, data-handling rules, fixed points. Preferences stated as constraints prune options, so leave them out or mark them as preferences.
+- **Constraints.** True hard limits only: spend, files that must not change, data-handling rules, fixed points. Preferences stated as constraints prune options, so leave them out or mark them as preferences. Give each hard constraint its allowed exit: what to do if it can't be met (usually "stop and report the numbers"), so whoever runs the brief never games it.
 - **Context facts.** Measurements and what was tried, without diagnosis or candidate fixes.
 
 Keep solution examples out of the bar. State the property, never an example of meeting it: an example becomes the obvious answer for everyone downstream.
