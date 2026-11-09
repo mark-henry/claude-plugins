@@ -20,13 +20,13 @@ The loop directory is the agent's working directory, usually the root of its own
 | the check | a command: exit 0 when done, otherwise the number passing as the first token of its last line | outside the agent's writable tree |
 | held-out items | items the agent never sees, run only by the supervisor's final command | outside the agent's writable tree |
 
-Keep the scorer, the test items and the held-out set out of the agent's reach, and out of its sight: another user, or a path outside its container, rather than a read-only mount it can still read. Frontier models have modified tests and scoring code to raise scores, did so far more often when they could see the scoring code, and kept at it when told not to [5]. StrongDM often stores its end-to-end scenarios outside the codebase, "similar to a 'holdout' set in model training", so the coding agents cannot see them [6].
+Keep the scorer, the test items and the held-out set out of the agent's reach, and out of its sight: another user, or a path outside its container, rather than a read-only mount it can still read. Frontier models have modified tests and scoring code to raise scores, did so far more often when they could see the scoring code, and kept at it when told not to [5]. 2026 evaluations still find it, more often on long and hard tasks, which is where unattended loops run [12][13]. StrongDM often stores its end-to-end scenarios outside the codebase, "similar to a 'holdout' set in model training", so the coding agents cannot see them [6].
 
 Give the check a fast sampled mode (1–10% of items) so each pass gets feedback in minutes, with terse, grep-able output [1].
 
 ## 2. Write a short prompt
 
-When RepoMirror let Claude "improve" its loop prompt to 1,500 words, the agent got "slower and dumber" until they went back to 103 words [7]. `PROMPT.md` says, in about that many words:
+When RepoMirror (Sonnet 4, 2025) let Claude "improve" its loop prompt to 1,500 words, the agent got "slower and dumber" until they went back to 103 words [7]. `PROMPT.md` says, in about that many words:
 - read `SPEC.md`, `ledger.json` and the tail of `PROGRESS.md`;
 - take one task that isn't passing;
 - make it pass by running the fast check, and rerun the tests that passed before so the fix breaks nothing [1];
@@ -34,7 +34,7 @@ When RepoMirror let Claude "improve" its loop prompt to 1,500 words, the agent g
 - never edit or delete tests or the check ("It is unacceptable to remove or edit tests" [4]), and never touch the ledger's `passes` field, which only the check flips;
 - stop after one task.
 
-One task per fresh context keeps each pass well inside its window [4].
+One task per fresh context keeps each pass well inside its window [4] and leaves a clean commit to check. Since Opus 4.5, Anthropic's own harness runs long builds as one session with compaction [14], so the boundary is now insurance rather than a necessity.
 
 ## 3. Run under a supervisor
 
@@ -55,12 +55,12 @@ STALL=3 swarm-loop path/to/loop-dir 40
 - Launch it in the background (the Bash tool's `run_in_background`, or `nohup … &` in a terminal): a 40-pass loop outlives a foreground tool call. Give each pass a wall-clock limit inside `AGENT_CMD` (`timeout`, or coreutils' `gtimeout` on macOS), and the check one inside `CHECK_CMD`, because a hung agent or check stalls the whole loop.
 - Bypass permission prompts only inside a container, a VM or the sandbox runtime, not the `/sandbox` Bash sandbox alone, which leaves file tools, MCP servers and hooks on the host [9]. Claude Code refuses `--dangerously-skip-permissions` as root, so run it as a non-root user. Set a cost cap in the agent command or the account as well as the pass cap.
 
-For parallel loops, give each loop its own worktree and its own slice of the ledger, claimed atomically. Keep claims short and release them on failure: Cursor's self-coordinating agents held locks too long or never released them, and 20 agents ran at the throughput of 2–3 [10]. For a one-shot mechanical migration, Claude Code's `/batch` splits the work into 5–30 units and shows the plan; once approved, each unit gets its own worktree and opens a PR or reports what happened [11].
+For parallel loops, give each loop its own worktree and its own slice of the ledger, claimed atomically. Keep claims short and release them on failure: in Cursor's January 2026 run, self-coordinating agents held locks too long or never released them, and 20 agents ran at the throughput of 2–3 [10]. For a one-shot mechanical migration, Claude Code's `/batch` splits the work into 5–30 units and shows the plan; once approved, each unit gets its own worktree and opens a PR or reports what happened [11].
 
 ## 4. Smoke, then scale
 
 Run three passes and read every log, then fix the prompt and the check, and only then start the real run. This adapts Claude Code's advice for scripted runs over files: "Try it on three files first, see what goes wrong, fix the prompt, then run the rest" [11]. Watch for:
-- **claims of completion with no change in the check.** RepoMirror's agents overstated how finished their ports were [7].
+- **claims of completion with no change in the check.** RepoMirror's 2025 agents overstated how finished their ports were [7].
 - **edits to tests or the check**, which should be impossible by construction; if one happens, the reach control has failed.
 - **every pass taking the same big task.** When Linux kernel compilation was a single task, every agent hit the same bug. Splitting it against a reference (GCC) let them work in parallel [1].
 
@@ -85,3 +85,6 @@ A loop that stopped on stall or cap needs a person or planner to look at why. Us
 9. Claude Code sandbox docs: https://code.claude.com/docs/en/sandbox-environments
 10. Cursor, Jan 2026: https://cursor.com/blog/scaling-agents
 11. Claude Code best practices: https://code.claude.com/docs/en/best-practices
+12. METR, Frontier Risk Report, May 2026: https://metr.org/blog/2026-05-19-frontier-risk-report/
+13. METR, GPT-5.6 Sol evaluation, Jun 2026: https://metr.org/blog/2026-06-26-gpt-5-6-sol/
+14. Anthropic, harness design for long-running apps, Mar 2026: https://www.anthropic.com/engineering/harness-design-long-running-apps
