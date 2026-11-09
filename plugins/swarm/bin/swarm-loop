@@ -42,7 +42,7 @@ stop() { # stop <exit-code> <message>
 check() {
   ok=0
   if out=$(bash -c "$CHECK_CMD" 2>&1); then ok=1; return; fi
-  n=$(printf '%s\n' "$out" | tail -n 1 | grep -Eo '^[0-9]+' || true)
+  n=$(printf '%s\n' "$out" | tail -n 1 | grep -Eo '^[[:space:]]*[0-9]+' | tr -d '[:space:]' || true)
 }
 
 echo "start $(date -u +%FT%TZ) dir $(pwd -P) cap $cap stall $stall" >> "$log"
