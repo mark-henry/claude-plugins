@@ -75,7 +75,7 @@
     {
       "name": "gauntlet",
       "source": "./plugins/gauntlet",
-      "description": "Run a proposal through a gauntlet of fresh subagents, each asking \"is there a better way to do this?\" and keeping it or handing on a better version; default one chain of two, parallel chains merged."
+      "description": "Challenge and choose with fresh subagents. run: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies."
     },
     {
       "name": "swarm",
