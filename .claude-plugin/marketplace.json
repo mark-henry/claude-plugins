@@ -70,7 +70,7 @@
     {
       "name": "evals",
       "source": "./plugins/evals",
-      "description": "LLM eval hygiene: judge (build and validate an LLM judge by Hamel Husain's critique shadowing, TPR/TNR on a held-out split) and audit (a subagent reads a stratified high/middle/low sample of scored items and flags scores too high, too low or broken, before a human looks)."
+      "description": "LLM eval hygiene: judge (build and validate an LLM judge by Hamel Husain's critique shadowing, TPR/TNR on a held-out split), audit (a subagent reads a stratified high/middle/low sample of scored items and flags scores too high, too low or broken, before a human looks) and shadow (tune a new prompt-driven component live, one case at a time: predict, run, centaur verdict, log, change the prompt on patterns)."
     },
     {
       "name": "gauntlet",
