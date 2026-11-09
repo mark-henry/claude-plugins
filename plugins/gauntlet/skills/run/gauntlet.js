@@ -74,7 +74,8 @@ const chains = await parallel(Array.from({ length: WIDTH }, (_, c) => async () =
 
 const done = chains.filter(Boolean)
 let merged = null
-if (done.length > 1) {
+// merge: false skips the merge agent, e.g. when a caller votes among the chains' finals instead.
+if (done.length > 1 && a.merge !== false) {
   phase('Merge')
   merged = await agent(`Several independent review chains each tried to improve the same proposal. Pick the best final version or combine them, and say where the chains agreed and split.
 

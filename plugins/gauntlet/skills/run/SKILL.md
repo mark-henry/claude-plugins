@@ -26,6 +26,7 @@ How it works: each chain starts from the proposal. Every challenger gets the cur
 | `lenses` | optional, one per chain |
 | `effort` | challenger effort (default `high`) |
 | `model`, `judge_model` | optional overrides for challengers and for the merge agent |
+| `merge` | default true; `false` skips the merge agent and returns each chain's final version (`gauntlet:auto` votes among them instead) |
 
 ## After it returns
 
