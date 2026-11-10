@@ -1,0 +1,9 @@
+{
+  "name": "lab",
+  "description": "Run one ML-lab experiment (fine-tune, RL, LLM eval or judge) with an airtight design: prior art first, a dated plan page with prediction, null and controls, an attack before spend, a slow-start ladder, a frozen instrument, a launcher-written run record, and a claim-first report.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}
