@@ -1,0 +1,9 @@
+{
+  "name": "adversarial",
+  "description": "A catalogue and router for adversarial techniques: which attack, challenge chain, blind vote, verifier or blind judge fits the situation, and how to run it, what it costs and how it fails.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}
