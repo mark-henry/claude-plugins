@@ -23,7 +23,7 @@ export const meta = {
 //   models       (optional) {diverge, select, proto, attack, repair, judge}: model per role, e.g. {judge: 'fable'}. Omitted roles inherit.
 //   efforts      (optional) same keys: effort per role, e.g. {attack: 'high', judge: 'xhigh'}. Omitted roles inherit.
 //   minutes      (optional) wall-time budget per prototype, attack and repair agent; default 45.
-//   audience     (optional) who reads the recommendation, e.g. 'the study lead (Mark)'.
+//   audience     (optional) who reads the recommendation, e.g. 'the study lead'.
 
 const A = args || {}
 if (!A.context || !A.target || !A.constraints || !Array.isArray(A.sandboxes) || !A.sandboxes.length) {

@@ -47,13 +47,13 @@ This is a prescreen, not a substitute for the expert. It catches screwups in how
    - Group flags by cause.
    - Estimate what each cause does to the aggregate, e.g. "fixing the parser would move ≈8% of fails to pass".
    - Fix scorer and data bugs, rescore, and re-audit with a fresh sample. Never re-audit the items you just fixed.
-6. **Then report to the human, without examples.** Give the counts, causes, fixes and verdict from step 5. Don't show example items unless the user asks for them; offer them in one line. If they ask, show a curated handful, each with the auditor's one-line verdict:
-   - the best and worst high scorer;
-   - the best and worst low scorer;
+6. **Then report to the human, without examples.** Give the counts, causes, fixes and verdict from step 5. Don't show example items unless the user asks for them; offer them in one line. If they ask, show these, each with its score, the auditor's one-line verdict and how it was chosen:
+   - a uniform random draw;
+   - some high scorers and some low scorers;
    - one example of each confirmed failure cause;
    - if nothing was flagged, a few items that show the eval working as intended.
 
-   The human decides whether the eval is fit to quote.
+   The human decides whether the eval is fit to quote. This is for checking that an eval does what was intended. When the human is about to label or judge items themselves, show no examples, scores or verdicts until their labels are in.
 
 ## Rules
 

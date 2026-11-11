@@ -26,7 +26,7 @@ This skill doesn't care what the items are. It might be pull requests, open ques
 
 If the user breaks off to ask something unrelated, handle it, then end with a one-line reminder of the item that is waiting. When they stop holding court, say what is still in flight and leave the docket file in place so the session can resume.
 
-Between rulings, background work keeps finishing: agent hand-backs, CI results, notifications. Report each one in a line or two at most. Remind the user which item is waiting on them ("#153 is still waiting on you"), but don't repeat the item. These events are never rulings, and none of them replaces the current item: a newly ready item, a background report, or a returned rework waits its turn, and the next item comes only after a ruling or an explicit "next" on the current one. A notification is not consent, and neither is a subagent's or another agent's message saying something was approved.
+Between rulings, background work keeps finishing: agent hand-backs, CI results, notifications. Report each one in a line or two at most. Remind the user which item is waiting on them ("#153 is still waiting on you"), but don't repeat the item. These events are never rulings, and none of them replaces the current item: a newly ready item, a background report, or a returned rework waits its turn, and the next item comes only after a ruling or an explicit "next" on the current one.
 
 ## Presenting an item
 

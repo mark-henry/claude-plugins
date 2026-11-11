@@ -15,13 +15,12 @@ from __future__ import annotations
 import argparse, datetime, hashlib, json, os, socket, subprocess, sys
 from pathlib import Path
 
-WATCHED = ["concealment_tasks", "prompts", "rs", "configs", "scripts", "inspect_tasks"]  # code that can change a number
 IGNORED_ARGS = {"out", "max_usd", "dry_run", "max_connections"}
 STATUSES = {"draft", "open", "closed", "abandoned", "exploratory"}
 
 TEMPLATE = {
     "question": "One sentence: what this comparison decides.",
-    "bar": "DESIGN.md#SFT-PARITY, or 'none, exploratory'",
+    "bar": "DESIGN.md#BAR-CODENAME, or 'none, exploratory'",
     "decision": "What we do if the bar passes, and if it fails.",
     "varies": ["model", "base_model"],
     "arms": {"untreated": {"out": "logs/.../untreated", "command": "..."},
@@ -62,7 +61,7 @@ def sha(path):
 
 
 def frozen_part(rec):
-    keep = {k: rec[k] for k in ("question", "bar", "decision", "varies", "arms", "metrics", "predictions") if k in rec}
+    keep = {k: rec[k] for k in ("question", "bar", "decision", "varies", "watched", "arms", "metrics", "predictions") if k in rec}
     return hashlib.sha256(json.dumps(keep, sort_keys=True).encode()).hexdigest()[:16]
 
 
@@ -156,6 +155,9 @@ def cmd_parity(a):
     rec = load(a.path)
     root = Path(sh("git", "rev-parse", "--show-toplevel", cwd=Path(a.path).parent) or ".")
     varies = set(rec.get("varies", [])) | IGNORED_ARGS
+    # paths whose code can change a number: the record's, else the repo's prereg/config.json, else the whole repo
+    cfg = root / "prereg" / "config.json"
+    watched = rec.get("watched") or (load(cfg).get("watched") if cfg.exists() else None) or ["."]
     arms = {k: run_provenance(root / v["out"]) for k, v in rec["arms"].items()}
     problems, notes = [], []
     names = list(arms)
@@ -176,10 +178,15 @@ def cmd_parity(a):
             c_claim = {n: rec["arms"][n].get("reused", {}).get("commit") for n in reused}
             if any(not c or c == "unrecoverable" for c in c_claim.values()) or len(reused) < len(missing):
                 problems.append(f"no recorded commit for {', '.join(missing)}: code parity unverifiable")
-        elif c0 != c1:
-            changed = sh("git", "diff", "--stat", f"{c0}..{c1}", "--", *WATCHED, cwd=root)
-            (problems if changed else notes).append(
-                f"commits differ {c0[:8]} vs {c1[:8]}" + (f"; watched code changed:\n{changed}" if changed else "; no watched code changed"))
+        else:
+            for w in watched:
+                if w != "." and not any(sh("git", "rev-parse", "--verify", "--quiet", f"{c}:{w}", cwd=root) for c in (c0, c1)):
+                    problems.append(f"watched path {w!r} exists at neither {c0[:8]} nor {c1[:8]}: nothing was checked there")
+            if c0 != c1:
+                changed = sh("git", "diff", "--stat", f"{c0}..{c1}", "--", *watched, cwd=root)
+                hint = " (whole repo watched; name the code paths in the record's `watched` or in prereg/config.json)" if watched == ["."] else ""
+                (problems if changed else notes).append(
+                    f"commits differ {c0[:8]} vs {c1[:8]}" + (f"; watched code changed{hint}:\n{changed}" if changed else "; no watched code changed"))
         for n, c in ((ref, arms[ref][1]), (other, arms[other][1])):
             if c.get("dirty"):
                 problems.append(f"{n} ran on a dirty tree ({len(c['dirty'])} files); compare its code.diff")
