@@ -1,0 +1,9 @@
+{
+  "name": "owner",
+  "description": "Decide what reaches the owner, forecast the owner's answer before asking and keep score, ask with a self-contained decision brief, and record rulings and consent.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}

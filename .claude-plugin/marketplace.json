@@ -106,6 +106,11 @@
       "name": "autoresearch",
       "source": "./plugins/autoresearch",
       "description": "Vendored from drivelineresearch/autoresearch-claude-code (MIT): an unattended, measured experiment loop that locks the scorer by hash, measures the noise floor, keeps a change only if it beats the best by more than that floor, and logs every run, with hooks for continuation and compaction."
+    },
+    {
+      "name": "owner",
+      "source": "./plugins/owner",
+      "description": "Decide what reaches the owner, forecast the owner's answer before asking and keep score, ask with a self-contained decision brief, and record rulings and consent."
     }
   ]
 }
