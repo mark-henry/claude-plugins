@@ -1,6 +1,6 @@
 ---
 name: audit
-description: "Audit an eval's scores before anyone trusts the aggregate: a subagent pulls a stratified sample of 30–50 scored items (high, middle and low scorers, plus disagreements and outliers), reads each one in full, and flags screwups such as scores too high, scores too low, and broken items. Use for \"/evals:audit\", \"audit the scores\", \"sanity-check this eval\", after any new eval, judge, metric or scoring change produces numbers, before a number is reported or used to pick between arms, and whenever a rate surprises you."
+description: "Audit an eval's scores before anyone trusts the aggregate: a subagent pulls a stratified sample of 30–50 scored items (high, middle and low scorers, plus disagreements and outliers), reads each one in full, and flags screwups such as scores too high, scores too low, and broken items. Not a review of the whole eval pipeline (that is Hamel's `eval-audit`). Use for \"/evals:audit\", \"audit the scores\", \"sanity-check this eval\", after any new eval, judge, metric or scoring change produces numbers, before a number is reported or used to pick between arms, and whenever a rate surprises you."
 ---
 
 # Audit an eval's scores
