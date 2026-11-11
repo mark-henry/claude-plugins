@@ -44,4 +44,4 @@ ffmpeg -ss <start> -to <end> -i in.mp4 -vf scale=-2:720 -c:v libx264 -profile:v 
 
 For clips longer than ~35 s, lower `-maxrate`: (14 MB × 8 / seconds) − 128k.
 
-Afterward `open` the result so the user can check it.
+Afterward `open` the result so the user can check it. Open GIFs with `open -a "Google Chrome"`, because Preview shows them as a stack of stills.
