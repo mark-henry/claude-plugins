@@ -1,0 +1,9 @@
+{
+  "name": "pipeline",
+  "description": "Run any large LLM job (code, research, evals, writing, data, design, ops) as a pipeline of file handoffs: intake, prior art, an approved spec, a small-step plan, an attack before spend, dispatch, a slow start, verification, review, finish and a logged lesson.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}

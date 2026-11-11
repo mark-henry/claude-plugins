@@ -88,6 +88,11 @@
       "description": "Run one ML-lab experiment with an airtight design, from prior art to a claim-first report."
     },
     {
+      "name": "pipeline",
+      "source": "./plugins/pipeline",
+      "description": "Run any large LLM job as a pipeline of file handoffs, from intake and prior art to a verified, reviewed finish."
+    },
+    {
       "name": "upstream",
       "source": "./plugins/upstream",
       "description": "Send a pull request to a repo someone else owns: read its CLAUDE.md, AGENTS.md, README and contributing guide before writing any commit, check that the PR is wanted, match the project's commit and PR conventions, run its checks, and show the user the draft before opening it."
