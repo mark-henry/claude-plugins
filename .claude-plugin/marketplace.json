@@ -101,6 +101,11 @@
       "name": "upstream",
       "source": "./plugins/upstream",
       "description": "Send a pull request to a repo someone else owns: read its CLAUDE.md, AGENTS.md, README and contributing guide before writing any commit, check that the PR is wanted, match the project's commit and PR conventions, run its checks, and show the user the draft before opening it."
+    },
+    {
+      "name": "autoresearch",
+      "source": "./plugins/autoresearch",
+      "description": "Vendored from drivelineresearch/autoresearch-claude-code (MIT): an unattended, measured experiment loop that locks the scorer by hash, measures the noise floor, keeps a change only if it beats the best by more than that floor, and logs every run, with hooks for continuation and compaction."
     }
   ]
 }
