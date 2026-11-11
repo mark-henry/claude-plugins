@@ -150,7 +150,7 @@ Agents: <who, tier, brief>   Amendments: <date - change - reason - codenames - h
 
 **Leakage gates**, adapted from [1]'s taxonomy, each yes or no with evidence:
 - *Classic:* a split exists; no preprocessing, feature selection or duplicates across it; no temporal leakage; train and test independent; no illegitimate features; test drawn from the distribution of interest.
-- *Agent era:* eval targets and future text cannot reach training data or prompts, including through generated data; failure reports shown to an optimising agent echo inputs and predictions, never gold labels; held-out outputs and logs are unreadable by later runs; the agent's own memory, notes and config files carry nothing from gold labels or held-out items into later runs (audit them); no stopping rule uses oracle labels.
+- *Agent era:* eval targets and future text cannot reach training data or prompts, including through generated data; failure reports shown to an optimising agent echo inputs and predictions, never gold labels [18]; held-out outputs and logs are unreadable by later runs; the agent's own memory, notes and config files carry nothing from gold labels or held-out items into later runs (audit them); no stopping rule uses oracle labels.
 - *One item per call* for LLM baselines, judges and generators, always over time-ordered data: batching leaks earlier answers, numbering and context. Each subject sees only its own item. With a cached prefix it costs little more, so cost is never the reason to batch.
 
 Anything too good, or a baseline reproducing the answer verbatim, gets a leak audit before it is believed.
@@ -313,10 +313,10 @@ Grey zone: **mechanical** choices decided silently and logged; **taste** choices
 - **Hand-backs are claims.** Establish what ran from records; rerun a claimed fix's test; check two or three claims per session against raw logs; read every diff touching measurement. Claims return with command and artifact path. Expect a crash "fixed" by a quiet hyperparameter change, a retry reported without the failure, a summary sunnier than the log, a test edited to pass, early victory. Self-application is not evidence.
 - **Why** (dated; recheck on current models).
 	- A 2025 study of AI-scientist systems found inappropriate benchmark selection, data leakage, metric misuse and post-hoc selection bias. An LLM auditor (Gemini 2.5 Flash) classified balanced items, half flawed, with 55% accuracy from the paper alone and 82% with trace logs and code, so the authors recommend requiring logs and code with the paper [16].
-	- In 2026, persona-primed analyst agents reached opposing conclusions on the same data by selective reporting, and 86% (137/160) of their analyses passed an AI methodological review: selection is invisible to final-report review [17].
+	- In 2026, persona-primed analyst agents reached opposing conclusions on the same data by selective reporting, and 86% (137/160) of their analyses passed an AI methodological review and 78% (31/40) passed a majority of three human PhD reviewers: selection is invisible to final-report review, by machine or human [17].
 	- An agent hardcoded answers that leaked to it through failure reports [18].
 	- A pre-release o3 reward-hacked in 39 of 128 RE-Bench runs but in 0.7% of HCAST runs; RE-Bench's scoring function was visible, which METR names as one possible cause. On one task it still hacked in most runs when told not to [14].
-	- Agents declare success despite obvious failures [19]. Hence: keep logs and code, isolate by construction, never let AI review be the last check or an agent choose which runs appear.
+	- Agents declare success despite obvious failures [19]. Hence: keep logs and code, isolate run state by construction rather than instruction [18], never let AI review be the last check or an agent choose which runs appear.
 
 ## Red flags
 
