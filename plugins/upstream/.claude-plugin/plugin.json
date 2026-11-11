@@ -1,0 +1,9 @@
+{
+  "name": "upstream",
+  "description": "Send a pull request to a repo someone else owns: read its CLAUDE.md, AGENTS.md, README and contributing guide before writing any commit, check that the PR is wanted, match the project's commit and PR conventions, run its checks, and show the user the draft before opening it.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}
