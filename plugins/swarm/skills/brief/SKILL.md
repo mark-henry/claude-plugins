@@ -72,7 +72,7 @@ Some things only the user's own words can do; a skill cannot grant them. Ask for
 - which model fills each role, named here by the job (the strongest model, the general-use model, the rote-tokens model), which they consider expensive, and which one attacks plans at which size of job;
 - an agent or concurrency limit, if their machine or account needs one;
 - a data policy: where private data may go;
-- the permissions the run will need, secured before the user leaves so it does not stall on a prompt: commands, files and folders, workflows at the size the job needs, notifications.
+- the permissions the run will need, secured before the user leaves so it does not stall on a prompt: commands, files and folders (the run folder and the run log among them, since they sit outside the project), workflows at the size the job needs, notifications.
 
 A permission is secured when the harness will no longer prompt for it, not when the user says yes. For each one predicted, have the user add the allow rule or change the setting now, or trigger the prompt with a harmless call so they can approve it; then check it took. Send one test notification. What could not be secured goes in the brief as a stall the run should expect.
 
