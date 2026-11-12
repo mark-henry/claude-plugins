@@ -318,62 +318,13 @@ Grey zone: **mechanical** choices decided silently and logged; **taste** choices
 	- A pre-release o3 reward-hacked in 39 of 128 RE-Bench runs but in 0.7% of HCAST runs; RE-Bench's scoring function was visible, which METR names as one possible cause. On one task it still hacked in most runs when told not to [14].
 	- Agents declare success despite obvious failures [19]. Hence: keep logs and code, isolate run state by construction rather than instruction [18], never let AI review be the last check or an agent choose which runs appear.
 
-## Red flags
-
-| Thought | Reality |
-|---|---|
-| "Small run, no plan needed." | Write the page; buy fewer rungs. |
-| "I know which arm wins; just train the variants." | Then the prediction and null take a minute. |
-| "The ablation validated it." | Did the arms remove equal amounts? |
-| "We can build on that result." | Not while its flagged confound stands; reproduce it. |
-| "We already know the answer." | Then the memo cites it in five minutes. |
-| "The user agrees, so the premise holds." | Agreement isn't measurement. |
-| "The design is fine; skip the attack." | The author is the one person who can't attack it. |
-| "Both arms use the same config." | Same file, different adapter init, token cap or wording. |
-| "Three seeds all agree." | p = 0.05 at best: a figure, not a test. |
-| "The pilot looked good, count it." | It decided the purchase: exploratory. |
-| "A few more samples to be sure." | Optional stopping; new counts, new experiment. |
-| "Batch the judge calls, it's cheaper." | Not with caching, and batching leaks. |
-| "The judges agree." | All on one class? Where are TPR and TNR? |
-| "The scorer is read-only; the agent was told." | Readable is gameable; an instruction is not a boundary. |
-| "The reward pays the right behaviour." | Write the reward table first. |
-| "Great result." | Shortcut or leak until audited. |
-| "Tweak the rubric after seeing the treated arm." | Baseline and dev only; then an amendment. |
-| "Tweak the config, keep it running." | Stop, amend, rerun the pilot. |
-| "The agent says it passed." | A claim. Read the record; rerun the check. |
-| "This case needs a prompt fix." | One case is logged; act on two or three. |
-| "It's a null, nothing to report." | Same format, with its positive control. |
-| "The null shows the safeguard is unneeded." | Did the eval contain the hazard? Positive control? |
-
 ## Neighbors
 
 Each is named at the moment it applies; bring back its artifact, not its summary. `brief:lock` (locked bar), a research skill (tagged prior-art claims), `prereg:launch` (record, parity, tag), `gauntlet:run` / `auto` / `vote` (attacked plan, discrete picks), `evals:judge` (TPR/TNR), `evals:audit` (audit verdict), `evals:shadow` (logged live cases), `swarm:plan` (briefs), `swarm:loop` (exit reason, held-out result), `swarm:review` (cost per accepted result), `figure:make` (the figure), `court:hold` (rulings), your quota or roster skill (quota, models), `claude plugin eval` (scaffold evals).
 
 ## Sources
 
+The numbered sources, the evidence they support and the record of corrections are in [references/evidence.md](references/evidence.md). Bracketed numbers in this skill cite that list.
+
 [habit]: one careful practitioner's practice, not settled standard. [rare]: what the careful do and most skip. (unverified): not yet checked against the primary.
 
-1. Kapoor and Narayanan, "Leakage and the reproducibility crisis in ML-based science", *Patterns* 2023: https://arxiv.org/abs/2207.07048; REFORMS: https://reforms.cs.princeton.edu/. Leakage taxonomy, simple baselines.
-2. Miller, "Adding Error Bars to Evals", 2024: https://arxiv.org/abs/2411.00640. SEM, clustering, paired tests, power.
-3. Google Research, Deep Learning Tuning Playbook: https://github.com/google-research/tuning_playbook. Knob classes.
-4. Karpathy, "A Recipe for Training Neural Networks", 2019: https://karpathy.github.io/2019/04/25/recipe/. Sanity gates.
-5. Husain and Shankar, LLM evals FAQ: https://hamel.dev/blog/posts/evals-faq/; Shankar et al., "Who Validates the Validators?", 2024: https://arxiv.org/abs/2404.12272. Binary judges, criteria drift.
-6. Huang et al., "Large Language Models Cannot Self-Correct Reasoning Yet", ICLR 2024, Table 7: https://arxiv.org/abs/2310.01798.
-7. Anthropic, "How we built our multi-agent research system", 2025: https://www.anthropic.com/engineering/multi-agent-research-system. Token use, variance, token multiples.
-8. Snell et al., 2024: https://arxiv.org/abs/2408.03314; Tran and Kiela, 2026: https://arxiv.org/abs/2604.02460. Matched compute budgets.
-9. "How Do AI Agents Spend Your Money? Analyzing and Predicting Token Consumption in Agentic Coding Tasks", 2026: https://arxiv.org/abs/2604.22750. Cost spread across identical runs (OpenHands, SWE-bench Verified).
-10. RepoMirror, 2025: https://github.com/repomirrorhq/repomirror/blob/main/repomirror.md. The 103-word prompt.
-11. Henderson et al., 2018: https://arxiv.org/abs/1709.06560; Agarwal et al., 2021: https://arxiv.org/abs/2108.13264; Bouthillier et al., 2021: https://arxiv.org/abs/2103.03098. Seed variance and reporting.
-12. Heineman et al. (AI2), "Signal and Noise: A Framework for Reducing Uncertainty in Language Model Evaluation", 2025: https://arxiv.org/abs/2508.13144. Eval signal-to-noise.
-13. Lipton and Steinhardt, 2018: https://arxiv.org/abs/1807.03341; Recht et al., 2019: https://arxiv.org/abs/1902.10811. Misattributed gains; fresh test sets scoring below reported ones (attributed to harder images, not reuse).
-14. METR, "Recent Frontier Models Are Reward Hacking", Jun 2025: https://metr.org/blog/2025-06-05-recent-reward-hacking/
-15. METR, Frontier Risk Report (Feb–Mar 2026), May 2026: https://metr.org/blog/2026-05-19-frontier-risk-report/
-16. Luo, Kasirzadeh and Shah, "The More You Automate, the Less You See: Hidden Pitfalls of AI Scientist Systems", 2025: https://arxiv.org/abs/2509.08713.
-17. Miao, Pritchard and Zou, "The Agentic Garden of Forking Paths", 2026: https://arxiv.org/abs/2607.01507.
-18. Askarbekuly et al., "Autoresearch with Coding Agents: Generalizers and Metric-Maximizers on Quran Recitation Data", 2026: https://arxiv.org/abs/2607.18064.
-19. Trehan and Chopra, "Why LLMs Aren't Scientists Yet: Lessons from Four Autonomous Research Attempts", 2026: https://arxiv.org/abs/2601.03315.
-20. driveline's autoresearch skill: https://github.com/drivelineresearch/autoresearch-claude-code. Scorer lock, trivial control, keep rule, untouched test, caps.
-21. gstack's eval-plan: https://github.com/garrytan/gstack/blob/main/eval-plan/SKILL.md. The closest prior art, strong on process and money, weak on inference; its guarded failure modes (an unpriced arm admitted at $0, bars changed after a priced call, prompt-less rows reaching the paid run, reservations past the cap) shaped the dry-run, pilot, freeze and cap rules, decoys, fixtures, candidate blinding and held-out exposure record. Elsewhere in gstack: Search Before Building (ETHOS.md §2) and the mechanical / taste / user-challenge decision classes (autoplan/SKILL.md).
-22. Every's compound-engineering: https://github.com/EveryInc/compound-engineering-plugin (one plan file with requirement IDs carried through stages, ternary validator verdicts, rejection as a first-class outcome); obra's superpowers: https://github.com/obra/superpowers (saved plan files handed between stages, small-step plans, hard gates, red-flag tables). Codenames for requirements: [habit].
-23. K-Dense AI, scientific-agent-skills: https://github.com/K-Dense-AI/scientific-agent-skills (no post-hoc power; repetitions and acceptance rule agreed before search). Orchestra Research, AI-Research-SKILLs: https://github.com/Orchestra-Research/AI-Research-SKILLs (flag single-run results).
-24. Claude Code plugin evals: https://code.claude.com/docs/en/plugin-evals
