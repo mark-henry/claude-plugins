@@ -14,9 +14,8 @@
 #   weight   = share of total rate, at least FLOOR; 0 if no headroom
 #   if no account has headroom, the protected account takes everything (its reserve is for that)
 #
-# Low-quota note, printed under the report only when it applies:
-#   a family (claude, codex) is low when even its best account is behind pace by more than LOW_SLACK
-#   the protected account is low when it is behind pace and within LOW_MARGIN points of its reserve
+# Pace note, printed under the report only when it applies: every account at or over pace (slack
+# rounds to 0 or below), with a request that the agent say so in its first reply of the session.
 #
 # Session affinity: claude-mitm's addon records the auth_index CLIProxyAPI picked for each Claude Code
 # session (from the X-CPA-TRACE-ID response header) in $QUOTA_SESSION_AUTH_DIR/<session id>; the
@@ -35,14 +34,11 @@ set -euo pipefail
 : "${QUOTA_PROTECTED_EMAIL:=}"                           # main account that must not run out; empty = none
 : "${QUOTA_RESERVE:=15}"                                 # % of its weekly quota the proxy leaves alone
 : "${QUOTA_FLOOR:=10}"                                   # minimum weight for an account with headroom
-: "${QUOTA_LOW_SLACK:=10}"                              # family note: best account this many points behind pace
-: "${QUOTA_LOW_MARGIN:=5}"                               # protected note: this close to its reserve
 : "${QUOTA_LOG:=~/Library/Logs/quota-rebalance.log}"
 : "${QUOTA_SESSION_AUTH_DIR:=~/.cache/claude-mitm/session-auth}"  # written by claude-mitm's addon
 [[ -f ~/.config/quota.env ]] && source ~/.config/quota.env
 API=$QUOTA_PROXY_URL/v0/management
 PROTECTED_EMAIL=$QUOTA_PROTECTED_EMAIL RESERVE=$QUOTA_RESERVE FLOOR=$QUOTA_FLOOR
-LOW_SLACK=$QUOTA_LOW_SLACK LOW_MARGIN=$QUOTA_LOW_MARGIN
 SESSION_AUTH_DIR=${QUOTA_SESSION_AUTH_DIR/#\~/$HOME}
 LOG=${QUOTA_LOG/#\~/$HOME} KEY_FILE=${QUOTA_MANAGEMENT_KEY_FILE/#\~/$HOME}
 export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
@@ -97,11 +93,10 @@ if [[ -d $SESSION_AUTH_DIR ]]; then
     session_auth=$(<"$SESSION_AUTH_DIR/$CLAUDE_CODE_SESSION_ID")
 fi
 
-# Emits tab-separated rows: "L<TAB>report line", "N<TAB>low-quota note" and
+# Emits tab-separated rows: "L<TAB>report line", "P<TAB>account at or over pace" and
 # "W<TAB>name<TAB>email<TAB>old<TAB>new<TAB>why"
 rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg mine "$session_auth" \
-  --argjson reserve "$RESERVE" --argjson floor "$FLOOR" \
-  --argjson lowslack "$LOW_SLACK" --argjson lowmargin "$LOW_MARGIN" '
+  --argjson reserve "$RESERVE" --argjson floor "$FLOOR" '
   def week: 604800;
   def epoch: (.[0:19] + "Z" | fromdateiso8601) -
     ((.[19:] | capture("(?<s>[+-])(?<h>\\d\\d):(?<m>\\d\\d)$")) as $z
@@ -149,14 +144,9 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
          end)
       + (if $mine != "" and .auth_index == $mine then "  ← this session" else "" end)),
 
-  # Low-quota notes
-  ([ $creds[] | select(.left != null and .target != null) ] | group_by(.provider)[]
-   | max_by(.left - .target)
-   | select(.left - .target < -$lowslack)
-   | "N\t\(.provider) is behind pace on every account (best: \(who) \(.left | pct) left vs \(.target | pct), \(resets))"),
-  ($creds[] | select(.email == $prot and .left != null and .target != null)
-   | select(.left < .target and .left - $reserve < $lowmargin)
-   | "N\tprotected account \(who) (\(.provider)) is down to \(.left | pct), near its \($reserve)% reserve (\(resets))"),
+  # Accounts at or over pace
+  ($creds[] | select(.left != null and .target != null) | (.left - .target | round) as $p | select($p <= 0)
+   | "P\t\(.provider) \(who) (\($p))"),
 
   # Rebalance proposals for Claude credentials with usable data
   ([ $creds[] | select(.provider == "claude" and .left != null and .reset != null)
@@ -176,10 +166,10 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
 
 echo "Quota (weekly % left vs even-spend target, slack):"
 grep '^L' <<<"$rows" | cut -f2- || true
-notes=$(grep '^N' <<<"$rows" | cut -f2- || true)
-if [[ -n $notes ]]; then
-  echo "Low quota: $(paste -sd ';' - <<<"$notes" | sed 's/;/; /g')."
-  echo "(Mention this once as a passing aside where it bears on the work; don't dwell on it or repeat it.)"
+over=$(grep '^P' <<<"$rows" | cut -f2- || true)
+if [[ -n $over ]]; then
+  echo "At or over pace: $(paste -sd ';' - <<<"$over" | sed 's/;/, /g')."
+  echo "(Tell the user this in one line in your first reply of the session; don't repeat it after that.)"
 fi
 
 ((rebalance)) || exit 0
