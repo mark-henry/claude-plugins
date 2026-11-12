@@ -13,23 +13,23 @@ The run ends in a blind pick, because a chain's last version would otherwise win
 
 ## Before launch
 
-1. **The proposal.** If the user proposed something, pass it verbatim. If not, write your own best proposal in full, as something to beat rather than a draft to polish.
-2. **Context for strangers.** The challengers know nothing of this conversation. Give them facts: the goal, the constraints, numbers with denominators, file paths to open, siblings or alternatives that already exist, and anything already tried. Leave out the reasons you like the proposal; they will find its strengths or fail to.
-3. **Shape.** Default `depth: 2, width: 1`. Use more width when the proposal could fail in several different ways. Give each chain a lens (e.g. `["correctness", "simplicity", "cost"]`) so the chains disagree usefully. Use more depth only if a chain is still changing at its last step.
+1. **The proposal.** If the user proposed something, pass it verbatim. If there is no proposal yet, do not write one yourself to be beaten: get independent candidates first (`decide:vote` with no options), then improve the winner.
+2. **Context for strangers.** The challengers know nothing of this conversation. Give them facts: the goal, the constraints, numbers with denominators, file paths to open, any test or check a version must pass, siblings or alternatives that already exist, and anything already tried. If the proposal won a vote, include the options it beat as full text, not labels (a challenger cannot revive a label), and what the voters worried about. Leave out the reasons you like the proposal; they will find its strengths or fail to.
+3. **Shape.** Default `depth: 2, width: 1`. Give a single chain a lens too when you can name one (`lenses: ["is the premise right"]`): a bare "better way?" draws vague feedback. Use more width when the proposal's premise is in doubt or it could fail in several different ways. Give each chain a lens (e.g. `["correctness", "simplicity", "cost"]`) so the chains disagree usefully. Use more depth only if a chain is still changing at its last step.
 
 ## Args
 
 | arg | meaning |
 |---|---|
 | `proposal` | required: the thing to challenge, in full |
-| `goal`, `context`, `constraints` | strongly recommended; `constraints` are hard limits, not preferences |
+| `goal`, `context`, `constraints` | strongly recommended; `constraints` are hard limits, not preferences, and challengers obey them: if one is lifted later, revisit what they ruled out |
 | `depth` | challengers per chain (default 2) |
 | `width` | parallel chains (default 1) |
 | `lenses` | optional, one per chain |
 | `effort` | challenger effort (default `high`) |
 | `model`, `judge_model` | optional overrides for the challengers and for the pickers |
 | `pickers` | how many blind pickers rank the versions (default 3) |
-| `pick` | default true; `false` skips the pick and returns each chain's versions for the caller to choose among (`decide:auto` votes among them instead) |
+| `pick` | default true; `false` skips the pick and returns each chain's versions for a caller that puts them and the original to its own blind vote; the caller never chooses among them by its own reading |
 
 ## After it returns
 
@@ -39,4 +39,4 @@ Report back in this order:
 3. **The pickers' worries about the version they chose**, and the last challenger's residual doubt.
 4. **Where you disagree with the result, if anywhere.** Never override it silently.
 
-If the original was the user's and the gauntlet replaced it, say so plainly; the user decides. A chain of all `keep` verdicts is a result too: report it as "survived two challenges", not as nothing happening.
+If the original was the user's and the gauntlet replaced it, say so plainly; the user decides. A chain of all `keep` verdicts is a result too: report it as "survived two challenges", not as nothing happening. Challengers add claims nobody has checked: if the picked version states facts or cites sources that the original and your context did not, verify them (`check:claims`). The pick is a judgment, not a trial, so a version with a real consumer (a prompt, a skill, a script) still gets tried there.
