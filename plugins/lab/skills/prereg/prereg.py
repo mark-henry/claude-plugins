@@ -5,7 +5,7 @@
   prereg.py open  PATH                validate, freeze predictions, stamp commit + uncommitted diff
   prereg.py stamp OUT_DIR             write git.json (+ code.diff) into a run folder; for harnesses with no stamp
   prereg.py parity PATH               do the arms differ only in `varies`? same instances, same code?
-  prereg.py close PATH [--note TEXT]  predicted vs observed per arm x metric, bar verdict, status -> closed
+  prereg.py close PATH [--note TEXT]  predicted vs observed per arm x metric, status -> closed (apply the bar yourself)
   prereg.py ls [DIR]                  open records, and how well past predictions landed
 
 Stdlib only. A record is JSON; see `new` for the fields. Exit code 1 on a refusal or a parity failure.
@@ -141,6 +141,24 @@ def cmd_stamp(a):
     print(f"stamped {out} at {(state.get('commit') or '?')[:8]}{' (dirty)' if diff else ''}")
 
 
+def args_from_argv(argv):
+    """Launch args recovered from a stamped command line: --key value, --key=value, --flag; the rest are positional."""
+    args, pos, i = {}, [], 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok.startswith("--") and len(tok) > 2:
+            key, eq, val = tok[2:].partition("=")
+            if not eq and i + 1 < len(argv) and not argv[i + 1].startswith("--"):
+                val, i = argv[i + 1], i + 1
+            args[key.replace("-", "_")] = val if (eq or val) else True
+        else:
+            pos.append(tok)
+        i += 1
+    if pos:
+        args["_positional"] = pos
+    return args
+
+
 def run_provenance(out):
     """What a run folder says about the code and data it ran on."""
     out = Path(out)
@@ -148,7 +166,8 @@ def run_provenance(out):
     git = launch.get("git") or (load(out / "git.json") if (out / "git.json").exists() else {})
     files = {f.name: sha(f) for f in sorted(out.glob("*.jsonl")) if f.name in ("real.jsonl", "zero.jsonl", "instances.jsonl")}
     mtime = (out / "launch.json").stat().st_mtime if (out / "launch.json").exists() else None
-    return launch.get("args", {}), git, files, mtime
+    args = launch.get("args") or args_from_argv([a for a in git.get("argv") or [] if a != "--"])
+    return args, git, files, mtime
 
 
 def cmd_parity(a):
@@ -159,15 +178,21 @@ def cmd_parity(a):
     cfg = root / "prereg" / "config.json"
     watched = rec.get("watched") or (load(cfg).get("watched") if cfg.exists() else None) or ["."]
     arms = {k: run_provenance(root / v["out"]) for k, v in rec["arms"].items()}
-    problems, notes = [], []
+    problems, notes, warns = [], [], []
     names = list(arms)
     ref = names[0]
     for other in names[1:]:
         a0, a1 = arms[ref][0], arms[other][0]
+        no_args = [n for n, args in ((ref, a0), (other, a1)) if not args]
+        if no_args:
+            problems.append(f"no launch args recorded for {', '.join(no_args)} (no launch.json args, no stamped command): "
+                            f"nothing shows the arms differ only in `varies`; diff their commands by hand")
         for key in sorted(set(a0) | set(a1)):
             if key not in varies and a0.get(key) != a1.get(key):
                 problems.append(f"arg {key}: {ref}={a0.get(key)!r} {other}={a1.get(key)!r}")
         f0, f1 = arms[ref][2], arms[other][2]
+        if not set(f0) & set(f1):
+            warns.append(f"no instance files found in both {ref} and {other} (real.jsonl, zero.jsonl, instances.jsonl): item parity not checked")
         for name in sorted(set(f0) & set(f1)):
             (notes if f0[name] == f1[name] else problems).append(
                 f"{name} {'identical' if f0[name] == f1[name] else 'DIFFERS'} across {ref}/{other}")
@@ -195,6 +220,8 @@ def cmd_parity(a):
             notes.append(f"launches {abs(t0 - t1) / 3600:.0f} h apart ({ref}/{other})")
     for n in notes:
         print(f"  ok    {n}")
+    for w in warns:
+        print(f"  warn  {w}")
     for p in problems:
         print(f"  FAIL  {p}")
     print("parity: " + ("PASS" if not problems else f"FAIL ({len(problems)})"))
