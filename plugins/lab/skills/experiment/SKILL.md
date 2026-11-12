@@ -7,6 +7,8 @@ description: "Run one ML-lab experiment (a fine-tune, an RL or rejection-samplin
 
 This skill exists so an experiment never burns an afternoon and ten million tokens on a question the field already answered, a comparison confounded from the start, or a number nobody can believe. An experiment has no oracle for "does this mean what we think?", so the design supplies one: a prediction written in advance, a null, a baseline, a confound check, and a denominator chosen pre-data. This is the front door for one experiment, intake to iteration; neighbors are named only for mechanics.
 
+The rules an experiment must meet are `lab:supervisor`'s: twelve, each with the evidence that shows it. This skill is the procedure for meeting them. Ask `lab:supervisor` to sign before the first counted run (stage 5) and again before a number is quoted (stage 7).
+
 **Posture.** A forced, known-good pattern beats tendencies, and ceremony is welcome: tokens are cheap, wasted runs are not. Every use produces a plan page and a written prediction; there is no "too simple to plan" exit, only fewer ladder rungs bought. If the user names a method, use it. Evidence before claims: every "done", "works" or "better" arrives with the run ID, command or file that shows it. A stage you cannot point to did not happen. The human appears as roles and decisions, never a schedule.
 
 ## When it applies
