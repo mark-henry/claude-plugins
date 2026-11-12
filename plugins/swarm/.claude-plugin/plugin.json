@@ -1,6 +1,6 @@
 {
   "name": "swarm",
-  "description": "A working method for agent swarms: brief (interview the user until they have decided what they want, then freeze it as a written brief an unattended run can build against), plan (name what checks each piece, build checkers before scaling, shape tasks, pick a pattern with caps, gates, review), loop (oracle-gated unattended Ralph loop with the swarm-loop supervisor on PATH) and payoff (cost per accepted result by kind of work). Sources cited.",
+  "description": "Run large agent jobs with little supervision. brief: interview the user until they have decided what they want, then freeze it as a written brief an unattended run can build against. go: carry a frozen brief to a checked result inside the approved cap, planning each piece around who or what will say it is right, and report with the user's decisions last. loop: an unattended loop gated by a check the agent cannot touch, with the swarm-loop supervisor on PATH. payoff: cost per accepted result by kind of work.",
   "author": {
     "name": "Mark Henry"
   },

@@ -9,12 +9,12 @@ Token counts say whether someone is using agents, not whether the agents are pro
 
 ## Steps
 
-1. **Collect the results.** Read the Results lines of the `swarm:plan` plans in the period: one line per ruling, with piece, accepted / killed / redirected, cost and review minutes. Read the run log too (`${CLAUDE_PLUGIN_DATA}/runs.md`), one line per run written at close-out; where a run has none, append it yourself, not from a workflow script. Where lines are missing, reconstruct:
+1. **Collect the results.** Read the Results lines of each `swarm:go` plan in the period (`~/.swarm/*/plan.md`, or wherever the user keeps runs): one line per ruling, with piece, accepted / killed / redirected, cost and review minutes. Read the run log too (`${CLAUDE_PLUGIN_DATA}/runs.md`), one line per run written at close-out; where a run has none, append it yourself, not from a workflow script. Where lines are missing, reconstruct:
    - cost from session logs with ccusage (how much was spent) or ccwhy (where it went) [3];
    - acceptance from git or PR history (merged, reverted, closed unmerged).
 
    Mark every reconstructed number as an estimate. A field nobody recorded is unavailable, not zero: leave it out of the sums.
-2. **Group by kind of work**, such as merged PR, kept experiment result, validated label set, confirmed finding, or research answer. Use the plan's checker types (oracle, judge, selector, agreement, summary) when nothing better fits. A method run's log line (a vote, a bakeoff, an attack) adds the route, the prediction and whether it hit, the control result and, later, the user's verdict; group these by route as well as kind.
+2. **Group by kind of work**, such as merged PR, kept experiment result, validated label set, confirmed finding, or research answer. Use the plan's checker types (machine check, judge, selector, agreement, summary) when nothing better fits. A method run's log line (a vote, a bakeoff, an attack) adds the route, the prediction and whether it hit, the control result and, later, the user's verdict; group these by route as well as kind.
 3. **For each kind, compute:**
    - **cost per accepted result**, as API-equivalent dollars or quota percent: total cost over the accepted count;
    - **accepted / attempted**, counting agent runs only: a question the user settled with no agent run behind it stays out of the denominator;
@@ -25,7 +25,7 @@ Token counts say whether someone is using agents, not whether the agents are pro
 5. **Make one call per kind of work:**
    - **scale:** cost per accepted result is flat or falling as spend grows;
    - **hold:** acceptances are flat while cost grows, so the work is past the knee;
-   - **build a better checker:** the discard rate or review time is high, so the checker, not the agent count, is the bottleneck (`swarm:plan` step 2; `evals:judge` for judges).
+   - **build a better checker:** the discard rate or review time is high, so the checker, not the agent count, is the bottleneck (`swarm:go`'s checker table; `evals:judge` for judges).
 6. **Report** with the template below. Lead with the calls, then the table. If any input is an estimate, say so in the line under the table.
 
 ## Output

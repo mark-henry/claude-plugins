@@ -65,17 +65,12 @@
     {
       "name": "swarm",
       "source": "./plugins/swarm",
-      "description": "A working method for agent swarms: brief (interview the user until they have decided what they want, then freeze it as a written brief an unattended run can build against), plan (name what checks each piece, build checkers before scaling, shape tasks, pick a pattern with caps, gates, review), loop (oracle-gated unattended Ralph loop with the swarm-loop supervisor on PATH) and payoff (cost per accepted result by kind of work). Sources cited."
+      "description": "Run large agent jobs with little supervision. brief: interview the user until they have decided what they want, then freeze it as a written brief an unattended run can build against. go: carry a frozen brief to a checked result inside the approved cap, planning each piece around who or what will say it is right, and report with the user's decisions last. loop: an unattended loop gated by a check the agent cannot touch, with the swarm-loop supervisor on PATH. payoff: cost per accepted result by kind of work."
     },
     {
       "name": "lab",
       "source": "./plugins/lab",
       "description": "ML-lab rigor. supervisor: the rulebook and sign-off: thirteen rules (one recorded difference between arms, prediction first, controls, noise floor, leakage, a validated instrument, the freeze, a script-written run record), each with the evidence that shows it, asked before launch and before a number is quoted. experiment: run one experiment (fine-tune, RL, LLM eval or judge) through its stages: prior art, a dated plan page, an attack before spend, a slow-start ladder, a claim-first report. prereg: preregister a comparison before it runs: numeric predictions with fixed denominators, commit and diff stamped, arm-parity check, then predicted vs observed."
-    },
-    {
-      "name": "pipeline",
-      "source": "./plugins/pipeline",
-      "description": "Run any large LLM job as a pipeline of file handoffs, from intake and prior art to a verified, reviewed finish."
     },
     {
       "name": "upstream",

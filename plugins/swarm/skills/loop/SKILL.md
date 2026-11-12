@@ -1,6 +1,6 @@
 ---
 name: loop
-description: "Set up and run an unattended, oracle-gated agent loop (Ralph-style): a spec with a done-bar, a task ledger only the check can flip, the scorer and held-out set out of the agent's reach, a short prompt, one task per fresh agent pass, and a supervisor that runs the check itself and stops on done, a cap or a stall. Ships the `swarm-loop` supervisor. Use for \"/swarm:loop\", \"Ralph loop\", \"run this unattended\", \"let it grind\", \"loop until the tests pass\", ports, migrations, refactors, harness or eval-infrastructure builds, or any piece swarm:plan assigns the loop pattern. Not for work without a machine check: build the check first, or use another pattern. Not Claude Code's built-in /loop, which re-runs a prompt on a timer inside one session."
+description: "Set up and run an unattended, oracle-gated agent loop (Ralph-style): a spec with a done-bar, a task ledger only the check can flip, the scorer and held-out set out of the agent's reach, a short prompt, one task per fresh agent pass, and a supervisor that runs the check itself and stops on done, a cap or a stall. Ships the `swarm-loop` supervisor. Use for \"/swarm:loop\", \"Ralph loop\", \"run this unattended\", \"let it grind\", \"loop until the tests pass\", ports, migrations, refactors, harness or eval-infrastructure builds, or any piece swarm:go assigns the loop pattern. Not for work without a machine check: build the check first, or use another pattern. Not Claude Code's built-in /loop, which re-runs a prompt on a timer inside one session."
 ---
 
 # Oracle-gated agent loop
@@ -70,7 +70,7 @@ Run three passes and read every log, then fix the prompt and the check, and only
 When the loop stops, the supervisor or a fresh agent:
 1. runs the full check, and the held-out set if there is one (`FINAL_CMD` does this automatically);
 2. reports the exit reason, passes used, best count, held-out result, any suspicious passes, and the important properties the check leaves untested (performance, maintainability);
-3. writes a Results line in the `swarm:plan` plan, if one exists.
+3. writes a Results line in the `swarm:go` plan (`plan.md` in the run folder), if it was given one.
 
 A loop that stopped on stall or cap needs a person or planner to look at why. Usually the next task is too big, or the check is wrong. More passes rarely fix either. Relaunching with a changed check, held-out set or cap is that person's or planner's call, never the loop agent's; keep the old logs and note the change in `loop.log`.
 
