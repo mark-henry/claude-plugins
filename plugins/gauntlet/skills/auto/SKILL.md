@@ -46,6 +46,6 @@ Independent proposers find basins and a relay climbs within one, so the composed
 
 ## Log the routing decision
 
-Tuning the selector is `evals:shadow` work: predict the route before a run, then rule on it afterwards. After reporting, append one JSON line in the `evals:shadow` format to `~/.gauntlet/auto-log.jsonl` (create the directory if needed). Include the date, a one-line summary of the request (no secrets or private text), the route, the selector's `why`, whether it was overridden, and a one-line outcome. If the user later says the route was wrong, or a different pattern would have done better, append a line with `"verdict": "misrouted"` and their reason.
+Tuning the selector is `evals:shadow` work: predict the route before a run, then rule on it afterwards. After reporting, append one JSON line in the `evals:shadow` format to `${CLAUDE_PLUGIN_DATA}/auto-log.jsonl` (this plugin's data folder, which survives updates; create it if needed). Include the date, a one-line summary of the request (no secrets or private text), the route, the selector's `why`, whether it was overridden, and a one-line outcome. If the user later says the route was wrong, or a different pattern would have done better, append a line with `"verdict": "misrouted"` and their reason.
 
 To refine the selector: read the log, collect the misrouted lines, and edit the `SELECTOR` constant at the top of `auto.js`. Don't edit it from a single case; wait for a pattern of two or three.

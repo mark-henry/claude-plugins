@@ -39,9 +39,9 @@ The plan names the framings (one line each), the number of picks and why, the mo
 
 **Why "at most one pick inside the obvious component".** The problem statement nearly always points at a component ("the generator leaks the answer"). Ideas that patch that component are the easiest to think of, so they dominate any brainstorm, and a selector picking "most promising" would fill every slot with variants of them. The rule reserves the other picks for fixes elsewhere: how results are measured, the incentives, the analysis plan, or the bar itself. One inside pick is kept as the baseline the outside ideas have to beat.
 
-**Cost.** At 3 picks, about 15 agents and 2–2.5M tokens, which has cost between about 1.5 and 12 points of one Ultra account's weekly quota at Opus medium (runs 1-3; the expensive run had 7 h of overloaded measurements), plus any paid API spend in the prototypes. Wall time ranged from 70 minutes to 7 hours, driven by the measurements. Your own measured runs are in `runs.md` beside this file, once you have some. Quote them when showing the plan, with the quota you expect it to use, and say so if the session has a workflow-size guideline. Run `subquota` before launch and record the reading.
+**Cost.** At 3 picks, about 15 agents and 2–2.5M tokens, which has cost between about 1.5 and 12 points of one Ultra account's weekly quota at Opus medium (runs 1-3; the expensive run had 7 h of overloaded measurements), plus any paid API spend in the prototypes. Wall time ranged from 70 minutes to 7 hours, driven by the measurements. Your own measured runs are in `${CLAUDE_PLUGIN_DATA}/runs.md`, once you have some. Quote them when showing the plan, with the quota you expect it to use, and say so if the session has a workflow-size guideline. Run `subquota` before launch and record the reading.
 
-> **After every run, add a row to your run log, `runs.md` beside this file.** It is yours and git ignores it; create it on first use as a table with the columns Date, Problem, Shape, Picks, Agents, Models @ effort, Tokens, Quota, Tool calls, Wall time, Outcome. These defaults were tuned from a log like it with very few rows, so retune them from yours.
+> **After every run, add a row to your run log, `${CLAUDE_PLUGIN_DATA}/runs.md`.** That is this plugin's data folder, which survives updates; a file written beside this skill would not, because an update installs a fresh copy of the plugin folder. Create it on first use as a table with the columns Date, Problem, Shape, Picks, Agents, Models @ effort, Tokens, Quota, Tool calls, Wall time, Outcome. These defaults were tuned from a log like it with very few rows, so retune them from yours.
 
 ## Shape
 
@@ -103,4 +103,4 @@ Size: 4 brainstormers + 1 selector + 3 per pick + 1 judge, so 15 agents at 3 pic
 
 Read the judge's recommendation and the `clusters` list yourself. Read the run's log for `unfinished` lines: work an agent couldn't finish within `minutes` and numbers it couldn't verify. Report to the user: the recommendation, the framing challenges they need to decide, and which families were not prototyped. Verify any number you repeat. If the run exposed a hole in the bar, say so plainly: the interview missed it, and the lesson belongs in the attacks list above.
 
-Then run `subquota` again and add the run's row to `runs.md`, with the quota drop and its outcome in a sentence.
+Then run `subquota` again and add the run's row to `${CLAUDE_PLUGIN_DATA}/runs.md`, with the quota drop and its outcome in a sentence.
