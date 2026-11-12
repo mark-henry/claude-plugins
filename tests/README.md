@@ -16,6 +16,6 @@ claude plugin eval . --eval-dir tests --scaffold --allow-tools Bash Write Edit \
 - `--case <name>` runs one case; `--ablation none` skips the no-plugin arm.
 - Results land in `tests/results/`, which git ignores.
 
-A boundary has to hold whatever model is driving, so run the cheapest model as well as the strongest.
+A boundary has to hold whatever model is driving, so run the user's commonly-used models.
 
 Limits of the harness: no script graders, no simulated user (one prompt per case), and the agent cannot write to the plugin's data folder, so each scaffolded brief names a run folder inside the workspace.
