@@ -55,7 +55,7 @@
     {
       "name": "decide",
       "source": "./plugins/decide",
-      "description": "Reach a decision with fresh agents, or with the user. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies. improve: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. bakeoff: unanchored brainstorm, distinct solution families, prototype, red-team, repair, blind judge. docket: present the user one decision at a time, each with the context needed to decide. auto: a selector routes a request to vote, improve, either composed with the other, or none."
+      "description": "Reach a decision with fresh agents, or with the user. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies. improve: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. bakeoff: unanchored brainstorm, distinct solution families, prototype, red-team, repair, blind judge. docket: present the user one decision at a time, each with the context needed to decide."
     },
     {
       "name": "check",
@@ -70,17 +70,12 @@
     {
       "name": "lab",
       "source": "./plugins/lab",
-      "description": "ML-lab rigor. supervisor: the rulebook and sign-off: twelve rules (one recorded difference between arms, prediction first, controls, noise floor, leakage, a validated instrument, the freeze, a script-written run record), each with the evidence that shows it, asked before launch and before a number is quoted. experiment: run one experiment (fine-tune, RL, LLM eval or judge) through its stages: prior art, a dated plan page, an attack before spend, a slow-start ladder, a claim-first report. prereg: preregister a comparison before it runs: numeric predictions with fixed denominators, commit and diff stamped, arm-parity check, then predicted vs observed."
+      "description": "ML-lab rigor. supervisor: the rulebook and sign-off: thirteen rules (one recorded difference between arms, prediction first, controls, noise floor, leakage, a validated instrument, the freeze, a script-written run record), each with the evidence that shows it, asked before launch and before a number is quoted. experiment: run one experiment (fine-tune, RL, LLM eval or judge) through its stages: prior art, a dated plan page, an attack before spend, a slow-start ladder, a claim-first report. prereg: preregister a comparison before it runs: numeric predictions with fixed denominators, commit and diff stamped, arm-parity check, then predicted vs observed."
     },
     {
       "name": "pipeline",
       "source": "./plugins/pipeline",
       "description": "Run any large LLM job as a pipeline of file handoffs, from intake and prior art to a verified, reviewed finish."
-    },
-    {
-      "name": "adversarial",
-      "source": "./plugins/adversarial",
-      "description": "A catalogue and router for adversarial techniques: which attack, challenge chain, blind vote, verifier or blind judge fits the situation, and how to run it, what it costs and how it fails."
     },
     {
       "name": "upstream",
