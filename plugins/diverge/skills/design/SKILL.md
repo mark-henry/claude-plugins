@@ -41,7 +41,7 @@ The plan names the framings (one line each), the number of picks and why, the mo
 
 **Cost.** At 3 picks, about 15 agents and 2–2.5M tokens, which has cost between about 1.5 and 12 points of one Ultra account's weekly quota at Opus medium (runs 1-3; the expensive run had 7 h of overloaded measurements), plus any paid API spend in the prototypes. Wall time ranged from 70 minutes to 7 hours, driven by the measurements. Measured runs are in [runs.md](runs.md). Quote them when showing the plan, with the quota you expect it to use, and say so if the session has a workflow-size guideline. Run `subquota` before launch and record the reading.
 
-> **After every run, add a row to [runs.md](runs.md).** These defaults are tuned from it, and it has very few rows so far.
+> **After every run, add a row to your run log, `~/.diverge/runs.md`.** It is a private file outside the plugin; create it on first use as a table with the columns Date, Problem, Shape, Picks, Agents, Models @ effort, Tokens, Quota, Tool calls, Wall time, Outcome. These defaults were tuned from a log like it with very few rows, so retune them from yours.
 
 ## Shape
 
@@ -103,4 +103,4 @@ Size: 4 brainstormers + 1 selector + 3 per pick + 1 judge, so 15 agents at 3 pic
 
 Read the judge's recommendation and the `clusters` list yourself. Read the run's log for `unfinished` lines: work an agent couldn't finish within `minutes` and numbers it couldn't verify. Report to the user: the recommendation, the framing challenges they need to decide, and which families were not prototyped. Verify any number you repeat. If the run exposed a hole in the bar, say so plainly: the interview missed it, and the lesson belongs in the attacks list above.
 
-Then run `subquota` again and add the run's row to [runs.md](runs.md), with the quota drop and its outcome in a sentence.
+Then run `subquota` again and add the run's row to `~/.diverge/runs.md`, with the quota drop and its outcome in a sentence.
