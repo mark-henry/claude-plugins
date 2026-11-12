@@ -9,6 +9,10 @@ The user is the judge. Items come before them one at a time. Each item arrives w
 
 This skill doesn't care what the items are. It might be pull requests, open questions in a design, emails to answer, tasks to triage, purchases to approve, or findings from a review. Anything that waits on the user's judgment fits.
 
+## What goes on the docket
+
+Only decisions reach the user, and each arrives with the looking already done. A fact, a lookup, a test or something they already ruled on is yours to settle: an item a check or the record can answer never goes on the docket. Sort a pile before the first item: already answered (cite where), minor (you rule, and note what it costs if you are wrong), and the user's. Only the last kind is walked through. Say what filter you used, and keep the list of what you settled yourself where the user can see it. Order and recommend, but never drop or soften an item to make the docket shorter.
+
 ## The loop
 
 1. **Choose the next item** (see "Choosing what comes next").
@@ -18,11 +22,14 @@ This skill doesn't care what the items are. It might be pull requests, open ques
    - **Several rulings at once** ("yes to both", "approve all the dependency bumps"): apply each, and confirm the set in one line naming what it covered.
    - **A question about the item:** answer it, then ask for the decision again in one line.
    - **"Is there a better way?" or another request for rework:** send the rework off. The item goes back on the docket, and is presented again **in full** when the rework returns.
+   - **A reply that moves on, an acknowledgement or a musing** ("I wonder if…"): not a ruling, and a default attached to the question does not become one by being ignored. The item stays open.
    - **"Next" without a decision:** defer the item. Bring it back later, after other items, in full. If it is deferred a second time, ask whether to drop it.
    - **A change of mind about an earlier ruling:** the newest ruling wins. If the old one is already carried out, say what undoing it involves before you undo it.
    - **A request for a reminder** ("remind me about X in a couple of turns", "bury this until Y comes back"): put it on the docket with its due point, and once it falls due, present it as the next item, like any other.
    - **A new instruction that changes the rules** (a cap, a preference, "always do X", "approve anything like this"): adopt it for the rest of the session. If it sounds durable beyond the session, offer to remember it.
 4. **Present the next item**, unless the user is busy with something else or asked to pause. A ruling counts as "next". If nothing is ready, say so in one line and say what is being prepared.
+
+The user sets the pace. Never give "an agent is waiting on you" as a reason to rule faster, and never send again a question that may already have reached them.
 
 If the user breaks off to ask something unrelated, handle it, then end with a one-line reminder of the item that is waiting. When they stop holding court, say what is still in flight and leave the docket file in place so the session can resume.
 
@@ -32,7 +39,7 @@ Between rulings, background work keeps finishing: agent hand-backs, CI results, 
 
 When the docket is long or mostly low-stakes, you may open by showing it instead of starting at the first item: each item by title with a one-line recommended ruling, and the rule for silence stated up front ("tell me the ones you disagree with or want to talk through; I'll take my recommendation on the rest"). Show three or four at a time when the whole list would be too much to read at once, so the pace stays manageable.
 
-Whatever the user flags, anything they do not understand, and anything that would change a direction they stated is then taken one at a time, in full, as below; none of those is settled by silence. Neither is an item whose ruling would send, merge, publish, pay or delete. Record a ruling taken this way as accepted on your recommendation, not as the user's own words.
+Whatever the user flags, anything they do not understand, and anything that would change a direction they stated is then taken one at a time, in full, as below; none of those is settled by silence. Neither is an item whose ruling would send, merge, publish, pay or delete. Record a ruling taken this way as accepted on your recommendation, not as the user's own words. Near the end you may offer to settle whatever is left by your own judgment, showing what that would do before it is done.
 
 ## Presenting an item
 
@@ -47,7 +54,13 @@ Shape (adapt the headings to the kind of item):
 - **The problem or question:** what is wrong or open, with concrete evidence (an example input, a number, a quote).
 - **What it does or what the options are:** the proposal, or two or three distinct options. Include any work already done to improve it, such as reviews, simplifications, or fixes found along the way.
 - **The cost:** what the user gives up, what could break, what changes for them personally, and what remains uncertain.
-- **Recommendation:** in bold, one line, with the reason. If it's genuinely the user's call (taste, private knowledge), say so and say why.
+- **Recommendation:** in bold, one line, with the reason. If it's genuinely the user's call (taste, private knowledge), say so and say why. Word the question so that agreeing accepts the recommendation, and say what happens if they don't answer.
+
+The options are the user's decision space. Order them and recommend one, but never drop or merge an option to make the item tidier, and keep "leave it as it is" and "none of these" among them.
+
+For a choice that cannot be undone, say plainly what is lost and take only a reply that names the exact option; "ok" and "sure" are not that.
+
+An item that would change something the user said goes alone, never in a list: their words with the date, the change proposed, the evidence, what you may be missing that they know, and the cost of being wrong each way. Their direction stands until they answer it explicitly.
 
 Keep each item small enough to decide in under a minute: aim for about 150 to 350 words, fewer when the item is simple. If an item is too big, split it into rulings that can be decided separately, and present the first. Ask in plain prose, never with a modal question tool.
 
@@ -71,12 +84,26 @@ Track the docket privately. Apart from an opening list, don't show the whole lis
 ## Acting on rulings
 
 - Carry out each ruling at once, in the background where possible, so the next item can be presented without waiting.
-- A ruling approves what was presented, nothing more. For anything outward-facing or hard to undo (sending a message, merging, publishing, paying, deleting), the presentation must have shown the exact thing: the full text of the email, the exact amount, the target. If it changed after the ruling, or if carrying it out needs a choice the user didn't see, present it again before acting. A blanket rule ("approve anything like this") doesn't cover these unless the user said it does.
+- A ruling approves what was presented, nothing more. Approving a test is not adopting its winner; approving an investigation is not approving the change it suggests. For anything outward-facing or hard to undo (sending a message, merging, publishing, paying, deleting), the presentation must have shown the exact thing: the full text of the email, the exact amount, the target. If it changed after the ruling, or if carrying it out needs a choice the user didn't see, present it again before acting. A blanket rule ("approve anything like this") doesn't cover these unless the user said it does.
 - A ruling does not override the user's standing rules or the permission system. If their instructions say some action needs a separate confirmation, or a permission prompt appears, that still applies. Background agents often can't ask for permission, so do such steps in the foreground, or report that they are blocked, rather than letting them fail quietly.
 - Respect any concurrency caps the user has set. When at the cap, queue the approved work and start it when a slot frees. The ruling is already recorded; don't ask again.
 - When the ruling is a "yes", do exactly what was approved. If carrying it out means expanding the scope, that's a new item for the docket.
 - Confirm that each ruling actually succeeded by checking the outcome directly, not through a pipeline whose exit status a later stage could swallow (a status command piped through `head` hides its failure). Never act on a gate, such as tests passing or checks green, without confirming it really passed.
 - Report results as they land, in a line or two, and include anything surprising that the user should know. If carrying out a ruling fails, or turns up something that would have changed the ruling, that is a new item for the docket.
+
+## Recording rulings
+
+Record each ruling before acting on it, in one append-only rulings file that anyone doing the work reads: the user's exact words, the date, what was asked, what it covers, what was rejected and why. A wrong entry stays, and a new one supersedes it.
+
+- Record at the user's strength. "Might", "looks useful" and "I'll keep it in mind" are not decisions. A deferral records what would reopen it.
+- Details you add to carry a ruling out are announced as yours and kept apart from their words.
+- A decision counts as the user's only if an alternative or a tradeoff was in view when they chose. Bare assent to a passing mention is recorded as that. A settled decision is not asked again; it yields to evidence that it cannot work, never to a preference for something else.
+- When two rulings conflict, check what each covers before saying the later one wins: quote both with their dates, and offer a split if they address different situations.
+- A class of decision the user handed to you is decided and reported, citing their words and the date. It is not asked again and not stretched to a neighboring class.
+
+## Bet before the ruling
+
+Before you present an item, write down which option you expect the user to choose and how sure you are, as one line appended to `${CLAUDE_PLUGIN_DATA}/bets.jsonl` (item, time, bet). Do not show it or hint at it. After the ruling, append the outcome: hit or miss, and whether a recommendation was on the page, since agreement with a recommendation you showed is partly deference. A bet is never a ruling and never a reason to skip the item. Over many rulings the record shows which kinds of item you predict well; only the user's own word turns that into a class you may decide alone.
 
 ## Keeping the docket durable
 
