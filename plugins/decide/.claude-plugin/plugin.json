@@ -1,0 +1,9 @@
+{
+  "name": "decide",
+  "description": "Reach a decision with fresh agents, or with the user. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies. improve: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. bakeoff: unanchored brainstorm, distinct solution families, prototype, red-team, repair, blind judge. docket: present the user one decision at a time, each with the context needed to decide. auto: a selector routes a request to vote, improve, either composed with the other, or none.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}

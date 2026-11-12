@@ -1,5 +1,5 @@
 ---
-name: design
+name: bakeoff
 description: "Diverge-then-converge adversarial design as a Workflow: unanchored brainstormers, pick maximally distinct solution families, prototype, red-team and repair each, then a blind judge. Use for \"diverge\", \"adversarially design a fix\", or a wide-solution-space design problem where the first idea would anchor every attempt."
 ---
 
@@ -17,11 +17,11 @@ The script can't stop anchoring on its own: anchoring enters through the `args` 
 
 ## Step 0: lock the brief
 
-If the conversation doesn't already contain a `## Locked brief` for this problem, invoke the `brief:lock` skill and run its interview with the user first. Don't launch without one: a vague brief is built into every agent downstream, and the red team grades against its own guess.
+If the conversation doesn't already contain a `## Locked brief` for this problem, invoke the `swarm:brief` skill and run its interview with the user first. Don't launch without one: a vague brief is built into every agent downstream, and the red team grades against its own guess.
 
 Map the brief onto `args`: Bar and Fallback bar become `target` (the red team grades "survives" against it as written), Constraints become `constraints`, Goal and Context facts become `context`. Before mapping, strip any diagnosis or solution example that crept into the brief.
 
-**When you're ready, show the plan and launch it from a neutral turn.** Don't wait for approval; the user interrupts if they object. The harness relays the user message that triggered the Workflow call, verbatim, to every agent as "the only user voice in this task", and no script can turn that off. Launched straight after the interview, every agent sees the user's last answer, along with any example, diagnosis or "don't anchor on X" in it. So end the plan turn by scheduling the launch with a one-shot `CronCreate` firing about a minute later (it fires only when the session is idle). Its prompt is just "Launch the diverge:design run planned above." A cron-fired turn isn't a user request, so the harness relays nothing and agents see only the script's text (tested 2026-11-03 with a one-agent probe: launched from a user turn, the agent's first message was that turn verbatim; launched from a cron, it had no relay block). If the user replies before it fires, read the reply; if it changes the plan, `CronDelete` the job and re-plan.
+**When you're ready, show the plan and launch it from a neutral turn.** Don't wait for approval; the user interrupts if they object. The harness relays the user message that triggered the Workflow call, verbatim, to every agent as "the only user voice in this task", and no script can turn that off. Launched straight after the interview, every agent sees the user's last answer, along with any example, diagnosis or "don't anchor on X" in it. So end the plan turn by scheduling the launch with a one-shot `CronCreate` firing about a minute later (it fires only when the session is idle). Its prompt is just "Launch the decide:bakeoff run planned above." A cron-fired turn isn't a user request, so the harness relays nothing and agents see only the script's text (tested 2026-11-03 with a one-agent probe: launched from a user turn, the agent's first message was that turn verbatim; launched from a cron, it had no relay block). If the user replies before it fires, read the reply; if it changes the plan, `CronDelete` the job and re-plan.
 
 The plan names the framings (one line each), the number of picks and why, the model and effort per role, the sandboxes, the measurement commands, any spend the prototypes may incur, and the agent count. Use the defaults below unless you say why not.
 

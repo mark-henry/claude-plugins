@@ -1,6 +1,6 @@
 {
   "name": "lab",
-  "description": "Run one ML-lab experiment (fine-tune, RL, LLM eval or judge) with an airtight design: prior art first, a dated plan page with prediction, null and controls, an attack before spend, a slow-start ladder, a frozen instrument, a launcher-written run record, and a claim-first report.",
+  "description": "ML-lab rigor. experiment: run one experiment (fine-tune, RL, LLM eval or judge) with an airtight design: prior art first, a dated plan page with prediction, null and controls, an attack before spend, a slow-start ladder, a frozen instrument, a launcher-written run record, and a claim-first report. prereg: preregister a comparison before it runs: numeric predictions with fixed denominators, commit and diff stamped, arm-parity check, then predicted vs observed.",
   "author": {
     "name": "Mark Henry"
   },

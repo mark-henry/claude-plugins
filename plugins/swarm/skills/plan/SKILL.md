@@ -1,6 +1,6 @@
 ---
 name: plan
-description: "A working method for shaping any piece of work for agents before spending on it: name what will check each piece, build missing checkers first, shape tasks so agents don't collide, pick a pattern with caps (oracle loop, bulk judge calls, best-of-N, majority vote, research fan-out, fresh review), confirm the go-ahead, then gate, dispatch, review, and measure cost per accepted result. Writes a one-table swarm plan. Use for \"/swarm:plan\", \"plan this for agents\", \"how should I parallelize this\", \"fan this out\", \"spend more compute on this\", \"what can run unattended\", or at the start of any multi-hour, multi-agent or unattended task. Not for a task one session finishes in about an hour with you watching, for measuring spend already made (swarm:review), for generating design options (diverge:design), or for challenging a proposal you already have (gauntlet:run)."
+description: "A working method for shaping any piece of work for agents before spending on it: name what will check each piece, build missing checkers first, shape tasks so agents don't collide, pick a pattern with caps (oracle loop, bulk judge calls, best-of-N, majority vote, research fan-out, fresh review), confirm the go-ahead, then gate, dispatch, review, and measure cost per accepted result. Writes a one-table swarm plan. Use for \"/swarm:plan\", \"plan this for agents\", \"how should I parallelize this\", \"fan this out\", \"spend more compute on this\", \"what can run unattended\", or at the start of any multi-hour, multi-agent or unattended task. Not for a task one session finishes in about an hour with you watching, for measuring spend already made (swarm:payoff), for generating design options (decide:bakeoff), or for challenging a proposal you already have (decide:improve)."
 ---
 
 # Plan work for a swarm
@@ -21,13 +21,13 @@ The plan is five questions, one per step:
 
 - **Any piece of work, 60 seconds:** answer the five in your head. If every answer is "me" or "one agent", stop planning and do the work.
 - **Anything multi-hour, multi-agent, unattended or over a few dollars:** walk steps 1–5 and write the swarm plan. If you were asked only for a plan, stop for the go-ahead; if you were asked for the work, state the cost and carry on. Then run the gates and dispatch, and review what comes back.
-- **To check whether the spend pays:** `swarm:review`.
+- **To check whether the spend pays:** `swarm:payoff`.
 
-**When an agent runs this skill:** fill in the plan from the request and the repo. Ask the user, inline as a short list with a recommendation, only about the human-only pieces and about checkers you cannot find. Invoking the skill authorises what it was invoked for. Asked for a plan, deliver the plan. Asked for the work, plan it, state the expected agents and cost in one line, and run it inside any stated budget; the user can interrupt. The sibling skills named here (`brief:lock`, `evals:judge`, `evals:audit`, `prereg:launch`, `gauntlet:run`, `gauntlet:vote`, `court:hold`, `quota:check`) ship in the same marketplace; if one isn't installed, do its step by hand.
+**When an agent runs this skill:** fill in the plan from the request and the repo. Ask the user, inline as a short list with a recommendation, only about the human-only pieces and about checkers you cannot find. Invoking the skill authorises what it was invoked for. Asked for a plan, deliver the plan. Asked for the work, plan it, state the expected agents and cost in one line, and run it inside any stated budget; the user can interrupt. The sibling skills named here (`swarm:brief`, `evals:judge`, `evals:audit`, `lab:prereg`, `decide:improve`, `decide:vote`, `decide:docket`, `quota:check`) ship in the same marketplace; if one isn't installed, do its step by hand.
 
 ## 1. Who says it's right? Sort the work by its checker
 
-If the goal or its "done when" bar is vague, lock it with `brief:lock` first. Then list the pieces. Split bundles: "refactor this service, improve performance, add analytics, and clean up tests" is four agent tasks, not one [6]. A piece that needs two kinds of checker is two pieces: an experiment's code has tests, but its interpretation has only you. For each piece, name who or what will say it's right:
+If the goal or its "done when" bar is vague, lock it with `swarm:brief` first. Then list the pieces. Split bundles: "refactor this service, improve performance, add analytics, and clean up tests" is four agent tasks, not one [6]. A piece that needs two kinds of checker is two pieces: an experiment's code has tests, but its interpretation has only you. For each piece, name who or what will say it's right:
 
 | Checker | Examples | Pattern (step 4) |
 |---|---|---|
@@ -73,7 +73,7 @@ Long unattended runs have worked where an external pass/fail signal existed that
 - **Majority vote** (agreement): independent samples, most common answer wins. In theory it needs about 1/Δ² samples, where Δ is the gap between the two likeliest answers' probabilities, against about 1/Δ for best-of-N with a perfect verifier [15], so it costs more per item when answers are close. Stopping an item's sampling once its vote is decided saves samples at about equal accuracy; weighting votes by a calibrated confidence is what raised accuracy in one study [28].
 - **Fan-out** (summary): an orchestrator plus narrow subagents. In Anthropic's 2025 research system (Opus 4 lead, Sonnet 4 subagents) this beat a single agent by 90.2% on an internal research eval, using about 15x the tokens of a chat, where a single agent uses about 4x [11]. Spend explains much of that: at matched thinking-token budgets, a single agent matches or beats multi-agent setups on multi-hop reasoning [32]. Fan out for breadth, parallel search and context isolation, not for extra intelligence.
 - **Fresh review**, before anything merges or gets reported. A reviewer that hasn't seen the reasoning helps; handing the same task to another agent doesn't [17]. Give each reviewer one lens (correctness, leakage, confounds, security). A reviewer asked for problems "will always find something" [17], so each flag carries evidence and a severity, and a flag that would change a decision gets a second fresh check.
-- **Debate is not a free upgrade.** At 9 responses on GSM8K (gpt-3.5), multi-agent debate scored 83.0% against 88.2% for a majority vote over the same number of samples, and the authors attribute debate's gains to aggregation, not critique [18]. The same paper found that, on 2023 models, an agent revising its own answer without an external signal (tests, a verifier, ground truth) got worse [18]; give a revision round an external signal or skip it. A 2025 study (GPT-4o-mini and 7–8B open models) found debate often left a group's answer worse than a majority vote over its members' first answers, especially when weaker models were in the group: correct agents were talked out of right answers more often than the reverse [29]. Where answers compare, vote. Where they don't (a design, a plan, a fix), adversarial workflows (`gauntlet:run`) are the tool, but check one once against independent drafts plus a judge's pick at the same budget before relying on it.
+- **Debate is not a free upgrade.** At 9 responses on GSM8K (gpt-3.5), multi-agent debate scored 83.0% against 88.2% for a majority vote over the same number of samples, and the authors attribute debate's gains to aggregation, not critique [18]. The same paper found that, on 2023 models, an agent revising its own answer without an external signal (tests, a verifier, ground truth) got worse [18]; give a revision round an external signal or skip it. A 2025 study (GPT-4o-mini and 7–8B open models) found debate often left a group's answer worse than a majority vote over its members' first answers, especially when weaker models were in the group: correct agents were talked out of right answers more often than the reverse [29]. Where answers compare, vote. Where they don't (a design, a plan, a fix), adversarial workflows (`decide:improve`) are the tool, but check one once against independent drafts plus a judge's pick at the same budget before relying on it.
 
 Give each piece a budget and a **stop rule**, the condition that ends it even if it isn't done: an iteration cap, a cost cap, or "N passes with no new tests passing". Keep interactive teams small, starting at 3–5 and growing only when the work truly runs in parallel [2]; background runs carry the volume. Check quota before a big fan-out (`quota:check` if you route through a proxy). Weekly caps arrived in 2025 aimed at users running Claude Code "continuously in the background, 24/7" [19] and are still in place in late 2026 [36], so keep bulk jobs restartable and spread them across model families and providers.
 
@@ -111,8 +111,8 @@ Waiting on: <your go-ahead / nothing, run already authorized>
 
 After the go-ahead, run these gates in order before any piece scales:
 
-1. **Preregister** any run whose number will be compared to a bar, reported, or used to choose between arms, with `prereg:launch`.
-2. **Get a second opinion** on a costly design: a stronger model or `gauntlet:run`. Prefer a $1 diagnostic of the mechanism to the full run.
+1. **Preregister** any run whose number will be compared to a bar, reported, or used to choose between arms, with `lab:prereg`.
+2. **Get a second opinion** on a costly design: a stronger model or `decide:improve`. Prefer a $1 diagnostic of the mechanism to the full run.
 3. **Build the missing checkers** (step 2), one agent each, and confirm each one runs.
 4. **Smoke test:** run three items, read what went wrong, fix the prompt, then run the rest [17].
 
@@ -123,13 +123,13 @@ If a gate changes a piece's pattern, budget or done-bar, present the whole revis
 - Read the filtered results first, in the planned order; you go last.
 - Distrust claims of completion. RepoMirror's 2025 agents overstated how finished their ports were [10], and a coordinating agent reported all bugs fixed when only two PRs existed, while one PR merged past failing integration tests and the repository had to be reset and force-pushed [22]. Check the oracle and the repository state, not the summary.
 - Audit any result that looks too good for leakage before believing it.
-- Write each ruling as a Results line in the plan. For a backlog of rulings, use `court:hold`.
+- Write each ruling as a Results line in the plan. For a backlog of rulings, use `decide:docket`.
 - Stay engaged on the hard calls. In a small randomized trial (n=52), engineers who learned a library with AI scored 50% vs 67% on comprehension, with debugging hit hardest and passive delegation hurting far more than question-driven use [23], and debugging is how you catch agent mistakes.
 - Report back in one list: accepted (with the check that passed), killed or redirected and why, still running with budget left, rulings waiting on the user in priority order, and whether the done-bar is met.
 
 ## Measure whether it pays
 
-Use `swarm:review` once enough Results lines have accumulated: cost per accepted result for each kind of work, the discard rate, review time, and a half-budget comparison, ending in a scale, hold or build-a-better-checker call.
+Use `swarm:payoff` once enough Results lines have accumulated: cost per accepted result for each kind of work, the discard rate, review time, and a half-budget comparison, ending in a scale, hold or build-a-better-checker call.
 
 ## Anti-patterns
 

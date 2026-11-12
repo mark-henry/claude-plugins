@@ -1,9 +1,0 @@
-{
-  "name": "diverge",
-  "description": "Diverge-then-converge adversarial design as a Workflow: unanchored brainstorm, distinct families, prototype, red-team, repair, blind judge.",
-  "author": {
-    "name": "Mark Henry"
-  },
-  "homepage": "https://github.com/mark-henry/claude-plugins",
-  "license": "MIT"
-}

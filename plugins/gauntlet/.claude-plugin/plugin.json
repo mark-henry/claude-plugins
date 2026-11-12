@@ -1,9 +1,0 @@
-{
-  "name": "gauntlet",
-  "description": "Challenge and choose with fresh subagents. run: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies. auto: a selector routes the request to vote, gauntlet, either composed with the other, or none, and runs it.",
-  "author": {
-    "name": "Mark Henry"
-  },
-  "homepage": "https://github.com/mark-henry/claude-plugins",
-  "license": "MIT"
-}

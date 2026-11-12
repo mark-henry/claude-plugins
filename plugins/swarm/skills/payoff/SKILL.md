@@ -1,6 +1,6 @@
 ---
-name: review
-description: "Measure whether agent spend is paying off: cost per accepted result for each kind of work, discard rate, review time, cost spread on the same task, and a matched half-budget comparison, ending in a scale / hold / build-a-better-checker call per kind of work. Reads the Results lines of swarm plans and fills gaps from ccusage and git/PR history, marked as estimates. Use for \"/swarm:review\", \"is this agent spend paying off\", \"where did the tokens go\", \"cost per PR\", \"should we scale this up\", or after a batch of swarm work finishes."
+name: payoff
+description: "Measure whether agent spend is paying off: cost per accepted result for each kind of work, discard rate, review time, cost spread on the same task, and a matched half-budget comparison, ending in a scale / hold / build-a-better-checker call per kind of work. Reads the Results lines of swarm plans and fills gaps from ccusage and git/PR history, marked as estimates. Use for \"/swarm:payoff\", \"is this agent spend paying off\", \"where did the tokens go\", \"cost per PR\", \"should we scale this up\", or after a batch of swarm work finishes."
 ---
 
 # Is the agent spend paying off?

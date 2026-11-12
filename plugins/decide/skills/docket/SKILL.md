@@ -1,5 +1,5 @@
 ---
-name: hold
+name: docket
 description: "Hold court: work through a backlog of the user's decisions one at a time. Present one small, self-contained item with the context needed to decide; record the ruling and act on it; then choose, with judgment, which item comes next. Works for any kind of item: PRs, design questions, emails, tasks, purchases, bugs. Use for \"hold court\", \"queue mode\", \"one at a time\", \"present them one by one\", \"walk me through these\", or when many things wait on the user's call and they want to rule on them in turn. Not for a single question, or for a plain \"next\" in some other workflow."
 ---
 

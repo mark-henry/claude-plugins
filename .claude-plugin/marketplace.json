@@ -38,29 +38,9 @@
       "description": "Turn a result into a self-contained figure: the claim as title, a qualifying caption, then the chart."
     },
     {
-      "name": "brief",
-      "source": "./plugins/brief",
-      "description": "Interview the user until a goal and its success bar are locked: definitions, denominators, threats, fallback bar, hard constraints. Use before any costly run, experiment, or multi-agent workflow."
-    },
-    {
-      "name": "prereg",
-      "source": "./plugins/prereg",
-      "description": "Preregister a comparison before it runs: numeric predictions with fixed denominators, commit and diff stamped, arm-parity check, then predicted vs observed."
-    },
-    {
-      "name": "diverge",
-      "source": "./plugins/diverge",
-      "description": "Diverge-then-converge adversarial design as a Workflow: unanchored brainstorm, distinct families, prototype, red-team, repair, blind judge."
-    },
-    {
       "name": "naming",
       "source": "./plugins/naming",
       "description": "Choose a name that travels: state its job, list the siblings it must not be confused with, brainstorm widely, test candidates against the classic rules, recommend one."
-    },
-    {
-      "name": "court",
-      "source": "./plugins/court",
-      "description": "Hold court: present the user one decision at a time, each with the context needed to decide, choosing intelligently which comes next. Works for any kind of item."
     },
     {
       "name": "amazon",
@@ -73,19 +53,19 @@
       "description": "LLM eval hygiene: judge (build and validate an LLM judge by Hamel Husain's critique shadowing, TPR/TNR on a held-out split), audit (a subagent reads a stratified high/middle/low sample of scored items and flags scores too high, too low or broken, before a human looks) and shadow (tune a new prompt-driven component live, one case at a time: sealed prediction, run, blind human verdict scored against the agent's sealed bet, log, change the prompt on patterns)."
     },
     {
-      "name": "gauntlet",
-      "source": "./plugins/gauntlet",
-      "description": "Challenge and choose with fresh subagents. run: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies. auto: a selector routes the request to vote, gauntlet, either composed with the other, or none, and runs it."
+      "name": "decide",
+      "source": "./plugins/decide",
+      "description": "Reach a decision with fresh agents, or with the user. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies. improve: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. bakeoff: unanchored brainstorm, distinct solution families, prototype, red-team, repair, blind judge. docket: present the user one decision at a time, each with the context needed to decide. auto: a selector routes a request to vote, improve, either composed with the other, or none."
     },
     {
       "name": "swarm",
       "source": "./plugins/swarm",
-      "description": "A working method for agent swarms: plan (name what checks each piece, build checkers before scaling, shape tasks, pick a pattern with caps, go-ahead, gates, review), loop (oracle-gated unattended Ralph loop with a supervisor script) and review (cost per accepted result by kind of work). Sources cited."
+      "description": "A working method for agent swarms: brief (interview the user until the goal and its success bar are locked), plan (name what checks each piece, build checkers before scaling, shape tasks, pick a pattern with caps, gates, review), loop (oracle-gated unattended Ralph loop with the swarm-loop supervisor on PATH) and payoff (cost per accepted result by kind of work). Sources cited."
     },
     {
       "name": "lab",
       "source": "./plugins/lab",
-      "description": "Run one ML-lab experiment with an airtight design, from prior art to a claim-first report."
+      "description": "ML-lab rigor. experiment: run one experiment (fine-tune, RL, LLM eval or judge) with an airtight design: prior art first, a dated plan page with prediction, null and controls, an attack before spend, a slow-start ladder, a frozen instrument, a launcher-written run record, and a claim-first report. prereg: preregister a comparison before it runs: numeric predictions with fixed denominators, commit and diff stamped, arm-parity check, then predicted vs observed."
     },
     {
       "name": "pipeline",

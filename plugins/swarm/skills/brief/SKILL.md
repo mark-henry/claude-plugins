@@ -1,6 +1,6 @@
 ---
-name: lock
-description: "Interview the user until a goal and its success bar are locked: every term defined, every number with a denominator, the threat named, a fallback bar if it's impossible, and hard constraints separated from preferences. Use for \"lock the brief\", \"interview me\", before any costly run, experiment or multi-agent workflow, or when another skill (e.g. diverge:design) asks for a locked brief."
+name: brief
+description: "Interview the user until a goal and its success bar are locked: every term defined, every number with a denominator, the threat named, a fallback bar if it's impossible, and hard constraints separated from preferences. Use for \"lock the brief\", \"interview me\", before any costly run, experiment or multi-agent workflow, or when another skill (e.g. decide:bakeoff) asks for a locked brief."
 ---
 
 # Lock the brief

@@ -1,6 +1,6 @@
 ---
-name: run
-description: "Run a proposal (plan, design, fix, name, decision) through a gauntlet of fresh subagents, each asking \"is there a better way to do this?\" and either keeping it with a defense or handing on a better complete version. Default is one chain of two challengers; extra chains run in parallel and a final agent merges them. Returns the final version, what changed at each step, and residual doubts. Use for \"/gauntlet:run\", \"gauntlet\", \"is there a better way to do this?\", \"is this the best way to do this?\", \"rebuttal\", \"challenge this\", \"pressure-test this\", \"poke holes in\", or \"run it past a couple of agents\", when a proposal is already in hand. Not for generating options from scratch: use diverge:design for wide design spaces, or gauntlet:vote when a short list of options will do."
+name: improve
+description: "Run a proposal (plan, design, fix, name, decision) through a gauntlet of fresh subagents, each asking \"is there a better way to do this?\" and either keeping it with a defense or handing on a better complete version. Default is one chain of two challengers; extra chains run in parallel and a final agent merges them. Returns the final version, what changed at each step, and residual doubts. Use for \"/decide:improve\", \"gauntlet\", \"is there a better way to do this?\", \"is this the best way to do this?\", \"rebuttal\", \"challenge this\", \"pressure-test this\", \"poke holes in\", or \"run it past a couple of agents\", when a proposal is already in hand. Not for generating options from scratch: use decide:bakeoff for wide design spaces, or decide:vote when a short list of options will do."
 ---
 
 # Run the gauntlet
@@ -26,7 +26,7 @@ How it works: each chain starts from the proposal. Every challenger gets the cur
 | `lenses` | optional, one per chain |
 | `effort` | challenger effort (default `high`) |
 | `model`, `judge_model` | optional overrides for challengers and for the merge agent |
-| `merge` | default true; `false` skips the merge agent and returns each chain's final version (`gauntlet:auto` votes among them instead) |
+| `merge` | default true; `false` skips the merge agent and returns each chain's final version (`decide:auto` votes among them instead) |
 
 ## After it returns
 
