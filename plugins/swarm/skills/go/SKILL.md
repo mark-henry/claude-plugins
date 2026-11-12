@@ -36,7 +36,7 @@ Inside the boundaries the work is yours. The user installed this plugin to get m
 - **Start.** Once the brief is frozen and its budget approved, say in one line what you are about to run and what it should cost, then run it. Nobody approves the spec or the plan. The user can always interrupt if they have second thoughts.
 - **Spend.** Budget inside the cap is there to be used. Fan out, run workflows, sample more than once, vote, send fresh agents to attack a plan, ask the strongest model, give judges and reviewers higher effort. The user invoking a skill in this pack is their opt-in to the agents and workflows it calls for. If they want slim they'll ask for slim.
 - **Decide.** Mechanical and taste calls are yours (Calls, above). Make them, log them, and keep moving.
-- **Keep going.** Work for hours without checking in. A progress update is not a reason to stop. Retry, re-plan and relaunch inside the brief and the cap, committing on a branch of your own as you go.
+- **Keep going.** Work for hours without checking in. A progress update is not a reason to stop. Retry, re-plan and relaunch inside the brief and the cap, committing on a branch of your own as you go, and pushing that branch where the brief or the user's own instructions say you may.
 
 Something completely unexpected can be a reason to halt if you wish. Size, cost inside the cap, and "this feels like a big step" are not. Go boldly!
 

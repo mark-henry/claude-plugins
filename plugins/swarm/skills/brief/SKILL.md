@@ -42,7 +42,7 @@ Read what the request points at and the user's standing instructions first, and 
 For test 3, settle out loud:
 
 - an exit for every hard limit ("if X fails after honest attempts, stop and report the numbers; do not work around it");
-- the user's word now, while they are here, for each of these the run will need: anything others can see or receive (a post, a message, a pull request, a push to a shared branch, a merge); deleting, overwriting or stopping what the run did not create; anything irreversible; a security change; a new account, credential or payment; private data leaving the machine and processors already in use.
+- the user's word now, while they are here, for each of these the run will need: anything others can see or receive (a post, a message, a pull request, a push to a shared branch, a merge), and whether the run may push its own working branch; deleting, overwriting or stopping what the run did not create; anything irreversible; a security change; a new account, credential or payment; private data leaving the machine and processors already in use.
 
 Give each requirement a short code name (`R_NO_SCHEMA_CHANGE`), defined once and never renamed; the run cites them. Context facts are what was measured and tried: no diagnosis, no candidate fix.
 
@@ -96,7 +96,7 @@ Frozen <date, time>, <path>
 - **Fails even if it passes:** "…"
 - **Would change their mind:** "…"
 - **Cap:** "approved up to …" in their unit (dollars, a share of quota), or "none given: no-ask amount only"; any time they named
-- **Grants:** "<their word for each: reaches other people; deletes, overwrites or stops what the run did not create; irreversible; security change; account, credential or payment; moves private data>"
+- **Grants:** "<their word for each: reaches other people; pushing the run's own branch; deletes, overwrites or stops what the run did not create; irreversible; security change; account, credential or payment; moves private data>"
 
 ### Settled with the user
 - **Bar:** <terms, borderline cases, denominators; the checking command>, or theirs to judge
