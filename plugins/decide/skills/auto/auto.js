@@ -81,7 +81,7 @@ if (r.route === 'gauntlet') {
   const g = await workflow({ scriptPath: a.scripts.gauntlet }, {
     ...common, proposal: a.proposal, goal, depth: a.depth, width: a.width, lenses: a.lenses,
   })
-  return { ...out, answer: g.merged?.recommendation ?? g.chains[0]?.final, gauntlet: g }
+  return { ...out, answer: g.answer, original_won: g.pick?.original_won, gauntlet: g }
 }
 
 if (r.route === 'vote_then_gauntlet') {
@@ -102,13 +102,13 @@ if (r.route === 'vote_then_gauntlet') {
     ].filter(Boolean).join('\n'),
     depth: a.depth ?? 2,
   })
-  return { ...out, answer: g.chains[0]?.final ?? start, vote: v, gauntlet: g }
+  return { ...out, answer: g.answer ?? start, original_won: g.pick?.original_won, vote: v, gauntlet: g }
 }
 
 if (r.route === 'gauntlet_then_vote') {
   const lenses = (r.lenses?.length ? r.lenses : a.lenses?.length ? a.lenses : ['correctness', 'simplicity', 'is the premise right']).slice(0, 4)
   const g = await workflow({ scriptPath: a.scripts.gauntlet }, {
-    ...common, proposal: a.proposal, goal, depth: a.depth ?? 2, width: lenses.length, lenses, merge: false,
+    ...common, proposal: a.proposal, goal, depth: a.depth ?? 2, width: lenses.length, lenses, pick: false,
   })
   // The original goes last among neutral labels, so voters can't tell which version is unchallenged.
   const versions = [...g.chains.map(c => c.final), a.proposal]
