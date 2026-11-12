@@ -5,45 +5,50 @@ description: "Hold one ML experiment to lab rules and sign it off or refuse: thi
 
 # lab:supervisor
 
-The rulebook and sign-off for one experiment, whoever runs it: one engineer, one agent or a fleet. It opens evidence and rules on it. It launches no run and fixes nothing; it reruns checks (fixtures, hashes, intersections). The procedure is `lab:experiment`'s.
+The rulebook and sign-off for one experiment. It launches no run and fixes nothing; it reruns checks (fixtures, hashes, intersections).
 
-It is asked at two moments. At **launch** (is this design fit to run?) rules 1–8 apply. At **quote** (is this result fit to meet a bar, enter a report or pick an arm?) all thirteen apply, 1–8 against what actually ran. Where training and evaluation launch separately, each launch is a launch moment. A run launched to be quoted as confirmatory is *counted*. Every other run (smoke, pilot, screening, noise floor, positive control) is exploratory: it owes rule 8's record and leaves the sealed set untouched.
+It is asked at two moments. At **launch** (is this design fit to run?) rules 1–8 apply. At **quote** (is this result fit to meet a bar, enter a report or pick an arm?) all thirteen apply, 1–8 against what actually ran. Where training and evaluation launch separately, each is a launch moment with its own FREEZE line.
 
-*Pinned* means committed. Where a file must stay out of any repository (private data), it means its sha256 was written by a script, at the time, into a commit or an append-only log the experimenter cannot rewrite. A file's own timestamp, or a hash stored inside it, pins nothing.
+A run launched to be quoted as confirmatory is *counted*. Every other run (smoke, pilot, screening, noise floor, positive control) is exploratory and owes rule 8's record; smoke, pilot and screening runs leave the sealed set untouched.
 
-Each rule has named evidence, listed in [checks.md](checks.md): read it before signing. Open the evidence yourself: a summary is not evidence, and evidence you cannot find is not met. "n/a" needs a reason. No other rule is applied.
+Below is each rule in short. Its exact conditions, and the evidence that shows it, are in [checks.md](checks.md) under the same number: read the entry before ruling on it. Open the evidence yourself: a summary is not evidence, and evidence you cannot find is not met. "n/a" needs a reason. No other rule is applied.
+
+*Pinned* means committed, or, for a file that must stay out of any repository, hash-logged at the time in a place the experimenter cannot rewrite (checks.md says how). A timestamp pins nothing.
 
 ## Rules 1–8: the design
 
-1. **One difference.** The treated arm differs from its untreated comparator in one named treatment; each control names its own one difference. Every other knob is marked matched, fixed, or tuned per arm on an equal budget, and a matched value says which arm it was tuned on. That includes what travels with the treatment: warm start, output length, compute, when the arm ran, and any model that generated or selected its data. A reused earlier arm is first retrained from its plan at the treated arm's commit, and lands inside rule 4's floor.
-2. **Prediction and denominator first.** Each arm and metric has a predicted interval that a result on the failing side of the bar would miss (for a two-sided question: "no direction", with the smallest effect that would count), its denominator, the bar and the decision each outcome leads to, pinned before the treated arm has produced output on this experiment's items, smoke runs included. An arm added later is pinned before its own first output.
-3. **Controls.** An untreated arm at the same settings, a simple baseline, a positive control that passes through every stage the treated arm does (train, merge, sample, score) and must succeed if the plumbing works, and, for each rival explanation the plan names or a trace reading has surfaced, an arm or check whose failure would show it.
-4. **Noise floor.** A number measured on this harness that spans what the claim spans. A claim about a treatment needs the unchanged baseline on at least three seeds, each varying data order and initialization; where the treatment is a judge or a sampler, at least three reruns of that. Reruns of one checkpoint, or step 0 twice, bound eval noise only and license a claim about these checkpoints on these items. A measured floor of zero is replaced by the interval over items.
-5. **Leakage and held-out.** Train, dev and sealed sets are disjoint in content, and in time where data is ordered. Eval targets reach no training data, reward or prompt, generated data included. Whatever is being optimized cannot read or edit the scorer or the sealed items. Nothing is tuned or picked on the sealed set, here or earlier: if an earlier result on it shaped this design, it is dev for this claim. LLM judges and baselines get one item per call.
-6. **Instrument.** For every scorer or judge a bar or decision reads. The scorer reproduces a fixture's known result: a known pass passes and a planted fail fails, and the two bracket the region the arms occupy. A known confound of the instrument (output length, format) is controlled, or the claim is worded to what the instrument measures. An LLM judge has an `evals:judge` record (TPR and TNR from a test split run once) valid for this judge model and prompt; where its "Valid for" line does not cover a treated arm's outputs, the expert has re-checked a sample of them. The judge sees no arm label, and a pairwise judge runs both orders.
-7. **Freeze.** Before the first counted run, a dated, pinned FREEZE line in the plan names the commit, seeds, n, samples per item, kill thresholds, and the item-set, scorer and judge-prompt hashes. Rubric and thresholds were settled on baseline or dev outputs, never a treated arm's.
-8. **Run record.** Every run has one record, written by the launcher or a script at launch and completed at exit, never by a person from memory:
+1. **One difference.** The treated arm differs from its untreated comparator in one named treatment, and each control in its own one. Every other knob is recorded as matched, fixed, or tuned per arm on an equal budget, including what travels with the treatment: warm start, output length, compute, when the arm ran, any model that generated or selected its data.
+2. **Prediction and denominator first.** Each arm and metric has a predicted interval that a failing result would miss, its denominator, the bar and the decision each outcome leads to, pinned before the treated arm has produced output on the items the counted run scores, smoke runs included.
+3. **Controls.** An untreated arm at the same settings, a simple baseline, a positive control that goes through every stage the treated arm does and must succeed if the plumbing works, and a control for each rival explanation.
+4. **Noise floor.** A floor measured on this harness that spans what the claim spans: for a claim about a treatment, the unchanged baseline on at least three seeds.
+5. **Leakage and held-out.** Train, dev and sealed sets are disjoint in content, and in time where data is ordered. Eval targets reach no training data, reward or prompt. Whatever is being optimized cannot read or edit the scorer or the sealed items. Nothing is tuned or picked on the sealed set, here or earlier.
+6. **Instrument.** Every scorer or judge that a bar or decision reads has been seen to pass a known pass and fail a planted fail, on fixtures as hard to tell apart as the arms' own outputs. Its known confounds (output length, format) are controlled, or the claim is worded to what it measures.
+7. **Freeze.** Before the first counted run, a dated, pinned FREEZE line in the plan names the commit, seeds, n, samples per item, kill thresholds, and the item-set, scorer and judge-prompt hashes.
+8. **Run record.** Every run has one record, written by the launcher or a script at launch and completed at exit. One commit per run: a counted run executes one commit on a clean tree, and its finished record is pinned on its own and never edited.
 
 ```
-at launch: run_id, parent_run_id, plan@commit, prereg, arm, label (confirmatory/exploratory), commit, command, config_resolved,
+at launch: run_id, parent_run_id, plan@commit or pinned hash, prereg and its pinned hash, arm, label (confirmatory/exploratory/screening),
+           commit, command, config_resolved,
            models with revisions (base, checkpoint, adapter init, judge, generator; substitutions),
            hashes (train, dev, sealed, scorer, judge_prompt), seeds, env_lock, hardware, caps, launched_by, started
 at exit:   ended, end_reason (completed/kill rule/cap/crash), cost
 ```
 
-One commit per run: a counted run executes one commit on a clean tree, untracked files included, and its finished record is pinned on its own and never edited. An exploratory run on a dirty tree records its diff instead. A relaunch is a new run naming its parent, in the folder its arm's earlier runs used; a run whose launcher died is closed by a script from its logs. A field the experiment has no use for is null with the reason. A generated dataset has a manifest beside it: source commit, generating command, model and revision, prompt, time.
-
 ## Rules 9–13: the result
 
-9. **Nothing moved after the freeze.** Nothing the FREEZE line or the prereg record names has changed, except by a dated amendment in the human's own words, reported beside the number. An amendment governs runs started after it: results already in hand are exploratory against what it changed. A procedural deviation shown to leave inputs and outputs identical is recorded, not amended. With no FREEZE this rule is not met. No trials, samples or rejudging were added after a result, except that a scorer defect is fixed by amendment and every arm rescored, both scores reported.
-10. **Scores read.** A scorer, judge, metric or prompt that is new, changed or meeting a new kind of output (a treated arm's is one) has an `evals:audit` verdict of "fit to quote" on these runs, with no re-audit pending. Errored and missing items are counted apart from fails.
-11. **Declared denominator, beyond noise.** The number is the preregistered metric over its declared denominator (for a mean, the unit and count averaged over), with an interval or every seed's value, and the untreated arm and simple baseline beside it. Any other denominator is labeled post hoc. If the arms can differ in the denominator (attempts, parsed, not refused), the all-items rate is quoted beside it for each arm. A difference is claimed only if it exceeds rule 4's floor and its own interval, paired on shared items or across seeds, excludes zero; a null only if the positive control passed, and it states the largest effect its interval excludes. Where every arm sits at the metric's floor or below the simple baseline, neither is claimed.
-12. **Confirmatory or exploratory.** Confirmatory means labeled so at launch, run on a commit descended from the FREEZE commit, prereg record closed, and every rule met or waived; it travels as `prereg <file>: predicted X, got Y (n/N)`, a miss or a null included. Anything else travels with the word *exploratory* and cannot pass or fail a bar or pick an arm; a screening run may nominate an arm for a counted run.
-13. **The sentence.** The sentence is read where it will be quoted (the report, the message, the slide). Its comparator, unit and scope are the artifact's; it credits only what a control isolates; it claims no more than the contrasts that met rule 11; and a preregistered guard or kill that fired is quoted with the number.
+9. **Nothing moved after the freeze.** Nothing the FREEZE line or the prediction record names has changed, except by a dated amendment in the human's own words, reported beside the number. No trials, samples or rejudging were added after a result.
+10. **Scores read.** A scorer, judge, metric or prompt that is new, changed or meeting a new kind of output (a treated arm's is one) has had a sample of its scored items on these runs read, ending in a verdict of "fit to quote".
+11. **Declared denominator, beyond noise.** The number is the preregistered metric over its declared denominator, with an interval or every seed's value, and the untreated arm and simple baseline beside it. A difference is claimed only if it exceeds rule 4's floor and its own interval excludes zero; a null only if the positive control passed, with the largest effect its interval excludes.
+12. **Confirmatory or exploratory.** Confirmatory means labeled so at launch, run on a commit descended from the FREEZE commit, prediction record closed, and every rule met or waived. Anything else travels with the word *exploratory* and cannot pass or fail a bar or pick an arm.
+13. **The sentence.** As it will be quoted, its comparator, unit and scope are the artifact's; it credits only what a control isolates; it claims no more than the contrasts that met rule 11; and a preregistered guard or kill that fired is quoted with the number.
 
 ## Not met
 
-One unmet rule blocks sign-off: at launch the supervisor refuses the counted run, and says whether the design may still run as exploratory; at quote it refuses any use of the number beyond "exploratory, unsigned". Every unmet rule blocks, but they are not equal: mark each as *claim* (it could change what the number means) or *record* (the evidence is missing or in the wrong form). It repairs nothing and signs nothing "with caveats". There are three ways out. Meet the rule and ask again. Get a waiver: only the human who owns the experiment gives one, naming the rule, and it counts only when the supervisor can open their own words for it (their message, a commit they authored; a one-word approval counts together with the message it answers); a line an agent wrote is a request. It is recorded as `WAIVER <rule>: <who>, <date>, <reason>` in the plan and beside the result, and quoted with the number; with rule 2 or 7 waived the number travels as exploratory. Or stop and report the rule, the evidence opened and what it showed. A stop with the facts is a good outcome.
+One unmet rule blocks sign-off. At launch the supervisor refuses the counted run, and says the design may run as exploratory when rule 5 is met and rule 8's launch record exists, its missing fields named. At quote it refuses any use of the number beyond "exploratory, unsigned". It signs nothing "with caveats". Mark each unmet rule *record* when the thing was done and its evidence is unpinned or in the wrong form, and *claim* otherwise: a missing control, floor, prediction or reading is *claim*.
+
+The ways out: meet the rule and ask again; get a waiver; or stop and report the rule, the evidence opened and what it showed. A stop with the facts is a good outcome.
+
+Only the human who owns the experiment gives a waiver, naming the rule, and it counts only when the supervisor can open their own words for it: their message, or a commit they authored. A one-word approval counts only with the message it answers, and only when that message asks for nothing else and gives each rule and its reason. A line an agent wrote is a request. A waiver is recorded as `WAIVER <rule>: <who>, <date>, <reason>` in the plan and beside the result, and quoted with the number; with rule 2 or 7 waived the number travels as exploratory.
 
 ## Verdict
 
@@ -51,7 +56,7 @@ One unmet rule blocks sign-off: at launch the supervisor refuses the counted run
 Supervisor: <experiment>, <launch|quote>, <date>, plan@<commit or pinned hash>, runs <ids or names>
 1 One difference: met / NOT MET (claim) / NOT MET (record) / n/a (reason); <evidence opened, what it showed>
 … a line per applicable rule: claim blocks first, then record blocks, then met; rules 1 and 11 get a line per contrast
-Amendments and waivers: <what, who, date, where recorded>
+Amendments, deviations and waivers: <what, who, date, where recorded>
 Sentence signed (at quote): <the number as it will be quoted>
-SIGNED / SIGNED WITH WAIVER / NOT SIGNED: <unmet rules, what would meet each>
+SIGNED / SIGNED WITH WAIVER / NOT SIGNED: <unmet rules, what would meet each>; at launch: may run as exploratory, yes or no
 ```
