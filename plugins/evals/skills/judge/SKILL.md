@@ -5,7 +5,7 @@ description: "Build an LLM judge you can trust: the procedure is Hamel Husain's 
 
 # Build and validate an LLM judge
 
-An LLM judge is a classifier that imitates one expert. It is only as trustworthy as its measured agreement with that expert on data it has not seen.
+An LLM judge is a classifier that imitates one expert. It is only as trustworthy as its measured agreement with that expert on data it has not seen. Where a code assertion can identify the failure, use it instead; build judges only for failure modes error analysis found. When a rate will be quoted, start even with no labels: the procedure creates them.
 
 ## The procedure: Hamel's skills
 
@@ -19,14 +19,16 @@ Also there: `generate-synthetic-data`, `build-review-interface`, `evaluate-rag`,
 
 ## House rules on top
 
-- **The expert is a person.** If the expert is the user, ask them; don't simulate them.
+- **The expert is a person.** If the expert is the user, ask them; don't simulate them. Validation labels are made blind to any agent verdict, which anchors the expert, and the expert labels at least 30 traces before seeing any agent's suggestion. Lines a human ruled in a pilot may seed train and dev, never test; an agent-only ruling is never a label.
 - **One item per call.** Several items in one call let earlier items leak into later verdicts; with the shared rubric first and cached, one item per call costs little more.
 - **Pairwise judges have position bias**, strongest when the candidates are close, which is exactly when A/B decisions get made. Run each pair in both orders.
+- **Say which model family judged.** Where the judge shares a family with an arm, say so and use a neither-family judge where available; a fresh same-family judge is a disclosed fallback.
 - **Keep a ledger of cases seen while tuning.** "Agreement or better fit on selected disagreements is not generalization" (transect). After any rubric edit, reread every definition together, not just the one you changed.
 - **A burned test set stays burned.** If the test result is too low and you go back to dev, label fresh test items; rerunning the old split is tuning on test.
 - **A judge validated on one distribution is unvalidated on another** (another model's outputs, synthetic inputs, a new arm). Re-check before applying it there.
 - **Re-validate** after any change of judge model, task model, prompt or data distribution, and periodically otherwise (≥100 fresh traces every 2–4 weeks).
 - **Before human review of a judge in use, run `evals:audit`** on its scores, so the expert's time goes to taste rather than mechanical screwups. The audit's verdicts are never validation labels.
+- **Before expert labels exist, say which rung a number stands on:** a single judge is one opinion; repeated rolls show self-consistency, not correctness; a multi-model cohort shows consensus, still not ground truth.
 - **Minimum viable version** when stakes are low: whenever something significant changes, the expert reviews 20–50 outputs, pass/fail with a note on each.
 
 ## Output
