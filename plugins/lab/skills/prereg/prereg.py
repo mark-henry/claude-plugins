@@ -43,7 +43,8 @@ def git_state(cwd="."):
     if commit is None:
         return {"commit": None}, ""
     diff = sh("git", "diff", "HEAD", cwd=cwd) or ""
-    dirty = [l[3:] for l in (sh("git", "status", "--porcelain", "--untracked-files=no", cwd=cwd) or "").splitlines()]
+    # sh() strips the output, so the first line may have lost its leading status space: split, don't slice
+    dirty = [l.split(maxsplit=1)[1] for l in (sh("git", "status", "--porcelain", "--untracked-files=no", cwd=cwd) or "").splitlines() if len(l.split(maxsplit=1)) == 2]
     return {"commit": commit, "branch": sh("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=cwd), "dirty": dirty,
             "diff_sha256": hashlib.sha256(diff.encode()).hexdigest()[:16] if diff else None}, diff
 
@@ -159,6 +160,11 @@ def args_from_argv(argv):
     return args
 
 
+def plain(v):
+    """A launch arg as text, so a typed launch.json value and a stamped command-line string compare by value."""
+    return v if v is None or isinstance(v, (dict, list)) else str(v)
+
+
 def run_provenance(out):
     """What a run folder says about the code and data it ran on."""
     out = Path(out)
@@ -188,7 +194,7 @@ def cmd_parity(a):
             problems.append(f"no launch args recorded for {', '.join(no_args)} (no launch.json args, no stamped command): "
                             f"nothing shows the arms differ only in `varies`; diff their commands by hand")
         for key in sorted(set(a0) | set(a1)):
-            if key not in varies and a0.get(key) != a1.get(key):
+            if key not in varies and plain(a0.get(key)) != plain(a1.get(key)):
                 problems.append(f"arg {key}: {ref}={a0.get(key)!r} {other}={a1.get(key)!r}")
         f0, f1 = arms[ref][2], arms[other][2]
         if not set(f0) & set(f1):
@@ -209,9 +215,12 @@ def cmd_parity(a):
                     problems.append(f"watched path {w!r} exists at neither {c0[:8]} nor {c1[:8]}: nothing was checked there")
             if c0 != c1:
                 changed = sh("git", "diff", "--stat", f"{c0}..{c1}", "--", *watched, cwd=root)
-                hint = " (whole repo watched; name the code paths in the record's `watched` or in prereg/config.json)" if watched == ["."] else ""
-                (problems if changed else notes).append(
-                    f"commits differ {c0[:8]} vs {c1[:8]}" + (f"; watched code changed{hint}:\n{changed}" if changed else "; no watched code changed"))
+                if changed is None:
+                    problems.append(f"could not compare watched code between {c0[:8]} and {c1[:8]} (git diff failed; are both commits in this repo?)")
+                else:
+                    hint = " (whole repo watched; name the code paths in the record's `watched` or in prereg/config.json)" if watched == ["."] else ""
+                    (problems if changed else notes).append(
+                        f"commits differ {c0[:8]} vs {c1[:8]}" + (f"; watched code changed{hint}:\n{changed}" if changed else "; no watched code changed"))
         for n, c in ((ref, arms[ref][1]), (other, arms[other][1])):
             if c.get("dirty"):
                 problems.append(f"{n} ran on a dirty tree ({len(c['dirty'])} files); compare its code.diff")

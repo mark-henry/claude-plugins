@@ -62,5 +62,32 @@ class Parity(unittest.TestCase):
         self.assertIn("arg seed", r.stdout)
 
 
+    def test_launch_args_and_a_stamped_command_compare_by_value(self):
+        # one arm's args come from launch.json (typed), the other's from a stamped command line (strings)
+        d = repo_with_arms({"untreated": {"model": "a", "seed": 1}, "treated": {"model": "b", "seed": 1}})
+        out = d / "logs" / "treated"
+        git = json.loads((out / "launch.json").read_text())["git"]
+        (out / "launch.json").unlink()
+        (out / "git.json").write_text(json.dumps({**git, "argv": ["--model", "b", "--seed", "1"]}))
+        r = run(d, "parity", "prereg/r.json")
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_fails_when_the_code_diff_between_commits_cannot_be_computed(self):
+        d = repo_with_arms({"untreated": {"model": "a"}, "treated": {"model": "b"}})
+        lj = d / "logs" / "treated" / "launch.json"
+        j = json.loads(lj.read_text()); j["git"]["commit"] = "0" * 40; lj.write_text(json.dumps(j))
+        r = run(d, "parity", "prereg/r.json")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("could not compare", r.stdout)
+
+
+class Stamp(unittest.TestCase):
+    def test_dirty_paths_are_recorded_whole(self):
+        d = repo_with_arms({"untreated": {}, "treated": {}})
+        (d / "code.py").write_text("x = 2\n")
+        run(d, "stamp", "logs/untreated")
+        self.assertEqual(json.loads((d / "logs" / "untreated" / "git.json").read_text())["dirty"], ["code.py"])
+
+
 if __name__ == "__main__":
     unittest.main()
