@@ -12,6 +12,8 @@
 #   headroom = left, except the protected account keeps max(RESERVE, target) back
 #   rate     = headroom / hours to reset   (the burn rate the account can afford)
 #   weight   = share of total rate, at least FLOOR; 0 if no headroom
+#   an unprotected account behind pace (left < target) gets FLOOR and no share: work goes to accounts with slack
+#   an account with no reading (after a proxy restart) gets FLOOR, so it serves a request and can be read
 #   if no account has headroom, the protected account takes everything (its reserve is for that)
 #
 # Pace note, printed under the report only when it applies: every account at or over pace (slack
@@ -148,19 +150,28 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
   ($creds[] | select(.left != null and .target != null) | (.left - .target | round) as $p | select($p <= 0)
    | "P\t\(.provider) \(who) (\($p))"),
 
-  # Rebalance proposals for Claude credentials with usable data
-  ([ $creds[] | select(.provider == "claude" and .left != null and .reset != null)
-     | .next = (if .passed then .reset + week * ((($now - .reset) / week | floor) + 1) else .reset end)
-     | .hrs = ([(.next - $now) / 3600, 1] | max)
-     | .tgt = 100 * (.next - $now) / week
-     | .head = (if .email == $prot then .left - ([$reserve, .tgt] | max) else .left end)
-     | .rate = ([.head, 0] | max) / .hrs ] as $c
+  # Rebalance proposals for every Claude credential
+  ([ $creds[] | select(.provider == "claude")
+     | if .left == null or .reset == null then .nodata = true | .rate = 0
+       else
+         .next = (if .passed then .reset + week * ((($now - .reset) / week | floor) + 1) else .reset end)
+         | .hrs = ([(.next - $now) / 3600, 1] | max)
+         | .tgt = 100 * (.next - $now) / week
+         | .head = (if .email == $prot then .left - ([$reserve, .tgt] | max) else .left end)
+         | .behind = (.email != $prot and .left < .tgt)
+         | .rate = (if .behind then 0 else ([.head, 0] | max) / .hrs end)
+       end ] as $c
    | ($c | map(.rate) | add // 0) as $total
    | $c[]
-   | .new = (if $total == 0 then (if .email == $prot then 100 else 0 end)
-             elif .rate == 0 then 0
+   | .new = (if .nodata then $floor
+             elif $total == 0 and .email == $prot then 100
+             elif .left <= 0 then 0
+             elif .behind then $floor
+             elif $total == 0 or .rate == 0 then 0
              else ([$floor, (100 * .rate / $total | round)] | max) end)
-   | "W\t\(.name)\t\(.email)\t\(.weight // 1)\t\(.new)\t\(.head | round)pts/\(.hrs | round)h"
+   | .why = (if .nodata then "no reading" elif .behind and .left > 0 then "behind pace"
+             else "\(.head | round)pts/\(.hrs | round)h" end)
+   | "W\t\(.name)\t\(.email)\t\(.weight // 1)\t\(.new)\t\(.why)"
   )
 ' <<<"$json")
 
