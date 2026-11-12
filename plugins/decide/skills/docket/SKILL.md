@@ -103,7 +103,9 @@ Record each ruling before acting on it, in one append-only rulings file that any
 
 ## Bet before the ruling
 
-Before you present an item, write down which option you expect the user to choose and how sure you are, as one line appended to `${CLAUDE_PLUGIN_DATA}/bets.jsonl` (item, time, bet). Do not show it or hint at it. After the ruling, append the outcome: hit or miss, and whether a recommendation was on the page, since agreement with a recommendation you showed is partly deference. A bet is never a ruling and never a reason to skip the item. Over many rulings the record shows which kinds of item you predict well; only the user's own word turns that into a class you may decide alone.
+Before you present an item, write down which option you expect the user to choose and how sure you are, as one line appended to `${CLAUDE_PLUGIN_DATA}/bets.jsonl`. Do not show it or hint at it. After the ruling, append the outcome. Use the fields of the `evals:shadow` log so the two records can be read together: `date`, `component` (`decide:docket`), `input` (the item in one line, nothing private), `bet`, `bet_reason`, `verdict` (the ruling), `bet_hit`, `ruled_by`, plus `recommendation_shown`, since agreement with a recommendation you showed is partly deference.
+
+A bet is never a ruling and never a reason to skip the item. The record is a screen, not proof: nothing seals it, and most of its hits are made with a recommendation in view. It shows which kinds of item are worth testing properly, which means running that kind blind and sealed with `evals:shadow`. Only the user's own word turns a result into a class you may decide alone.
 
 ## Keeping the docket durable
 
