@@ -37,10 +37,10 @@ The human rules on every case, and the human's ruling is what goes in the log. T
 
 ## The log
 
-One JSON line per case, appended to the log the component names (for example `decide:auto` keeps `auto-log.jsonl` in its own plugin's data folder), else `${CLAUDE_PLUGIN_DATA}/<component>.jsonl`:
+One JSON line per case, appended to the log the component names (for example a routing prompt that keeps `router-log.jsonl` beside its own code), else `${CLAUDE_PLUGIN_DATA}/<component>.jsonl`:
 
 ```json
-{"date": "2026-11-08", "component": "decide:auto", "prompt_version": "<commit or hash>", "input": "<one-line summary, no secrets or private text>", "prediction": "<what and how sure; sealed until the ruling>", "prediction_receipt": "<hash>", "actual": "<what it did>", "prediction_hit": true, "bet": "pass|fail", "bet_reason": "<sealed until the ruling>", "bet_receipt": "<hash>", "verdict": "pass|fail", "bet_hit": true, "critique": "<one or two sentences>", "ruled_by": "human|agent-only"}
+{"date": "2026-11-08", "component": "<name>", "prompt_version": "<commit or hash>", "input": "<one-line summary, no secrets or private text>", "prediction": "<what and how sure; sealed until the ruling>", "prediction_receipt": "<hash>", "actual": "<what it did>", "prediction_hit": true, "bet": "pass|fail", "bet_reason": "<sealed until the ruling>", "bet_receipt": "<hash>", "verdict": "pass|fail", "bet_hit": true, "critique": "<one or two sentences>", "ruled_by": "human|agent-only"}
 ```
 
 `ruled_by: agent-only` marks a line the human never ruled on: its verdict is only the agent's bet, so don't promote it to an example or count it in `bet_hit`. The share of bets that hit, over the lines the human ruled, says how far the agent's taste tracks the human's on this component.
