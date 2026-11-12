@@ -1,6 +1,6 @@
 ---
 name: bakeoff
-description: "Diverge-then-converge adversarial design as a Workflow: unanchored brainstormers, pick maximally distinct solution families, prototype, red-team and repair each, then a blind judge. Use for \"diverge\", \"adversarially design a fix\", or a wide-solution-space design problem where the first idea would anchor every attempt."
+description: "Diverge-then-converge adversarial design as a Workflow: unanchored brainstormers, pick maximally distinct solution families, prototype, red-team and repair each, then a blind judge. Use for \"diverge\", \"adversarially design a fix\", or a wide-solution-space design problem where the first idea would anchor every attempt. Also for a \"draft-off\": a long or high-stakes document, skill or plan drafted on several organizing axes, then picked blind."
 ---
 
 # Diverge, then converge adversarially
@@ -50,6 +50,12 @@ The plan names the framings (one line each), the number of picks and why, the mo
 3. **Prototype, attack, repair**, pipelined per family, each in its own sandbox.
    The selector also lists shared requirements, fixes every family needs (such as a bug in the shared measurement script); the script hands them to every prototype, so no family absorbs them as its own mechanism.
 4. **Judge.** It may recommend a design, a combination, a reframing, or that nothing meets the target (with the best achievable bar). It surfaces framing challenges for the user to decide.
+
+**Drafts of a document take the same shape**, with organizing axes for families and whole drafts for prototypes. Skip it for a short document or one with a single sensible structure. The script doesn't run this form: launch the agents yourself, under the same brief and anchoring rules.
+
+1. **Diverge.** Three drafters each write the whole document from the same inputs on a different axis (by stage, by artifact, by threat). One, like the skeptic, may reject the organizing premise itself. A fourth writes the default draft, with no axis and no process, and it stays sealed: neither judge nor synthesizer ever sees it. Nothing a drafter can see says it's one of several.
+2. **Graft.** A fresh judge who wrote no draft writes its ideal first, picks a base (or rejects all), and numbers the grafts to take and the defects to fix. A separate synthesizer applies them and logs each graft it changed or declined, with the reason.
+3. **Pick**, before any verification. Another fresh judge, ideal first, chooses among the grafted result, the bare base and the default draft: neutral shuffled labels (no axis, author or model), both orders, only the criteria the user stated, told that length isn't merit. The grafted result is nearly a superset of its base, and a superset can't be blinded (a choice between such a pair goes edit by edit instead, each rejected by default), so the default draft is the comparison that counts. Log the label map, both picks and the winner in the run's row; if the default ties or wins a third of the time, the process isn't earning its cost.
 
 ## Writing `args` without anchoring
 
@@ -101,6 +107,6 @@ Size: 4 brainstormers + 1 selector + 3 per pick + 1 judge, so 15 agents at 3 pic
 
 ## After it returns
 
-Read the judge's recommendation and the `clusters` list yourself. Read the run's log for `unfinished` lines: work an agent couldn't finish within `minutes` and numbers it couldn't verify. Report to the user: the recommendation, the framing challenges they need to decide, and which families were not prototyped. Verify any number you repeat. If the run exposed a hole in the bar, say so plainly: the interview missed it, and the lesson belongs in the attacks list above.
+Read the judge's recommendation and the `clusters` list yourself. Read the run's log for `unfinished` lines: work an agent couldn't finish within `minutes` and numbers it couldn't verify. Report to the user: the recommendation, the framing challenges they need to decide, and which families were not prototyped. Verify any number you repeat. A design that breaks a hard constraint is out, whatever it scored. Fewer than two usable families means the run is incomplete, not that the survivor won. A combination the judge recommends was never attacked: before reporting it, have a fresh agent (`check:attack`) try to break it with a concrete example traced through actual states and quantities, and don't read finding none as proof. If the run exposed a hole in the bar, say so plainly: the interview missed it, and the lesson belongs in the attacks list above.
 
 Then run `subquota` again and add the run's row to `${CLAUDE_PLUGIN_DATA}/runs.md`, with the quota drop and its outcome in a sentence.
