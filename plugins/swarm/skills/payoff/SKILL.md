@@ -9,19 +9,19 @@ Token counts say whether someone is using agents, not whether the agents are pro
 
 ## Steps
 
-1. **Collect the results.** Read the Results lines of the `swarm:plan` plans in the period: one line per ruling, with piece, accepted / killed / redirected, cost and review minutes. Where lines are missing, reconstruct:
+1. **Collect the results.** Read the Results lines of the `swarm:plan` plans in the period: one line per ruling, with piece, accepted / killed / redirected, cost and review minutes. Read the run log too (`${CLAUDE_PLUGIN_DATA}/runs.md`), one line per run written at close-out; where a run has none, append it yourself, not from a workflow script. Where lines are missing, reconstruct:
    - cost from session logs with ccusage (how much was spent) or ccwhy (where it went) [3];
    - acceptance from git or PR history (merged, reverted, closed unmerged).
 
-   Mark every reconstructed number as an estimate.
-2. **Group by kind of work**, such as merged PR, kept experiment result, validated label set, confirmed finding, or research answer. Use the plan's checker types (oracle, judge, selector, agreement, summary) when nothing better fits.
+   Mark every reconstructed number as an estimate. A field nobody recorded is unavailable, not zero: leave it out of the sums.
+2. **Group by kind of work**, such as merged PR, kept experiment result, validated label set, confirmed finding, or research answer. Use the plan's checker types (oracle, judge, selector, agreement, summary) when nothing better fits. A method run's log line (a vote, a bakeoff, an attack) adds the route, the prediction and whether it hit, the control result and, later, the user's verdict; group these by route as well as kind.
 3. **For each kind, compute:**
    - **cost per accepted result**, as API-equivalent dollars or quota percent: total cost over the accepted count;
-   - **accepted / attempted**;
+   - **accepted / attempted**, counting agent runs only: a question the user settled with no agent run behind it stays out of the denominator;
    - **the share discarded or rewritten** after acceptance, counting reverts, follow-up fixes and results that did not replicate;
    - **human review time** per accepted result;
    - **the cost spread on one task type** (min, median, max). Runs on the same task varied by up to 30x in tokens on late-2025 models (typically about 2x between cheapest and costliest), and accuracy often peaks at intermediate spend and saturates beyond it [4], so a long tail is a target. Measure spend rather than asking agents to forecast it: their forecasts run low [4].
-4. **Where a comparison is cheap, run a matched half-budget test.** Give a comparable class of tasks half the budget (fewer samples, fewer agents, a smaller model) and compare cost per accepted result. Report it with its n; one pair of runs proves nothing.
+4. **Where a comparison is cheap, run a matched half-budget test.** Give a comparable class of tasks half the budget (fewer samples, fewer agents, a smaller model) and compare cost per accepted result. Report it with its n; one pair of runs proves nothing. A multi-agent method (debate, panel, chain, best-of-N, a new workflow) likewise meets the simple baseline once at matched budget, and again when the model changes: independent samples with a majority vote, independent drafts with a blind judge's pick for free text, or the bare model.
 5. **Make one call per kind of work:**
    - **scale:** cost per accepted result is flat or falling as spend grows;
    - **hold:** acceptances are flat while cost grows, so the work is past the knee;
@@ -39,6 +39,7 @@ Calls: <kind → scale / hold / build a better checker>, …
 | <kind> | <n / N> | <$ or quota %> | <share> | <minutes> | <…> | <call> |
 
 Half-budget test: <kind, n, result / none run>
+Baseline test: <method, n, result / none run>
 Estimates: <which numbers, from what / none>
 ```
 
