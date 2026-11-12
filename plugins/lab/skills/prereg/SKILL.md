@@ -7,7 +7,7 @@ description: "Preregister a comparison before its runs launch: a numeric predict
 
 A number that decides something gets a prediction written before the run, a denominator chosen before the run, and a record of the code it ran on. Afterwards it's scored against that prediction, and the arms are checked for differences nobody intended. The helper is `prereg.py` in this directory (stdlib only); call it as `python3 <this dir>/prereg.py`.
 
-This skill doesn't restate rules you may already have: lock an undefined bar with `swarm:brief` first; review a design before spend; slow start; read traces before turning knobs. It adds what those leave out: the written prediction, the fixed denominator, provenance, parity and scoring.
+This skill doesn't restate rules you may already have: freeze an undefined bar with `swarm:brief` first; review a design before spend; slow start; read traces before turning knobs. It adds what those leave out: the written prediction, the fixed denominator, provenance, parity and scoring.
 
 ## When it applies
 
@@ -15,7 +15,7 @@ Trigger on consequence, not cost. A $0.50 run that will pass or fail a design-do
 
 ## Steps
 
-1. **Bar.** Name the bar as `file#CODENAME` (e.g. `docs/DESIGN.md#PARITY-BAR`). If the bar doesn't say its denominator (out of all samples? out of attempts?), it isn't locked: run `swarm:brief` on it, or mark the record exploratory.
+1. **Bar.** Name the bar as `file#CODENAME` (e.g. `docs/DESIGN.md#PARITY-BAR`). If the bar doesn't say its denominator (out of all samples? out of attempts?), it isn't frozen: run `swarm:brief` on it, or mark the record exploratory.
 2. **Write the record.** Run `prereg.py new prereg/<YYYY-MM-DD>-<slug>.json` in the repo root, outside gitignored log folders. Fill it in:
    - `question` and `decision`: what you do on pass and on fail.
    - `arms`: each arm's out dir and command.

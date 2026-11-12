@@ -11,15 +11,15 @@ The script can't stop anchoring on its own: anchoring enters through the `args` 
 
 ## Roles
 
-- **Planner: this thread.** You are lead, interviewer and planner in one. You get the brief locked (step 0), write the `args`, launch, and report afterwards. The planner never sees the brainstorm before it writes the brief, which is what keeps the brief clean.
+- **Planner: this thread.** You are lead, interviewer and planner in one. You get the brief frozen (step 0), write the `args`, launch, and report afterwards. The planner never sees the brainstorm before it writes the brief, which is what keeps the brief clean.
 - **Generators:** the brainstormers, the prototypers and the repairers. A repairer is a fresh agent in the prototyper's seat. It gets the prototype and the attack and patches the design. It's one round, not an open-ended charrette.
 - **Evaluators:** the selector (which families are worth building), the red team (one per family) and the judge. The red team and the repairer are the pair locked in combat. The judge stands outside it and is blind to other runs.
 
-## Step 0: lock the brief
+## Step 0: freeze the brief
 
-If the conversation doesn't already contain a `## Locked brief` for this problem, invoke the `swarm:brief` skill and run its interview with the user first. Don't launch without one: a vague brief is built into every agent downstream, and the red team grades against its own guess.
+If the conversation doesn't already contain a `## Frozen brief` for this problem, invoke the `swarm:brief` skill and run its interview with the user first. Don't launch without one: a vague brief is built into every agent downstream, and the red team grades against its own guess.
 
-Map the brief onto `args`: Bar and Fallback bar become `target` (the red team grades "survives" against it as written), Constraints become `constraints`, Goal and Context facts become `context`. Before mapping, strip any diagnosis or solution example that crept into the brief.
+Map the brief onto `args`: Bar and Fallback bar become `target` (the red team grades "survives" against it as written); Out of scope, the firm Requirements, Stop rules and the Cap become `constraints`; Wants, For and Context facts become `context`. Before mapping, strip any diagnosis or solution example that crept into the brief.
 
 **When you're ready, show the plan and launch it from a neutral turn.** Don't wait for approval; the user interrupts if they object. The harness relays the user message that triggered the Workflow call, verbatim, to every agent as "the only user voice in this task", and no script can turn that off. Launched straight after the interview, every agent sees the user's last answer, along with any example, diagnosis or "don't anchor on X" in it. So end the plan turn by scheduling the launch with a one-shot `CronCreate` firing about a minute later (it fires only when the session is idle). Its prompt is just "Launch the decide:bakeoff run planned above." A cron-fired turn isn't a user request, so the harness relays nothing and agents see only the script's text (tested 2026-11-03 with a one-agent probe: launched from a user turn, the agent's first message was that turn verbatim; launched from a cron, it had no relay block). If the user replies before it fires, read the reply; if it changes the plan, `CronDelete` the job and re-plan.
 
@@ -64,7 +64,7 @@ The plan names the framings (one line each), the number of picks and why, the mo
 - **Frame by stance, not by solution area.** "Think as the adversary" and "challenge the premise" widen the search. "Try distribution changes" narrows it. Override the default framings only with other stances.
 - **Write framings like tarot cards, not requirements.** A framing is a broad, slightly evocative prompt to look from somewhere else: the adversary, the skeptic, the far side of the system. It's an inspiration to interpret, not a checklist to satisfy. The concrete rules ("8-10 ideas", "at least half outside") are scaffolding around the card, not its content.
 - **Keep a skeptic.** One brainstormer must be allowed to argue that the problem is smaller, the bar is wrong, or the metric's definition is the real issue.
-- **The bar goes in `target`, not in `context`.** It's locked by the interview. The skeptic may still argue against it with evidence, and the judge surfaces that argument as a decision for the user, but the red team grades against it as written.
+- **The bar goes in `target`, not in `context`.** It's frozen by the interview. The skeptic may still argue against it with evidence, and the judge surfaces that argument as a decision for the user, but the red team grades against it as written.
 - **Keep other runs blind.** Don't put another run's results (an earlier workflow, a parallel one) into `context` or into the judge. Compare runs yourself afterwards.
 - **Don't go looking for them either.** Never read other sessions' transcripts (`~/.claude/projects/*.jsonl`) or workflow outputs about this problem, even to find where a number came from. Measure it yourself from the repo or ask the user.
 - **No solution examples in `target`.** A bar like "requires combining ≥3 printed numbers (e.g. weekly rows to sum)" hands every brainstormer the weekly-rows fix. State the property, never an example of meeting it.

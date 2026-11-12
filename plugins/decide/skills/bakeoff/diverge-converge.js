@@ -16,7 +16,7 @@ export const meta = {
 //   context      (required) problem statement: goal, facts, measurements. Facts only: no diagnosis, no candidate fixes.
 //   constraints  (required) hard limits: spend, files that must not change, data-handling rules.
 //   sandboxes    (required) array of absolute paths, one per pick, each a disposable copy the prototype may edit.
-//   target       (required) the success bar locked in the step-0 interview, with definitions; the red team's survival bar.
+//   target       (required) the success bar frozen in the step-0 interview, with definitions; the red team's survival bar.
 //   measure      (optional) how to measure locally inside a sandbox (commands, scripts, test command).
 //   framings     (optional) [{key, text}] overrides the default brainstorm framings.
 //   picks        (optional) number of families to prototype; defaults to sandboxes.length.
