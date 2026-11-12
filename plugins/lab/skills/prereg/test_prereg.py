@@ -81,6 +81,22 @@ class Parity(unittest.TestCase):
         self.assertIn("could not compare", r.stdout)
 
 
+class Freeze(unittest.TestCase):
+    def test_close_refuses_when_the_stated_mechanism_was_edited_after_open(self):
+        d = repo_with_arms({"untreated": {"model": "a"}, "treated": {"model": "b"}})
+        rp = d / "prereg" / "r.json"
+        rec = json.loads(rp.read_text())
+        rec.update(status="exploratory", mechanism="the treatment helps on long items", surprises=["a gain on short items"])
+        rp.write_text(json.dumps(rec))
+        self.assertEqual(run(d, "open", "prereg/r.json").returncode, 0)
+        for arm in ("untreated", "treated"):
+            (d / "logs" / arm / "report.json").write_text("{}")
+        rec = json.loads(rp.read_text()); rec["mechanism"] = "the treatment helps on short items"; rp.write_text(json.dumps(rec))
+        r = run(d, "close", "prereg/r.json")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("changed after open", r.stdout + r.stderr)
+
+
 class Stamp(unittest.TestCase):
     def test_dirty_paths_are_recorded_whole(self):
         d = repo_with_arms({"untreated": {}, "treated": {}})

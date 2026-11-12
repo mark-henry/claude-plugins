@@ -21,12 +21,14 @@ Trigger on consequence, not cost. A $0.50 run that will pass or fail a design-do
    - `arms`: each arm's out dir and command.
    - `varies`: the launch args the arms are meant to differ in.
    - `watched` (optional): the paths whose code can change a number. Left out, parity uses the repo's `prereg/config.json` (`{"watched": [...]}`) if there is one, and otherwise watches the whole repo; a listed path that exists at neither arm's commit fails parity.
-   - `metrics`: each one as `num` and `den`, either report-JSON paths or numbers.
+   - `metrics`: each one as `num` and `den`, either report-JSON paths or numbers. A metric that counts classified outcomes also takes `classes`: each class name with the observable test that puts an item in it, so an outcome can't be renamed afterwards. Write the script that computes the metrics now, and run it on a synthetic null (made-up outputs with no effect) before any real ones.
    - `predictions`: a `[low, high]` rate per arm and metric.
+   - `mechanism`: why you expect that, with a point estimate, where the gain should concentrate and where the control should tie.
+   - `surprises`: the results that would surprise you, named.
    - `max_usd`.
 
    Write the predictions yourself, before seeing any sample of a treated arm, smoke rungs included. A reused earlier run is an arm with `"reused": {"commit": "<sha or unrecoverable>", "reason": "..."}`.
-3. **Open.** `prereg.py open <record>` validates the record, freezes the question, arms, metrics and predictions, and stamps the commit, the dirty files and the uncommitted diff. Commit the record before launching if it gates a design-doc row or the run costs over $10; otherwise commit it with the results.
+3. **Open.** `prereg.py open <record>` validates the record, freezes the question, arms, metrics, predictions, mechanism and surprises, and stamps the commit, the dirty files and the uncommitted diff. Commit the record before launching if it gates a design-doc row or the run costs over $10; otherwise commit it with the results.
 4. **Launch** each arm, one at a time, with the plan or dry run first. Run folders need a commit stamp. If the harness doesn't write `git` into `launch.json`, run `prereg.py stamp <out_dir> -- <command>` just before launching.
 5. **Parity.** `prereg.py parity <record>` compares the arms' launch args outside `varies`, their instance files (hashes), their commits (with any change to watched code listed) and any dirty trees. A failure means the comparison isn't clean: rerun the stale arm at the current commit (usually cheaper than arguing), or report the failure next to the number.
 6. **Close.** `prereg.py close <record> --note "..."` prints observed against predicted, hit or miss, on the declared denominators, and sets the status. It refuses if the frozen fields have changed since open.

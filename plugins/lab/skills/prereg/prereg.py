@@ -27,6 +27,8 @@ TEMPLATE = {
              "treated": {"out": "logs/.../treated", "command": "..."}},
     "metrics": {"solves": {"num": "targets.count_exact_among_attempts.numerator", "den": "samples.real"}},
     "predictions": {"untreated": {"solves": [0.6, 0.8]}, "treated": {"solves": [0.5, 0.75]}},
+    "mechanism": "Why you expect that: a point estimate, where the gain should concentrate, where the control should tie.",
+    "surprises": ["A named result that would surprise you."],
     "max_usd": 2.0,
     "status": "draft",
 }
@@ -62,7 +64,7 @@ def sha(path):
 
 
 def frozen_part(rec):
-    keep = {k: rec[k] for k in ("question", "bar", "decision", "varies", "watched", "arms", "metrics", "predictions") if k in rec}
+    keep = {k: rec[k] for k in ("question", "bar", "decision", "varies", "watched", "arms", "metrics", "predictions", "mechanism", "surprises") if k in rec}
     return hashlib.sha256(json.dumps(keep, sort_keys=True).encode()).hexdigest()[:16]
 
 
@@ -242,7 +244,7 @@ def cmd_close(a):
     if not rec.get("opened"):
         die("never opened: these numbers have no prediction to be scored against. Report them as exploratory")
     if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
-        die("question/arms/metrics/predictions changed after open; restore them or write a new record")
+        die("question, arms, metrics, predictions, mechanism or surprises changed after open; restore them or write a new record")
     root = Path(sh("git", "rev-parse", "--show-toplevel", cwd=Path(a.path).parent) or ".")
     observed, rows, hits, total = {}, [], 0, 0
     for arm, spec in rec["arms"].items():
