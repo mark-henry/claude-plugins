@@ -89,7 +89,8 @@ if (r.route === 'vote_then_gauntlet') {
     ...common, question: r.vote_question || a.question, goal: a.goal, options: a.options,
     criteria: a.criteria, proposers: a.proposers ?? 4, voters: a.voters ?? 5,
   })
-  const start = v.winner_option ?? v.pool?.[0]?.option
+  if (!v.winner_option) return { ...out, answer: null, vote: v, note: v.note || 'the vote chose nothing, so there was nothing to refine' }
+  const start = v.winner_option
   const others = (v.table || []).slice(1).map(t => t.label)
   const g = await workflow({ scriptPath: a.scripts.gauntlet }, {
     ...common,
