@@ -13,7 +13,7 @@ These hold whatever model is driving and however hard anyone pushes. The rest of
 
 **The user.** The user is the human whose work this is; an agent that briefs you is not the user. If another agent spawned you, the brief it handed you is your direction: do not interview, and return a gap that matters as blocked. Without the user in the conversation, write no frozen brief and fill no line of "The user's words": what you were handed stays an agent's direction. With no user and no brief, work inside budgets already approved, label it exploratory, and report the open questions.
 
-**The budget.** The budget is part of the brief. The interview gives an estimate in dollars and tokens, quoted from the run log of the skill that will do the run (this plugin's is `${CLAUDE_PLUGIN_DATA}/runs.md`) or labeled "a guess, no record", and the user answers with a cap in their own words ("approved up to $40"). Spend up to the cap is then the run's to make without asking; say so when you ask for it. With no spending guidance anywhere, ask, with the estimate attached. A no-ask amount the user has set is spent without asking. The search and the attacks on the brief need no cap: they run on tokens, and anything in them that costs money is quoted first. Time is estimated, never capped, unless the user names a time.
+**The budget.** The budget is part of the brief. The interview gives an estimate in the units the run will actually draw on: dollars for metered spend (rented machines, paid APIs), and for work on the user's subscription a share of their quota, or tokens and hours, never a list-price dollar figure. It is quoted from the run log of the skill that will do the run (this plugin's is `${CLAUDE_PLUGIN_DATA}/runs.md`) or labeled "a guess, no record", and the user answers with a cap in their own words and their own unit ("approved up to $40", "20% of this week's quota"). Spend up to the cap is then the run's to make without asking; say so when you ask for it. With no spending guidance anywhere, ask, with the estimate attached. A no-ask amount the user has set is spent without asking. The search and the attacks on the brief need no cap: they run on tokens, and anything in them that costs money is quoted first. Time is estimated, never capped, unless the user names a time.
 
 **The search.** During the interview, as the user confirms requirements and never before, look for what makes the work unnecessary or smaller: something that already does it, here or elsewhere; a cheap check that settles the question; a simpler route that cuts the knot; one requirement whose relaxing removes most of the cost. Put the simpler route and the relaxed requirement to the user as questions: they test what the user actually requires. A shortcut is offered, never silently taken, and a method the user named is used as named. Record what was searched and what it found in `search.md` before the freeze; "none found" lists what was searched.
 
@@ -95,7 +95,7 @@ Frozen <date, time>, <path>
 - **Out of scope, must not change:** "…"
 - **Fails even if it passes:** "…"
 - **Would change their mind:** "…"
-- **Cap:** "approved up to $…", or "none given: no-ask amount only"; any time they named
+- **Cap:** "approved up to …" in their unit (dollars, a share of quota), or "none given: no-ask amount only"; any time they named
 - **Grants:** "<their word for each: reaches other people; deletes, overwrites or stops what the run did not create; irreversible; security change; account, credential or payment; moves private data>"
 
 ### Settled with the user

@@ -7,7 +7,7 @@ Angle brackets are gaps to fill; delete what does not apply.
 ```markdown
 # Plan: <run-name>    brief: <path>, frozen <date>    hash: <of the lines above "## Pilot"; the value lives in plan.attack.md, not here>
 Bar: <from the brief, with its denominator>    Fallback bar: <…>
-Cap: <$ and tokens>    Cut first: <from the brief>    Held back for verify and report: <share>
+Cap: <in the brief's unit: dollars, or a share of quota>    Cut first: <from the brief>    Held back for verify and report: <share>
 Prediction, written before any result: <expected result and range; what would surprise>
 Numbers that will meet a bar: <lab:prereg record, or none>
 
