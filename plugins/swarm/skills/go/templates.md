@@ -5,7 +5,7 @@ Angle brackets are gaps to fill; delete what does not apply.
 ## plan.md
 
 ```markdown
-# Plan: <run-name>    brief: <path>, frozen <date>    hash: <of the lines above "## Pilot", recorded in plan.attack.md>
+# Plan: <run-name>    brief: <path>, frozen <date>    hash: <of the lines above "## Pilot"; the value lives in plan.attack.md, not here>
 Bar: <from the brief, with its denominator>    Fallback bar: <…>
 Cap: <$ and tokens>    Cut first: <from the brief>    Held back for verify and report: <share>
 Prediction, written before any result: <expected result and range; what would surprise>
@@ -24,7 +24,7 @@ What no piece's check exercises: <failure modes, handed to the final attack>
 - <configuration>: check on untouched state <pass / fail>; bar <yield at least …, written before the pilot>; read <n> (<which>); yield <k/n>; <cost per item>; projected <range> against <share>
 
 ## Results
-- <date> <piece>: <accepted / killed / redirected>, cost <$ or quota %>, review <minutes>, <why>
+- <date> <piece>: <accepted / killed / redirected>, cost <$ or quota %>, review <minutes, or "not recorded">, <why>
 ```
 
 ## spend.md, one line per wave
@@ -42,9 +42,9 @@ D-<n> | <time> | mechanical, taste or assumption | chose <X> over <Y> | why | co
 ## briefs/<piece>.md, the worker's brief
 
 ```markdown
-# Brief: <piece>    plan: <path>#<piece> @ <hash>    model role: <…>, effort <…>
+# Brief: <piece>    plan row <piece> @ <hash> (the plan stays with the launcher)    model role: <…>, effort <…>
 Objective, one line: <…>
-Read first (absolute paths): <brief.md, rulings.md, …>
+Read first (absolute paths): <brief.md or handed.md; rulings.md; …>
 Base state: <commit or hash>. Check your workspace matches before editing; stop on a mismatch.
 Facts: <numbers with denominators; what was tried and what happened; no diagnosis>
 You own: <files, items>. Do not touch: <…>. The user's limits, verbatim: "<…>"
@@ -54,14 +54,15 @@ Done when: `<check>` gives <expected>. The launcher runs checks you cannot see.
 Budget: <share; rounds>, enforced by <the launcher>. You may spawn helpers inside this share. Do not seat a reviewer of your own work: hand it back unreviewed.
 Exits: if <X> fails after honest attempts, stop and report the exact numbers; do not work around it. A stop with the facts is a good outcome.
 Unclear? Return needs_context before building.
-Return: write the full result to <absolute path>; reply with the status line and that path only.
+Return: write the full result to <absolute path> in the shape below, every line filled; reply with its Status line and that path only.
+<the hand-back block, pasted>
 ```
 
 ## results/<piece>.md, the hand-back
 
 ```markdown
 Status: done | done_with_concerns | needs_context | needs_attack | blocked
-If not done: <why, with exact numbers and what was tried>
+If not done: <why, with exact numbers and what was tried; for needs_attack, the plan's path and what you need back>
 Result: <paths; commit or hash of the state checked>
 Check run: `<command>` gave <output, pasted>; exit <n>; <time>
 Checked myself: <…>    Relayed from a helper, a page or a file: <…>
