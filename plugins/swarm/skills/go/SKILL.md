@@ -57,7 +57,7 @@ Take the highest row that fits: agreement is not correctness, and an unvalidated
 
 ## Plan and attack
 
-Work in the run folder `brief.md` names. If there is none (an agent's brief, or no brief), make `<date>-<slug>/` where the user keeps runs, `~/.swarm/` by default, and save what you were handed as `handed.md`, never as `brief.md`. Where the brief gives no cap, the cap is what the no-ask amount and standing budgets still cover (a per-day budget less what the run logs show spent today), or the share your dispatcher gave; with none of these, write the plan, spend nothing and report it as unattacked.
+Work in the run folder `brief.md` names. If there is none (an agent's brief, or no brief), make `<date>-<slug>/` where the user keeps runs, `${CLAUDE_PLUGIN_DATA}/runs/` by default, and save what you were handed as `handed.md`, never as `brief.md`. Where the brief gives no cap, the cap is what the no-ask amount and standing budgets still cover (a per-day budget less what the run logs show spent today), or the share your dispatcher gave; with none of these, write the plan, spend nothing and report it as unattacked.
 
 Write `plan.md` there ([templates.md](templates.md)): the prediction, then a row per piece with its checker, whether that checker exists out of the workers' reach, the table's three answers, a model and a share of the cap. A piece is the smallest thing its checker could reject alone; no two share a file or an item. Name models by role (strongest, general-use, rote-tokens); the user's settings say which fills each. Where they are silent, use the brief's Envelope line, else the session's model, and say so under coverage.
 

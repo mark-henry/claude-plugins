@@ -9,7 +9,7 @@ Token counts say whether someone is using agents, not whether the agents are pro
 
 ## Steps
 
-1. **Collect the results.** Read the Results lines of each `swarm:go` plan in the period (`~/.swarm/*/plan.md`, or wherever the user keeps runs): one line per ruling, with piece, accepted / killed / redirected, cost and review minutes. Read the run log too (`${CLAUDE_PLUGIN_DATA}/runs.md`), one line per run written at close-out; where a run has none, append it yourself, not from a workflow script. Where lines are missing, reconstruct:
+1. **Collect the results.** Read the Results lines of each `swarm:go` plan in the period (`${CLAUDE_PLUGIN_DATA}/runs/*/plan.md`, or wherever the user keeps runs): one line per ruling, with piece, accepted / killed / redirected, cost and review minutes. Read the run log too (`${CLAUDE_PLUGIN_DATA}/runs.md`), one line per run written at close-out; where a run has none, append it yourself, not from a workflow script. Where lines are missing, reconstruct:
    - cost from session logs with ccusage (how much was spent) or ccwhy (where it went) [3];
    - acceptance from git or PR history (merged, reverted, closed unmerged).
 

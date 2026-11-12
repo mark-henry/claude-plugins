@@ -33,7 +33,7 @@ These hold whatever model is driving and however hard anyone pushes. The rest of
 
 ## The run folder
 
-Name the run (the date and a slug) and make its folder, `~/.swarm/<run-name>/` unless the user keeps runs elsewhere. Three files live there, each written when it first has content: `search.md`; `rulings.md` (every user sentence that grants, caps or decides, verbatim and dated, amendments after the freeze included); and `brief.md`, which the run cites by path.
+Name the run (the date and a slug) and make its folder in this plugin's data folder, `${CLAUDE_PLUGIN_DATA}/runs/<run-name>/`, unless the user keeps runs elsewhere. Write its absolute path wherever you cite it: other agents and other plugins' skills cannot expand the variable. Three files live there, each written when it first has content: `search.md`; `rulings.md` (every user sentence that grants, caps or decides, verbatim and dated, amendments after the freeze included); and `brief.md`, which the run cites by path.
 
 ## Asking
 
