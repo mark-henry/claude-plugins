@@ -58,6 +58,11 @@
       "description": "Reach a decision with fresh agents, or with the user. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies. improve: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. bakeoff: unanchored brainstorm, distinct solution families, prototype, red-team, repair, blind judge. docket: present the user one decision at a time, each with the context needed to decide. auto: a selector routes a request to vote, improve, either composed with the other, or none."
     },
     {
+      "name": "check",
+      "source": "./plugins/check",
+      "description": "Can this be trusted? attack: a fresh agent that has not seen your reasoning finds what is wrong with a plan, a brief or finished work and returns findings; a second fresh agent checks any finding that would change a decision; the attack is kept as a file. claims: fresh agents verify what a report, draft or hand-back asserts before it travels: that \"done\" is true of the artifact, that each cited source says what it is cited for, that a synthesis covers its sources."
+    },
+    {
       "name": "swarm",
       "source": "./plugins/swarm",
       "description": "A working method for agent swarms: brief (interview the user until the goal and its success bar are locked), plan (name what checks each piece, build checkers before scaling, shape tasks, pick a pattern with caps, gates, review), loop (oracle-gated unattended Ralph loop with the swarm-loop supervisor on PATH) and payoff (cost per accepted result by kind of work). Sources cited."
