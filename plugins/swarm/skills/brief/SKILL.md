@@ -72,13 +72,13 @@ Some things only the user's own words can do; a skill cannot grant them. Ask for
 - which model fills each role, named here by the job (the strongest model, the general-use model, the rote-tokens model), which they consider expensive, and which one attacks plans at which size of job;
 - an agent or concurrency limit, if their machine or account needs one;
 - a data policy: where private data may go;
-- the permissions the run will need, secured before the user leaves so it does not stall on a prompt: commands, files and folders (the run folder and the run log among them, since they sit outside the project), workflows at the size the job needs, notifications.
+- the permissions the run will need, secured before the user leaves so it does not stall on a prompt: commands, files and folders (the run folder and the run log among them, since they sit outside the project), workflows at the size the job needs.
 
-A permission is secured when the harness will no longer prompt for it, not when the user says yes. For each one predicted, have the user add the allow rule or change the setting now, or trigger the prompt with a harmless call so they can approve it; then check it took. Send one test notification. What could not be secured goes in the brief as a stall the run should expect.
+A permission is secured when the harness will no longer prompt for it, not when the user says yes. For each one predicted, have the user add the allow rule or change the setting now, or trigger the prompt with a harmless call so they can approve it; then check it took. What could not be secured goes in the brief as a stall the run should expect.
 
 ## Attack, then freeze
 
-Test 5 is run with `check:attack`; if it is not installed, send the fresh agents yourself. Each gets the draft brief and the five tests, never the conversation or your favorite reading. One attacks the bar. One is the builder of test 3: it plans from the draft alone and returns its questions ranked, with every command, path outside the workspace, workflow size and notification its plan would hit. Ask for the cap before the last round, so the attackers see it; run another round only if the last one changed the brief.
+Test 5 is run with `check:attack`; if it is not installed, send the fresh agents yourself. Each gets the draft brief and the five tests, never the conversation or your favorite reading. One attacks the bar. One is the builder of test 3: it plans from the draft alone and returns its questions ranked, with every command, path outside the workspace and workflow size its plan would hit. Ask for the cap before the last round, so the attackers see it; run another round only if the last one changed the brief.
 
 Sort what returns. Already answered. The user's: a wrong guess changes what gets built, it needs their word under a boundary, it changes something they said, or it is a shortcut. Yours: the rest; settle and mark assumed. The user's go to them in one batch, with yours alongside as assumptions they can correct.
 

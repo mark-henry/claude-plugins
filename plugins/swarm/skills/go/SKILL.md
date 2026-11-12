@@ -92,4 +92,4 @@ Then close out, in this order:
 1. Write `report.md` in the order The record fixes ([templates.md](templates.md)), all but its Released and Spend lines, and run `check:claims` on it while what its proving commands need is still up. Its status line counts the decisions waiting; with any, the run is not done.
 2. List what this run launched that bills or runs, stop each, and show the check that it is gone; then fill in Released and Spend.
 3. Bookkeeping: one Results line per piece in `plan.md` for `swarm:payoff` (skip a piece whose loop already wrote its line), then the run-log line.
-4. Send the notification the brief secured, with the status line, and end your last message with the report's final section in full. Nothing follows it.
+4. End your last message with the report's status line and its final section in full. Nothing follows it.
