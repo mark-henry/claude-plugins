@@ -5,11 +5,13 @@
 #
 # usage: AGENT_CMD='...' CHECK_CMD='...' swarm-loop <loop-dir> [max-passes]
 #   <loop-dir>  the agent's working directory (usually the worktree root), holding PROMPT.md.
+#   max-passes  total agent passes for this STATE_DIR, counted across launches (default 20). A relaunch
+#               continues the count and the pass numbering; to run more, raise the number.
 #   AGENT_CMD   required. Reads the prompt on stdin. Run it inside a sandbox if it bypasses permissions.
 #   CHECK_CMD   required. Exit 0 when done; otherwise its last output line starts with the number passing.
 #   FINAL_CMD   optional. Run once when the loop stops for any reason (the full check, the held-out set).
 #   STALL       passes without a new best before stopping (default 3).
-#   STATE_DIR   where the supervisor keeps loop.log, logs/ and watches for STOP
+#   STATE_DIR   where the supervisor keeps loop.log, logs/, the pass count, and watches for STOP
 #               (default: <loop-dir>.swarm-loop, a sibling outside the agent's tree, so logs never
 #               reach git and held-out output from FINAL_CMD never reaches a later agent).
 # Exit codes: 0 done, 2 max passes, 3 stall, 4 STOP file in STATE_DIR, 5 check unusable before any pass.
@@ -29,11 +31,19 @@ mkdir -p "$state/logs"
 log=$state/loop.log
 echo "swarm-loop: logs in $state; touch $state/STOP to stop after the current pass" >&2
 
+# Passes already spent by earlier launches against this state directory.
+used=0
+[ -f "$state/passes" ] && used=$(cat "$state/passes")
+case "$used" in ''|*[!0-9]*) echo "unreadable pass count in $state/passes" >&2; exit 1 ;; esac
+
 stop() { # stop <exit-code> <message>
   echo "$2" | tee -a "$log"
   if [ -n "${FINAL_CMD:-}" ]; then
-    if bash -c "$FINAL_CMD" > "$state/logs/final.log" 2>&1; then echo "final check: exit 0" | tee -a "$log"
-    else echo "final check: exit $? (see $state/logs/final.log)" | tee -a "$log"; fi
+    # One final log per launch, never overwritten: an earlier launch's held-out result stays on disk.
+    final=$state/logs/final-pass-$used.log; k=1
+    while [ -e "$final" ]; do k=$((k + 1)); final=$state/logs/final-pass-$used-$k.log; done
+    if bash -c "$FINAL_CMD" > "$final" 2>&1; then echo "final check: exit 0 ($final)" | tee -a "$log"
+    else echo "final check: exit $? (see $final)" | tee -a "$log"; fi
   fi
   exit "$1"
 }
@@ -45,7 +55,11 @@ check() {
   n=$(printf '%s\n' "$out" | tail -n 1 | grep -Eo '^[[:space:]]*[0-9]+' | tr -d '[:space:]' || true)
 }
 
-echo "start $(date -u +%FT%TZ) dir $(pwd -P) cap $cap stall $stall" >> "$log"
+echo "start $(date -u +%FT%TZ) dir $(pwd -P) cap $cap stall $stall passes used $used" >> "$log"
+if [ "$used" -ge "$cap" ]; then
+  echo "max passes ($cap) already used by earlier launches; raise max-passes to run more" | tee -a "$log"
+  exit 2
+fi
 check
 [ "$ok" = 1 ] && stop 0 "baseline: check already passes, no agent run"
 [ -n "$n" ] || { printf '%s\n' "$out" > "$state/logs/baseline.log"; stop 5 "baseline: check failed without a count on its last line (see $state/logs/baseline.log); fix the check first"; }
@@ -53,9 +67,10 @@ best=$n
 flat=0
 echo "baseline: $n passing" >> "$log"
 
-for ((i = 1; i <= cap; i++)); do
+for ((i = used + 1; i <= cap; i++)); do
   [ -f "$state/STOP" ] && stop 4 "STOP file found before pass $i"
   echo "pass $i start $(date -u +%FT%TZ)" >> "$log"
+  used=$i; echo "$used" > "$state/passes" # counted when it starts: a pass killed midway was still spent
   # An agent that dies or exits nonzero is restarted by the next pass, not fatal.
   bash -c "$AGENT_CMD" < PROMPT.md > "$state/logs/pass-$i.log" 2>&1 || echo "pass $i: agent exited $?" >> "$log"
   check
