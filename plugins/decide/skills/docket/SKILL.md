@@ -28,6 +28,12 @@ If the user breaks off to ask something unrelated, handle it, then end with a on
 
 Between rulings, background work keeps finishing: agent hand-backs, CI results, notifications. Report each one in a line or two at most. Remind the user which item is waiting on them ("#153 is still waiting on you"), but don't repeat the item. These events are never rulings, and none of them replaces the current item: a newly ready item, a background report, or a returned rework waits its turn, and the next item comes only after a ruling or an explicit "next" on the current one.
 
+## Opening with the list (optional)
+
+When the docket is long or mostly low-stakes, you may open by showing it instead of starting at the first item: each item by title with a one-line recommended ruling, and the rule for silence stated up front ("tell me the ones you disagree with or want to talk through; I'll take my recommendation on the rest"). Show three or four at a time when the whole list would be too much to read at once, so the pace stays manageable.
+
+Whatever the user flags, anything they do not understand, and anything that would change a direction they stated is then taken one at a time, in full, as below; none of those is settled by silence. Neither is an item whose ruling would send, merge, publish, pay or delete. Record a ruling taken this way as accepted on your recommendation, not as the user's own words.
+
 ## Presenting an item
 
 Every presentation stands alone. Assume the user remembers nothing about it, even if they saw an earlier version ten minutes ago. When an item comes back reworked, present the whole current version: the original problem, what it does now, and what is left to decide. Never present only what changed.
@@ -60,7 +66,7 @@ Rulings change other items. When a ruling makes another item moot, retire it and
 
 Prepare a few items ahead, not the whole docket. On a long docket, background preparation for every item wastes work that later rulings will make moot.
 
-Track the docket privately. Don't show the whole list unless the user asks. A count is fine when it helps the user plan, but it's optional.
+Track the docket privately. Apart from an opening list, don't show the whole list unless the user asks. A count is fine when it helps the user plan, but it's optional.
 
 ## Acting on rulings
 
