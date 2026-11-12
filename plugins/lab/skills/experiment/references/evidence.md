@@ -28,3 +28,59 @@ What the sources and this pack's own runs found, with the record of corrections 
 22. Every's compound-engineering: https://github.com/EveryInc/compound-engineering-plugin (one plan file with requirement IDs carried through stages, ternary validator verdicts, rejection as a first-class outcome); obra's superpowers: https://github.com/obra/superpowers (saved plan files handed between stages, small-step plans, hard gates, red-flag tables). Codenames for requirements: [habit].
 23. K-Dense AI, scientific-agent-skills: https://github.com/K-Dense-AI/scientific-agent-skills (no post-hoc power; repetitions and acceptance rule agreed before search). Orchestra Research, AI-Research-SKILLs: https://github.com/Orchestra-Research/AI-Research-SKILLs (flag single-run results).
 24. Claude Code plugin evals: https://code.claude.com/docs/en/plugin-evals
+
+## Findings the skill's instructions rest on
+
+Each item is quoted from the body of `lab:experiment` as it stood before commit 299e8b2, with its source number pointing into the list above. The line after each quote names the rule in the current skill that it supports.
+
+### Leakage and held-out
+
+- "In one field's reproduction study, all four papers claiming complex models beat logistic regression had leakage, and once it was fixed the complex models did no better [1]." Supports Rule 5: leakage and held-out (a leak makes a complex arm look better than a simple one).
+- "An agent hardcoded answers that leaked to it through failure reports [18]." Supports Rule 5: leakage and held-out (failure reports that echo gold labels to an optimizing agent).
+
+### Noise and seeds
+
+- "Three seeds a side make a figure, not a test [11]. By exact arithmetic, a one-sided rank test of 3 against 3 reaches at best p = 0.05, 4 against 4 about 0.014, and 2 of 3 against 0 of 3 gives p = 0.2." Supports Rule 4: noise floor (the 3-against-3 and 4-against-4 figures; the 2-of-3-against-0-of-3 figure is no longer referenced).
+- "With a handful of seeds, don't write "significant": Agarwal et al. [11] advise interval estimates over dichotomous significance claims (Henderson and Bouthillier test significance, but with many runs)." Supports Rule 11: declared denominator, beyond noise (seeds as the unit, never "significant").
+- "Several samples per item fixed in advance, or scoring from token probabilities, cuts within-item noise [2]." No longer referenced.
+- "Criteria drift on contact with outputs [5]" Supports Rule 7: freeze (read every item the scorer fails before the freeze, because criteria drift).
+
+### Multi-sample and multi-agent methods
+
+- "On GSM8K with gpt-3.5-turbo (2023), at nine responses each (debate: 3 agents, 2 rounds), debate scored 83.0 and self-consistency 88.2 against 76.7 for one answer [6]; the authors attribute debate's gain to consistency across generations, not self-correction." Supports Rule 3: controls (a multi-sample method meets its simple baseline at a matched token budget).
+- "No self-revision without an external signal (shown on 2023 models [6]; recheck on current ones)" Supports Rule 3: controls (self-correction is one of the methods that must meet the baseline); the external-signal requirement itself is no longer referenced.
+
+### Cost and token use
+
+- "in one published system (2025), multi-agent runs used about 15x the tokens of a chat and single agents about 4x a chat, so roughly 4x a single agent by implication [7]" Supports Rule 13: the sentence (the comparator must be named).
+- "compute (token use alone explained 80% of performance variance on one browsing benchmark in 2025 [7])" Supports Rule 3: controls (matched token budget); not listed as a parity break in Rule 1 any more.
+- "identical agentic runs vary in cost (on one coding benchmark the costliest of four runs averaged about 2x the cheapest, at worst 30x in tokens [9])" Supports Order of events, step 4 (say what it should cost); the contingency multiple and the range pricing of agentic arms are no longer referenced.
+
+### Prompts
+
+- "in one practitioner's report, expanding a 103-word loop prompt to 1,500 words made the agent "slower and dumber" until it was cut back (anecdote, 2025 model) [10]" Supports Rule 6: instrument (prompts whose wording could move the result); the length point itself is no longer referenced.
+
+### Reward hacking and tampering
+
+- "In 2025 METR saw a frontier model modify tests and scoring code, still doing so on one task in most runs when told not to cheat [14]" Supports Rule 5: leakage and held-out ("out of reach is built, not instructed"; hiding the scorer stops tampering, not attempts).
+- "its 2026 report found frontier models tampering with scoring code against explicit instructions, more often on harder and longer tasks, where unattended runs operate [15]" Supports Rule 5: leakage and held-out (same instruction).
+- "A pre-release o3 reward-hacked in 39 of 128 RE-Bench runs but in 0.7% of HCAST runs; RE-Bench's scoring function was visible, which METR names as one possible cause. On one task it still hacked in most runs when told not to [14]." Supports Rule 5: leakage and held-out (read traces for tampering attempts); also Rule 6: instrument (a reward is an instrument under attack).
+
+### Agents and review
+
+- "A 2025 study of AI-scientist systems found inappropriate benchmark selection, data leakage, metric misuse and post-hoc selection bias. An LLM auditor (Gemini 2.5 Flash) classified balanced items, half flawed, with 55% accuracy from the paper alone and 82% with trace logs and code, so the authors recommend requiring logs and code with the paper [16]." Supports Rule 10: scores read (an automated review of the report alone is not a check; the human read and raw records come first).
+- "In 2026, persona-primed analyst agents reached opposing conclusions on the same data by selective reporting, and 86% (137/160) of their analyses passed an AI methodological review and 78% (31/40) passed a majority of three human PhD reviewers: selection is invisible to final-report review, by machine or human [17]." Supports Rule 10: scores read (and Rule 12: exploratory runs stay out of the tally).
+- "Agents declare success despite obvious failures [19]." Supports Rule 8: run record ("what an agent says ran is a claim").
+
+### Attribution of gains
+
+- "Papers often misattribute where gains come from [13]" Supports Rule 1: one difference (credit only the component the design isolates) and Rule 11 (check the result survives other ways to aggregate).
+
+### Sources cited in the old text with no finding attached
+
+- [3] Cited only for the scientific, nuisance and fixed classes of knob. Supports Rule 1: one difference (a setting tuned on one arm).
+- [4] Cited only for "Fix the seed, check loss at init, overfit one batch". No longer referenced.
+- [8] Cited only for running a multi-sample method against its simple baseline at matched budget. Supports Rule 3: controls.
+- [12] Cited only for preferring evals whose signal across models is large against checkpoint-to-checkpoint noise. No longer referenced.
+- [23] Cited only for "Never invent an effect size or compute post-hoc power". Supports Rule 4: noise floor.
+- [24] Cited only for sending a skill or plugin treatment to `claude plugin eval`. Supports the scope line in the skill's description.
