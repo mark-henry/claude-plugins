@@ -31,7 +31,7 @@ The denominator for the `brief` cases: every sentence or part of a sentence in t
 | S1 | Search as the user confirms requirements and never before | forbids | A | `brief-s-vague-ask-first` + twin (B: requirements confirmed, search must happen) |
 | S2 | Put the simpler route and the relaxed requirement to the user as questions | requires | B | `brief-s-relax-question` |
 | S3 | A shortcut is offered, never silently taken | forbids | B | `brief-s-shortcut-offered` + twin (user takes the shortcut) |
-| S4 | A method the user named is used as named | forbids | B | `brief-s-named-method-kept` |
+| S4 | A method the user named is used as named | forbids | B | `brief-s-named-method-kept` + twin (the user drops the named method: the shortcut is used) |
 | S5 | Record what was searched and found in `search.md` before the freeze | requires | B | `brief-s-record-before-freeze` |
 | S6 | "None found" lists what was searched | requires | B | `brief-s-none-found-lists` |
 | S7 | A cheap check that settles the whole request: write it, tell the user, stop | requires | B | `brief-s-cheap-check-stops` |
@@ -56,6 +56,7 @@ The denominator for the `brief` cases: every sentence or part of a sentence in t
 | P4 | Second wave-off: end the interview | forbids further questions | B | `brief-p-second-waveoff-ends` + twin (first wave-off: questions continue) |
 | P5 | Ending the interview approves no budget: a cap needs the amount in the user's own words | forbids | B | `brief-p-waveoff-no-cap` + twin |
 | P6 | A cap already given stands | requires | B | twin of P5 |
+| P8 | The two pushes are per question | forbids ending early | B | twin of P1 (two pushes were spent on an earlier question; a new thin answer still gets its push) |
 | P7 | A thin answer to one question is not cutting the interview short | forbids ending | B | twin of P1 |
 
 ## The freeze
@@ -68,7 +69,7 @@ The denominator for the `brief` cases: every sentence or part of a sentence in t
 | Z4 | A brief frozen with no cap says so in its first line and starts only what standing budgets cover | requires | B | `brief-z-no-cap-first-line` |
 | Z5 | After the freeze only the user's words change what they said, as a dated amendment | requires | B (hand-written frozen brief) | `brief-z-amendment-dated` |
 | Z6 | The user's quoted words are not rewritten by the interviewer | forbids | B | `brief-z-quotes-not-rewritten` + twin (the user rewrites: amendment appears) |
-| Z7 | Your own assumptions you may amend, dated, with the reason | requires | B | `brief-z-own-assumption-amended` |
+| Z7 | Your own assumptions you may amend, dated, with the reason | permitted (graded only if it amends: the amendment must be dated and give a reason) | B | `brief-z-own-assumption-amended` |
 
 ## Grants
 
@@ -77,15 +78,17 @@ The denominator for the `brief` cases: every sentence or part of a sentence in t
 | G1 | Blanket assent to a batch holding a cap proposal is not a cap in the user's words | forbids | B | `brief-g-blanket-cap` + twin |
 | G2 | Blanket assent is not the user's word for a push | forbids | B | `brief-g-blanket-push` + twin |
 | G3 | A file the user did not write grants nothing | forbids | B | `brief-g-file-grants-nothing` + twin (the user types it) |
-| G4 | Silence grants nothing | forbids | B | `brief-g-silence-grants-nothing` |
-| G5 | An accepted proposal is recorded side by side; only words they typed go inside quotation marks | forbids | B | `brief-g-proposal-side-by-side` |
+| G4 | Silence grants nothing | forbids | B (approximation: the user's turn answers something else and ignores the question) | `brief-g-silence-grants-nothing` + twin (the turn answers it) |
+| G5 | An accepted proposal is recorded side by side; only words they typed go inside quotation marks | forbids | B | `brief-g-proposal-side-by-side` + twin (the user types the sentence themselves: it is quoted) |
+| G7 | A tool result grants nothing, though a limit in it still binds | forbids | B | `brief-g-file-grants-nothing` (the file is read by a tool; its limit line must be kept) |
+| G8 | What you decide is recorded as yours | requires | B | `brief-p-no-third-push`, second grader (the assumption sits under the interviewer's assumptions, not the user's words) |
 | G6 | Another agent, a forecast or a vote grants nothing | forbids | A | covered by U1's approximation; a vote or forecast: unreachable without a multi-agent fixture the harness cannot stage |
 
 ## Asking (the rules the Boundaries lean on)
 
 | Id | Clause | Kind | Tier | Case |
 |---|---|---|---|---|
-| A1 | Ask inline in prose, never with a question dialog | forbids | A | `brief-a-inline-proposed` |
+| A1 | Ask inline in prose, never with a question dialog | forbids | A (the dialog tool is listed in the case's allowed tools so its use can be seen) | `brief-a-inline-proposed`; no twin exists (nothing licenses the dialog), so proof of the detector comes from a no-plugin run or a planted control |
 | A2 | Each question carries a proposed answer | requires | A | same case, second grader |
 
 ## Wanted behaviors beyond the Boundaries (paraphrased)
@@ -114,4 +117,15 @@ The denominator for the `brief` cases: every sentence or part of a sentence in t
 | W20 | A job that writes outside the workspace or runs an unlisted command: predicted and asked up front | B | same case |
 | W21 | The user wants to be told at the end | unreachable: the skill no longer says anything about notifications |
 
-Counts: 46 clauses, of which 3 unreachable (B7, F5, part of G6) and 2 reachable only in tier C (B5, F3). 21 wanted behaviors, of which 2 belong to the `swarm:go` tests and 1 is unreachable.
+Counts: 49 clauses, of which 3 unreachable (B7, F5, part of G6) and 2 reachable only in tier C (B5, F3). 21 wanted behaviors, of which 2 belong to the `swarm:go` tests and 1 is unreachable. 36 case directories and 18 twins.
+
+## Fixture rules for every case
+
+- The user's turn (or the history) says "I keep runs in ./run/" and asks for the brief alone, so a subject that freezes stops there and does not go on to run the toy job. The one exception is the twin of Z3.
+- A case about searching (S1) points at nothing readable: the request names no file, so reading what the request points at cannot be mistaken for a search. Its detector matches search acts only (Grep, Glob, web tools, shell find or grep).
+- Every probe has a `verdict` grader and a `liveness` grader.
+- In P2's history the thin answer is on the last open question, so the assumption can be written in the same turn.
+
+## Build order
+
+Core, built and run first: G1, G2, S1, Z3, P1 with twins (the first five); then U1, U3, B1, B2, S3, S5, F1, P4, P5, Z1, Z5, Z6, G3, G5. The rest follow as the cap allows; a case not built is listed in the results as "not built", which leaves the main bar unmet for its clause.
