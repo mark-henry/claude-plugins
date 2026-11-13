@@ -16,14 +16,14 @@ How it works:
 
 ## Seats
 
-Two voters who agree are worth more when their mistakes are not the same mistakes, so the voters come from different model families wherever the user's settings name a route to more than one. Headcount beyond that buys little: same-model voters share blind spots.
+Two voters who agree are worth more when their mistakes are not the same mistakes. No two voters may be the same seat: the script refuses two that share model, effort and persona.
 
-- **Voters:** two general-use models from different families.
-- **Tiebreakers:** the strongest model first; then the strongest of another family, or the strongest again at higher effort.
-- **With one family only:** two voters on the general-use model, then the strongest as tiebreaker, and say "one model family" in the report.
+- **Voters:** two different general-use models, from different families where the user's settings name a route to more than one. With one model only, the same model at two effort levels or as two personas; the defaults are two personas on the session's model.
+- **First tiebreaker:** the next model up from the voters.
+- **Second tiebreaker:** stronger still, or the strongest of another family, your choice.
 - The rote-tokens model is not seated: it adds a vote without adding judgment.
 
-The user's settings say which model fills each role. A seat is `{model}` or `{agentType}`, with an optional `effort`.
+The user's settings say which model fills each role. A seat is `{model}` or `{agentType}`, with an optional `effort` and `persona`. Say in the report which seats differed in what.
 
 ## Before launch
 
@@ -38,8 +38,8 @@ The user's settings say which model fills each role. A seat is `{model}` or `{ag
 | `question` | required |
 | `options` | required: two or more strings or `{label, option}` |
 | `goal`, `context`, `constraints`, `criteria` | `constraints` are hard limits (an option that breaks one is out); `criteria` is what to judge by |
-| `voters` | seats for the first round; default two on the session's model |
-| `tiebreakers` | seats asked one at a time while undecided, heaviest last; default one on the session's model |
+| `voters` | seats for the first round, no two alike; default two personas on the session's model |
+| `tiebreakers` | seats asked one at a time while undecided, heaviest last; default one further persona on the session's model |
 | `method` | `borda` (default) or `plurality`, for the table's order |
 | `effort` | default `high`; a seat's own `effort` overrides it |
 

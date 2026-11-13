@@ -11,7 +11,7 @@ async function run(args, { voter }) {
   const logs = [], seats = []
   const agent = async (prompt, opts = {}) => {
     if (/^(vote|tiebreak)/.test(opts.label)) {
-      seats.push(opts)
+      seats.push({ ...opts, persona: (prompt.match(/^Read it as: (.+)$/m) || [])[1] })
       const options = [...prompt.matchAll(/^([A-Z])\. (.+)$/gm)].map(m => ({ letter: m[1], label: m[2] }))
       return voter(options, opts.label, opts)
     }
@@ -103,6 +103,20 @@ test('an option ruled out by a majority cannot win, and votes pass to the next c
   const row = l => result.table.find(t => t.label === l)
   assert.equal(row('green').eligible, false)
   assert.equal(row('red').first, 2, 'first choices among eligible options')
+})
+
+test('two voters on the same model, effort and persona are refused', async () => {
+  await assert.rejects(() => run({ ...Q, voters: [{ model: 'm' }, { model: 'm' }] }, { voter: prefer(['green', 'red', 'blue']) }), /differ/)
+  const ok = await run({ ...Q, voters: [{ model: 'm', effort: 'high' }, { model: 'm', effort: 'xhigh' }] }, { voter: prefer(['green', 'red', 'blue']) })
+  assert.equal(ok.result.winner, 'green')
+})
+
+test('default voters share a model but read as different personas', async () => {
+  const prompts = []
+  const agentSeen = (options, label, opts) => prefer(['green', 'red', 'blue'])(options)
+  const { seats } = await run(Q, { voter: agentSeen })
+  assert.notEqual(seats[0].persona, seats[1].persona)
+  assert.ok(seats[0].persona && seats[1].persona)
 })
 
 test('options are required: the vote does not write its own', async () => {

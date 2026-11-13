@@ -13,9 +13,18 @@ if (!Array.isArray(a.options) || a.options.length < 2) throw new Error('args.opt
 const method = a.method ?? 'borda'
 const effort = a.effort ?? 'high'
 // A seat is {model?, agentType?, effort?}. Defaults inherit the session model; pass seats from different model families.
-const voterSeats = Array.isArray(a.voters) && a.voters.length ? a.voters : [{}, {}]
-const tieSeats = Array.isArray(a.tiebreakers) ? a.tiebreakers : [{}]
+// A seat is {model?, agentType?, effort?, persona?}. No two voters may be the same seat: the same model asked the
+// same way twice is one opinion. With one model, the default personas are what makes them differ.
+const PERSONAS = [
+  'the person who will have to live with this choice for a year',
+  'a skeptic looking for the option that fails worst',
+  'an outsider who owes nothing to how it has been done so far',
+]
+const voterSeats = Array.isArray(a.voters) && a.voters.length ? a.voters : [{ persona: PERSONAS[0] }, { persona: PERSONAS[1] }]
+const tieSeats = Array.isArray(a.tiebreakers) ? a.tiebreakers : [{ persona: PERSONAS[2] }]
 const seatName = s => s.model ?? s.agentType ?? 'session model'
+const sig = s => JSON.stringify([s.model ?? null, s.agentType ?? null, s.effort ?? null, s.persona ?? null])
+if (new Set(voterSeats.map(sig)).size !== voterSeats.length) throw new Error('voters must differ in model, agent type, effort or persona: the same seat twice is one opinion')
 const brief = [
   `Question: ${a.question}`,
   a.goal && `Goal: ${a.goal}`,
@@ -57,7 +66,7 @@ Options:
 
 ${order.map((p, j) => `${L[j]}. ${pool[p].label}\n${pool[p].option}`).join('\n\n')}
 
-Rank every option, best first, by letter. You vote alone; judge each on its merits against the question${a.criteria ? ' and the criteria' : ''}. Mark any option that breaks a hard constraint as out (still rank it). If none of them is an acceptable answer, or the question itself is wrongly framed, rank them anyway and set none_acceptable: that is a valid result.`,
+${seat.persona ? `Read it as: ${seat.persona}\n\n` : ''}Rank every option, best first, by letter. You vote alone; judge each on its merits against the question${a.criteria ? ' and the criteria' : ''}. Mark any option that breaks a hard constraint as out (still rank it). If none of them is an acceptable answer, or the question itself is wrongly framed, rank them anyway and set none_acceptable: that is a valid result.`,
     { label, phase: ph, schema: BALLOT, effort: seat.effort ?? effort, ...(seat.model ? { model: seat.model } : {}), ...(seat.agentType ? { agentType: seat.agentType } : {}) })
   seats.push({ label, seat: seatName(seat), returned: !!b })
   if (!b) return
