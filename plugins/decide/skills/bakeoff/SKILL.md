@@ -21,7 +21,7 @@ If there is no frozen brief for this problem (a `brief.md` from `swarm:brief`, h
 
 Map the brief onto `args`: Bar and Fallback bar become `target` (the red team grades "survives" against it as written); Out of scope, the firm Requirements, Stop rules and the Cap become `constraints`; Wants, For and Context facts become `context`. Before mapping, strip any diagnosis or solution example that crept into the brief.
 
-**When you're ready, show the plan and launch it from a neutral turn.** Don't wait for approval; the user interrupts if they object. A workflow relays the message that triggered it to every agent (`swarm:go`, Run, Blind seats), so schedule a one-shot timer for one minute from now, and launch in the turn it starts. Its prompt is just "Launch the decide:bakeoff run planned above." If the user replies before it fires, read the reply; if it changes the plan, delete the timer and re-plan.
+**When you're ready, show the plan and launch it from a neutral turn.** Don't wait for approval; the user interrupts if they object. A workflow relays the message that triggered it to every agent (`swarm:go`, "Your check decides accepted"), so schedule a one-shot timer for one minute from now, and launch in the turn it starts. Its prompt is just "Launch the decide:bakeoff run planned above." If the user replies before it fires, read the reply; if it changes the plan, delete the timer and re-plan.
 
 The plan names the framings (one line each), the number of picks and why, the model and effort per role, the sandboxes, the measurement commands, any spend the prototypes may incur, and the agent count. Use the defaults below unless you say why not.
 

@@ -5,7 +5,7 @@ description: "Pick among discrete options by blind vote: two voters on different
 
 # Put it to a vote
 
-A vote picks one of several options that already exist. Invoking this skill is the go-ahead: say in one line which seats will vote and what it should cost, then run. The script is `vote.js` in this directory. `scriptPath` refuses plugin paths, so copy it to your scratchpad and run `Workflow({scriptPath: "<scratchpad>/vote.js", args: {...}})`, from a turn that carries no favorite (`swarm:go`, Run, Blind seats).
+A vote picks one of several options that already exist. Invoking this skill is the go-ahead: say in one line which seats will vote and what it should cost, then run. The script is `vote.js` in this directory. `scriptPath` refuses plugin paths, so copy it to your scratchpad and run `Workflow({scriptPath: "<scratchpad>/vote.js", args: {...}})`, from a turn that carries no favorite (`swarm:go`, "Your check decides accepted").
 
 How it works:
 

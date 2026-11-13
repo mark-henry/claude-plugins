@@ -15,7 +15,7 @@ Leave out your own outline, your favorite structure and any earlier draft. State
 
 ## 2. Diverge
 
-Seat four fresh agents on the strongest model, each given only the brief and its own paths (blind seats: `swarm:go`), and each with a folder of its own that no other brief names.
+Seat four fresh agents on the strongest model, each given only the brief and its own paths (seated blind, as `swarm:go` says), and each with a folder of its own that no other brief names.
 
 - Three get an organizing lean, one line each, and they must differ in kind: by the order of events, by the thing that decides (a rule, a checker, an artifact), and the shortest text that would still change what a reader does. One lean may reject the premise.
 - The fourth gets no lean. Its draft is the default: what plain writing would have produced. It stays sealed until the pick: whoever grafts does not open its folder.
