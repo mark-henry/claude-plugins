@@ -75,7 +75,7 @@ Concerns: <…>
 ## runs.md line
 
 ```
-<date> | swarm:go | <run-name> | <what ran> | cost <actual> against estimate <…> and cap <…> | <hours> | <status>
+<date> | swarm:go | <run-name> | <what ran> | cost <actual> against estimate <…> and cap <…>; for quota, meter before and after and tokens by model role | <hours> | <status>
 ```
 
 ## report.md
