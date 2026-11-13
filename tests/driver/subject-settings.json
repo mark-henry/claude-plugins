@@ -1,0 +1,1 @@
+{"sandbox":{"enabled":true,"allowUnsandboxedCommands":false,"filesystem":{"denyRead":["~/","/private/tmp/claude-501","/tmp/claude-501"],"allowRead":["."],"denyWrite":["/private/tmp/claude-501","/tmp/claude-501"]}}}
