@@ -1,6 +1,6 @@
 ---
 name: bakeoff
-description: "Diverge-then-converge adversarial design as a Workflow: unanchored brainstormers, pick maximally distinct solution families, prototype, red-team and repair each, then a blind judge. Use for \"diverge\", \"adversarially design a fix\", or a wide-solution-space design problem where the first idea would anchor every attempt. Also for a \"draft-off\": a long or high-stakes document, skill or plan drafted on several organizing axes, then picked blind."
+description: "Diverge-then-converge adversarial design as a Workflow: unanchored brainstormers, pick maximally distinct solution families, prototype, red-team and repair each, then a blind judge. Use for \"diverge\", \"adversarially design a fix\", or a wide-solution-space design problem where the first idea would anchor every attempt. Not for drafts of a document (decide:draftoff)."
 ---
 
 # Diverge, then converge adversarially
@@ -50,11 +50,7 @@ The plan names the framings (one line each), the number of picks and why, the mo
 3. **Prototype, attack, repair**, pipelined per family, each in its own sandbox. The selector also lists shared requirements, fixes every family needs (such as a bug in the shared measurement script); the script hands them to every prototype, so no family absorbs them as its own mechanism.
 4. **Judge.** It may recommend a design, a combination, a reframing, or that nothing meets the target (with the best achievable bar). It surfaces framing challenges for the user to decide.
 
-**Drafts of a document take the same shape**, with organizing axes for families and whole drafts for prototypes. Skip it for a short document or one with a single sensible structure. The script doesn't run this form: launch the agents yourself, under the same brief and anchoring rules.
-
-1. **Diverge.** Three drafters each write the whole document from the same inputs on a different axis (by stage, by artifact, by threat). One, like the skeptic, may reject the organizing premise itself. A fourth writes the default draft, with no axis and no process, and it stays sealed: neither judge nor synthesizer ever sees it. Nothing a drafter can see says it's one of several.
-2. **Graft.** A fresh judge who wrote no draft writes its ideal first, picks a base (or rejects all), and numbers the grafts to take and the defects to fix. A separate synthesizer applies them and logs each graft it changed or declined, with the reason.
-3. **Pick**, before any verification. Another fresh judge, ideal first, chooses among the grafted result, the bare base and the default draft: neutral shuffled labels (no axis, author or model), both orders, only the criteria the user stated, told that length isn't merit. The grafted result is nearly a superset of its base, and a superset can't be blinded (a choice between such a pair goes edit by edit instead, each rejected by default), so the default draft is the comparison that counts. Log the label map, both picks and the winner in the run's row; if the default ties or wins a third of the time, the process isn't earning its cost.
+For drafts of a document, where the families are organizing ideas and nothing is built or measured, use `decide:draftoff`.
 
 ## Writing `args` without anchoring
 

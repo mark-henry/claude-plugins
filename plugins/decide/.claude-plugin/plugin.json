@@ -1,6 +1,6 @@
 {
   "name": "decide",
-  "description": "Reach a decision with fresh agents, or with the user. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies. improve: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. bakeoff: unanchored brainstorm, distinct solution families, prototype, red-team, repair, blind judge. docket: present the user one decision at a time, each with the context needed to decide.",
+  "description": "Reach a decision with fresh agents, or with the user. vote: independent proposers and blind voters pick among discrete options, with plurality, Borda and Condorcet tallies. improve: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. bakeoff: unanchored brainstorm, distinct solution families, prototype, red-team, repair, blind judge. draftoff: three drafts of a document on different organizing ideas, grafted, then picked blind against a plain default draft. docket: present the user one decision at a time, each with the context needed to decide.",
   "author": {
     "name": "Mark Henry"
   },
