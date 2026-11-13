@@ -23,7 +23,7 @@ These hold whatever model is driving and however hard anyone pushes. The rest of
 2. Every term in the bar is defined, every number has a denominator, its parts can all hold at once, and neither you nor the attackers could build a result that passes it while missing its point. A bar the user keeps for their own judgment is named as theirs.
 3. A fresh builder who cannot ask has no question left where a wrong guess changes what gets built, and every decision you can foresee is made or handed to you: stop rules, the fallback bar, the cap and what is cut first when it binds, a substitute for each thing the user named, each word a boundary requires, each permission the run will need.
 4. Your inferences about what the user wants were shown to them a few at a time and confirmed, corrected or handed to you.
-5. Fresh agents attacked the brief, three rounds at most, and predicted the run's permissions; what they left open went to the user.
+5. Fresh agents attacked the brief and predicted the run's permissions; what they left open went to the user.
 
 **Pushing.** Push on an insufficient answer twice, but not a third time; then write your assumption into the brief. The first time the user cuts the interview short, say what is still open and what a wrong guess on each would cost; the second time, end it, and what is still open becomes your assumption. Waving the questions off ("that's fine", "just start", "you decide") is cutting it short; a thin answer to one question is not, and the two pushes are per question. Ending the interview hands you decisions and approves no budget: a cap, a grant and a permission each need the amount or the act in the user's own words. A cap already given stands.
 
@@ -78,9 +78,9 @@ A permission is secured when the harness will no longer prompt for it, not when 
 
 ## Attack, then freeze
 
-Test 5 is run with `check:attack`; if it is not installed, send the fresh agents yourself. Each gets the draft brief and the five tests, never the conversation or your favorite reading. One attacks the bar. One is the builder of test 3: it plans from the draft alone and returns its questions ranked, with every command, path outside the workspace and workflow size its plan would hit. Ask for the cap before the last round, so the attackers see it; run another round only if the last one changed the brief.
+Test 5 is run with `check:attack`; if it is not installed, send the fresh agents yourself. Each gets the draft brief and the five tests, never the conversation or your favorite reading. One attacks the bar. One is the builder of test 3: it plans from the draft alone and returns its questions ranked, with every command, path outside the workspace and workflow size its plan would hit. Ask for the cap before the attack, so the attackers see it. One round is the default; `check:attack` says when another is earned (a confirmed blocking finding was fixed), three at most.
 
-Sort what returns. Already answered. The user's: a wrong guess changes what gets built, it needs their word under a boundary, it changes something they said, or it is a shortcut. Yours: the rest; settle and mark assumed. The user's go to them in one batch, with yours alongside as assumptions they can correct.
+Sort what returns. Already answered. The user's: a wrong guess changes what gets built, it needs their word under a boundary, it changes something they said, or it is a shortcut. Yours: the rest; settle each as one dated line under your assumptions, never as new text in the brief's body. The user's go to them in one batch, with yours alongside as assumptions they can correct.
 
 Then write `brief.md` and show it whole in the conversation:
 

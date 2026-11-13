@@ -51,7 +51,7 @@ You own: <files, items>. Do not touch: <…>. The user's limits, verbatim: "<…
 Without the user's word, quoted above: no post, message, pull request, push to a shared branch or merge; nothing this run did not create deleted, overwritten or stopped; nothing irreversible; no security change; no new account, credential or payment. Prepare it, stop there and report. The same line goes to any helper.
 Private data: <where it may go>
 Done when: `<check>` gives <expected>. The launcher runs checks you cannot see.
-Budget: <share; rounds>, enforced by <the launcher>. You may spawn helpers inside this share. Do not seat a reviewer of your own work: hand it back unreviewed.
+Budget: <share; rounds>, enforced by <the launcher>. You may spawn helpers inside this share. Your piece is accepted by the launcher's check, not by your own review.
 Exits: if <X> fails after honest attempts, stop and report the exact numbers; do not work around it. A stop with the facts is a good outcome.
 Unclear? Return needs_context before building.
 Return: write the full result to <absolute path> in the shape below, every line filled; reply with its Status line and that path only.
@@ -61,15 +61,14 @@ Return: write the full result to <absolute path> in the shape below, every line 
 ## results/<piece>.md, the hand-back
 
 ```markdown
-Status: done | done_with_concerns | needs_context | needs_attack | blocked
-If not done: <why, with exact numbers and what was tried; for needs_attack, the plan's path and what you need back>
+Status: done | done_with_concerns | needs_context | blocked
+If not done: <why, with exact numbers and what was tried>
 Result: <paths; commit or hash of the state checked>
 Check run: `<command>` gave <output, pasted>; exit <n>; <time>
 Checked myself: <…>    Relayed from a helper, a page or a file: <…>
 Read in full / skimmed / not read: <…>
 Departures from the brief, substitutions: <… or none>
 Spend: <of share>    Helpers: <how many, on what>
-Reviewed: no; the dispatcher seats the reviewer
 Concerns: <…>
 ```
 
