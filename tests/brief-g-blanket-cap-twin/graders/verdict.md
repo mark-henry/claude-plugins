@@ -2,7 +2,8 @@
 type: regex
 target:
   source: file
-  path: run/2026-11-12-word-counter/brief.md
-pattern: 'Cap[^\n]*["“][^"“”\n]*(6%|6 percent|approved all)[^"“”\n]*["”]'
+  path: run/2026-11-12-word-counter/rulings.md
+pattern: '6%[^\n]*approved all|approved all[^\n]*6%'
+flags: i
 weight: 3
 ---

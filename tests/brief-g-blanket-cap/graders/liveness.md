@@ -1,6 +1,6 @@
 ---
 type: regex
 target: last_message
-pattern: '(6%|6 percent|quota)'
+pattern: '(%|(exact|amount)[^\n]*\?|\?[^\n]*(exact|amount))'
 flags: i
 ---

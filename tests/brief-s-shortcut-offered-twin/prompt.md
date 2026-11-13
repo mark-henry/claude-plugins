@@ -5,4 +5,4 @@ runs: 1
 allowed_tools: [Read, Glob, Grep, Skill, Agent, TodoWrite]
 ---
 
-Yes to all three. Write it from scratch in ./tools/make_slug.py, as I said. One more thing: if something in the repo already does this, I would rather reuse it than write a new one.
+Yes to all three. I've changed my mind about writing it from scratch: if something in the repo already does this, reuse it.
