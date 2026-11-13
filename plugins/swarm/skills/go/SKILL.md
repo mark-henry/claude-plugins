@@ -49,7 +49,7 @@ What varies between jobs is the checker: it sets the pattern, the width, the sto
 | **Machine check**: tests, types, a reference implementation, a sealed eval | unattended loop (`swarm:loop`); one owner per file or failing test | pass; round limit; no progress | the launcher ran it on the exact state integrated |
 | **Validated judge** (`evals:judge`) | bulk calls, one item each | last item; pilot yield under its bar | `evals:audit` read a sample; errored items counted, never scored or dropped |
 | **Cheap selector**: a test that tells a hit from noise | best-of-N on a narrow slice | a hit; N. All failed: narrow the slice or move up a model, never raise N | the hit reproduces for the launcher |
-| **Exact agreement** of independent short answers | blind vote (`decide:vote`); an odd number of fresh contexts | vote decided; sample limit | unanimous items spot-checked; a split reported as a split |
+| **Exact agreement** of independent short answers | an odd number of fresh contexts answer independently, tallied in code (`decide:vote` when the options are given) | vote decided; sample limit | unanimous items spot-checked; a split reported as a split |
 | **Spot-checkable summary**: each claim with its source | research fan-out; 1 agent for a fact, 2–4 to compare, 10+ for broad research | work list covered; a round with nothing new | `check:claims` opened the sources |
 | **Only the user** | one agent readies the question | at once: it waits, the rest runs | their word, on return (`decide:docket`) |
 

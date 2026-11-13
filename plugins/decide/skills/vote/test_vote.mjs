@@ -6,20 +6,19 @@ import { fileURLToPath } from 'node:url'
 const src = fs.readFileSync(fileURLToPath(new URL('./vote.js', import.meta.url)), 'utf8').replace('export const meta', 'const meta')
 const script = new (async () => {}).constructor('args', 'agent', 'parallel', 'pipeline', 'phase', 'log', src)
 
-// voter(options, label) gets [{letter, label}] in the order shown and returns a ballot.
-async function run(args, { voter, proposer, pooler }) {
-  const logs = []
+// voter(options, label, opts) gets [{letter, label}] in the order shown and returns a ballot.
+async function run(args, { voter }) {
+  const logs = [], seats = []
   const agent = async (prompt, opts = {}) => {
-    if (/^propose/.test(opts.label)) return proposer(opts.label)
-    if (opts.label === 'pool') return pooler(prompt)
-    if (/^vote/.test(opts.label)) {
+    if (/^(vote|tiebreak)/.test(opts.label)) {
+      seats.push(opts)
       const options = [...prompt.matchAll(/^([A-Z])\. (.+)$/gm)].map(m => ({ letter: m[1], label: m[2] }))
-      return voter(options, opts.label)
+      return voter(options, opts.label, opts)
     }
     throw new Error(`unexpected agent: ${opts.label}`)
   }
   const parallel = thunks => Promise.all(thunks.map(t => t()))
-  return { result: await script(args, agent, parallel, null, () => {}, m => logs.push(m)), logs }
+  return { result: await script(args, agent, parallel, null, () => {}, m => logs.push(m)), logs, seats }
 }
 // A voter that ranks labels in a fixed preference order and marks some out.
 const prefer = (order, { out = [], none = false } = {}) => options => ({
@@ -30,41 +29,84 @@ const prefer = (order, { out = [], none = false } = {}) => options => ({
 const tests = []
 const test = (name, fn) => tests.push([name, fn])
 
-test('the best-ranked option wins, with a margin', async () => {
-  const { result } = await run({ question: 'q', options: ['red', 'green', 'blue'] }, { voter: prefer(['green', 'red', 'blue']) })
+const Q = { question: 'q', options: ['red', 'green', 'blue'] }
+// byLabel({ 'vote 1': ballotFn, ... }) picks a ballot function per seat.
+const byLabel = map => (options, label) => map[label](options)
+
+test('two voters who agree settle it, and no tiebreaker runs', async () => {
+  const { result, seats } = await run(Q, { voter: prefer(['green', 'red', 'blue']) })
   assert.equal(result.winner, 'green')
-  assert.equal(result.tied, false)
+  assert.equal(result.voters, 2)
+  assert.equal(seats.length, 2)
+  assert.equal(result.split, false)
+})
+
+test('when the two disagree, one tiebreaker votes and its side wins', async () => {
+  const voter = byLabel({ 'vote 1': prefer(['green', 'red', 'blue']), 'vote 2': prefer(['red', 'green', 'blue']), 'tiebreak 1': prefer(['red', 'blue', 'green']) })
+  const { result, seats } = await run(Q, { voter })
+  assert.equal(result.voters, 3)
+  assert.equal(seats.length, 3)
+  assert.equal(result.winner, 'red')
+  assert.equal(result.split, false)
+})
+
+test('three different first choices and no tiebreakers left is a split with no winner', async () => {
+  const voter = byLabel({ 'vote 1': prefer(['green', 'red', 'blue']), 'vote 2': prefer(['red', 'green', 'blue']), 'tiebreak 1': prefer(['blue', 'red', 'green']) })
+  const { result } = await run(Q, { voter })
+  assert.equal(result.winner, null)
+  assert.equal(result.split, true)
+  assert.equal(result.leader, 'red', 'the Borda leader is named, as a leader only')
+})
+
+test('each seat runs on the model or agent type it was given', async () => {
+  const voter = byLabel({ 'vote 1': prefer(['green', 'red', 'blue']), 'vote 2': prefer(['red', 'green', 'blue']), 'tiebreak 1': prefer(['red', 'blue', 'green']) })
+  const { seats, result } = await run({ ...Q, voters: [{ model: 'm-one' }, { agentType: 'other-family' }], tiebreakers: [{ model: 'm-strong', effort: 'xhigh' }] }, { voter })
+  assert.deepEqual(seats.map(s => s.model ?? s.agentType), ['m-one', 'other-family', 'm-strong'])
+  assert.equal(seats[2].effort, 'xhigh')
+  assert.deepEqual(result.seats.map(s => s.seat), ['m-one', 'other-family', 'm-strong'])
+})
+
+test('a second tiebreaker runs only if the first left it open', async () => {
+  const base = { 'vote 1': prefer(['green', 'red', 'blue']), 'vote 2': prefer(['red', 'green', 'blue']) }
+  // The first tiebreaker's seat returns nothing (an errored agent), so the second is needed.
+  const open = await run({ ...Q, tiebreakers: [{}, {}] }, { voter: byLabel({ ...base, 'tiebreak 1': () => null, 'tiebreak 2': prefer(['red', 'green', 'blue']) }) })
+  assert.equal(open.seats.length, 4)
+  assert.equal(open.result.winner, 'red')
+  assert.equal(open.result.seats.find(s => s.label === 'tiebreak 1').returned, false, 'a seat that returned nothing is recorded')
+  const closed = await run({ ...Q, tiebreakers: [{}, {}] }, { voter: byLabel({ ...base, 'tiebreak 1': prefer(['red', 'blue', 'green']) }) })
+  assert.equal(closed.seats.length, 3)
+})
+
+test('one voter saying none of these sends it to the tiebreaker', async () => {
+  const voter = byLabel({ 'vote 1': prefer(['green', 'red', 'blue']), 'vote 2': prefer(['green', 'red', 'blue'], { none: true }), 'tiebreak 1': prefer(['green', 'red', 'blue']) })
+  const { result, seats } = await run(Q, { voter })
+  assert.equal(seats.length, 3)
+  assert.equal(result.winner, 'green')
 })
 
 test('when a majority rules every option out, nothing wins', async () => {
-  const { result } = await run({ question: 'q', options: ['red', 'green', 'blue'] }, { voter: prefer(['green', 'red', 'blue'], { out: ['red', 'green', 'blue'] }) })
+  const { result } = await run(Q, { voter: prefer(['green', 'red', 'blue'], { out: ['red', 'green', 'blue'] }) })
   assert.equal(result.winner, null)
   assert.equal(result.winner_option, null)
   assert.equal(result.none_eligible, true)
 })
 
 test('a majority can say none of these', async () => {
-  const { result } = await run({ question: 'q', options: ['red', 'green', 'blue'] }, { voter: prefer(['green', 'red', 'blue'], { none: true }) })
+  const { result } = await run(Q, { voter: prefer(['green', 'red', 'blue'], { none: true }) })
   assert.equal(result.winner, null)
   assert.equal(result.none_acceptable, true)
 })
 
 test('an option ruled out by a majority cannot win, and votes pass to the next choice', async () => {
-  const { result } = await run({ question: 'q', options: ['red', 'green', 'blue'] }, { voter: prefer(['green', 'red', 'blue'], { out: ['green'] }) })
+  const { result } = await run(Q, { voter: prefer(['green', 'red', 'blue'], { out: ['green'] }) })
   assert.equal(result.winner, 'red')
   const row = l => result.table.find(t => t.label === l)
   assert.equal(row('green').eligible, false)
-  assert.equal(row('red').first, 5, 'first choices among eligible options')
+  assert.equal(row('red').first, 2, 'first choices among eligible options')
 })
 
-test('a candidate the pooling agent dropped is put back', async () => {
-  const proposer = label => ({ candidates: [{ label: `${label} a`, option: `${label} option a`, why: '' }, { label: `${label} b`, option: `${label} option b`, why: '' }] })
-  const pooler = () => ({ options: [{ label: 'kept', option: 'kept option', from: ['0.0', '1.0'] }, { label: 'also', option: 'also option', from: ['0.1', '0.1'] }] })
-  const { result } = await run({ question: 'q', proposers: 2 }, { proposer, pooler, voter: o => prefer(['kept'])(o) })
-  const labels = result.pool.map(p => p.label)
-  assert.ok(labels.includes('propose 2 b'), `1.1 was dropped by the pool and not restored: ${labels}`)
-  assert.equal(result.pool.find(p => p.label === 'also').from.length, 1, 'a repeated id is counted once')
-  assert.equal(result.pool_repairs.length > 0, true)
+test('options are required: the vote does not write its own', async () => {
+  await assert.rejects(() => run({ question: 'q' }, { voter: prefer([]) }), /options/)
 })
 
 let failed = 0

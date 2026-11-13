@@ -1,19 +1,21 @@
 export const meta = {
-  name: 'gauntlet-vote',
-  description: 'Pick among discrete options by blind vote: independent proposers (unless options are given), a deduped pool, voters who each see a different order, and a plurality / Borda / Condorcet tally with margins',
+  name: 'decide-vote',
+  description: 'Pick among given options by blind vote: two voters on different models rank them in different orders; if they disagree, heavier tiebreakers vote one at a time; code tallies plurality, Borda and Condorcet',
   phases: [
-    { title: 'Propose', detail: 'independent proposers, no shared context' },
-    { title: 'Pool', detail: 'merge duplicates into distinct options' },
-    { title: 'Vote', detail: 'blind voters rank the pool in rotated orders' },
+    { title: 'Vote', detail: 'two blind voters, different models, different orders' },
+    { title: 'Tiebreak', detail: 'heavier seats, one at a time, only while undecided' },
   ],
 }
 
 const a = args || {}
 if (!a.question) throw new Error('args.question is required')
-const nProp = a.proposers ?? 5
-const nVote = a.voters ?? 5
+if (!Array.isArray(a.options) || a.options.length < 2) throw new Error('args.options needs at least two options: this script picks, it does not propose')
 const method = a.method ?? 'borda'
 const effort = a.effort ?? 'high'
+// A seat is {model?, agentType?, effort?}. Defaults inherit the session model; pass seats from different model families.
+const voterSeats = Array.isArray(a.voters) && a.voters.length ? a.voters : [{}, {}]
+const tieSeats = Array.isArray(a.tiebreakers) ? a.tiebreakers : [{}]
+const seatName = s => s.model ?? s.agentType ?? 'session model'
 const brief = [
   `Question: ${a.question}`,
   a.goal && `Goal: ${a.goal}`,
@@ -22,40 +24,6 @@ const brief = [
   a.criteria && `Judge by: ${a.criteria}`,
 ].filter(Boolean).join('\n\n')
 
-const CANDIDATE = {
-  type: 'object',
-  properties: {
-    label: { type: 'string', description: 'a short name for the option, under 8 words' },
-    option: { type: 'string', description: 'the option in full, standalone' },
-    why: { type: 'string', description: 'its case, in one or two sentences' },
-  },
-  required: ['label', 'option', 'why'],
-}
-const PROPOSAL = {
-  type: 'object',
-  properties: {
-    candidates: { type: 'array', items: CANDIDATE, minItems: 2, maxItems: 3, description: 'distinct options, your best first' },
-  },
-  required: ['candidates'],
-}
-const POOL = {
-  type: 'object',
-  properties: {
-    options: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          label: { type: 'string' },
-          option: { type: 'string', description: 'the strongest full statement among the merged proposals' },
-          from: { type: 'array', items: { type: 'string' }, description: 'ids (like "2.1") of the candidates merged into this option' },
-        },
-        required: ['label', 'option', 'from'],
-      },
-    },
-  },
-  required: ['options'],
-}
 const BALLOT = {
   type: 'object',
   properties: {
@@ -68,98 +36,64 @@ const BALLOT = {
   required: ['ranking', 'out', 'none_acceptable', 'why_first', 'worry'],
 }
 
-// Stances vary where each proposer starts looking; they are leanings, not assignments.
-const STANCES = [
-  'what an experienced practitioner would pick first',
-  'the simplest thing that could work',
-  'existing tools, libraries or prior art',
-  'robustness: what is hardest to get wrong later',
-  'what a sharp skeptic of the obvious answer would push',
-  'what is cheapest to try and to reverse',
-  'the most ambitious option worth its cost',
-]
+const pool = a.options.map((o, i) => (typeof o === 'string'
+  ? { label: o.length > 60 ? `option ${i + 1}` : o, option: o }
+  : { label: o.label ?? `option ${i + 1}`, option: o.option ?? o.text ?? JSON.stringify(o) }))
 
-let pool
-const repairs = []
-if (a.options && a.options.length) {
-  pool = a.options.map((o, i) => (typeof o === 'string'
-    ? { label: o.length > 60 ? `option ${i + 1}` : o, option: o, from: [] }
-    : { label: o.label ?? `option ${i + 1}`, option: o.option ?? o.text ?? JSON.stringify(o), from: [] }))
-  log(`${pool.length} options given; skipping proposers`)
-} else {
-  phase('Propose')
-  const props = (await parallel(Array.from({ length: nProp }, (_, i) => () => agent(
-`${brief}
-
-You are one of several independent proposers. Give your two or three best answers, best first, as genuinely different options (different choices, not variants of one), each complete and concrete. Start your search from ${STANCES[i % STANCES.length]}, but rank by your honest judgment. Voters will choose among everyone's candidates, so a strong alternative is useful even if you would not pick it.`,
-    { label: `propose ${i + 1}`, phase: 'Propose', schema: PROPOSAL, effort, model: a.model })))).filter(Boolean)
-  if (!props.length) throw new Error('no proposals came back')
-  const cands = props.flatMap((p, i) => p.candidates.map((c, j) => ({ ...c, id: `${i}.${j}` })))
-
-  phase('Pool')
-  const merged = await agent(
-`${brief}
-
-Independent proposers gave these candidates (id = proposer.rank; rank 0 is that proposer's first choice):
-
-${cands.map(c => `[${c.id}] ${c.label}\n${c.option}`).join('\n\n')}
-
-Merge candidates that are the same option in substance (different wording, same choice) so that votes are not split between duplicates. Keep genuinely different options apart, even if similar. Return every distinct option with the ids it absorbed; every id appears exactly once. Do not judge or drop any.`,
-    { label: 'pool', phase: 'Pool', schema: POOL, effort: 'medium', model: a.judge_model })
-  pool = merged.options
-  // The pool merge is an agent's work, so code checks it: every candidate id in exactly one option.
-  const seenIds = new Set()
-  for (const o of pool) {
-    const kept = [...new Set(o.from.map(String))].filter(id => cands.some(c => c.id === id) && !seenIds.has(id))
-    if (kept.length !== o.from.length) repairs.push(`"${o.label}": dropped ${o.from.length - kept.length} repeated or unknown id(s)`)
-    kept.forEach(id => seenIds.add(id))
-    o.from = kept
-  }
-  for (const c of cands) {
-    if (!seenIds.has(c.id)) { pool.push({ label: c.label, option: c.option, from: [c.id] }); repairs.push(`restored candidate ${c.id} ("${c.label}"), which the pool had dropped`) }
-  }
-  repairs.forEach(r => log(`pool repair: ${r}`))
-  pool.forEach(o => {
-    o.proposed_by = new Set(o.from.map(id => String(id).split('.')[0])).size
-    o.first_choice_of = o.from.filter(id => String(id).endsWith('.0')).length
-  })
-  log(`${cands.length} candidates from ${props.length} proposers → ${pool.length} distinct options`)
-}
-if (pool.length < 2) {
-  return { question: a.question, pool, winner: pool[0]?.label ?? null, note: 'only one distinct option; nothing to vote on' }
-}
-
-phase('Vote')
 const L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 const k = pool.length
-// Voter i sees a rotation of the pool, reversed for odd i, so position bias spreads across options.
+// Seat i sees a rotation of the pool, reversed for odd i, so position bias spreads across options.
 const orderFor = i => {
   const rot = Array.from({ length: k }, (_, j) => (j + i) % k)
   return i % 2 ? rot.reverse() : rot
 }
-const ballots = (await parallel(Array.from({ length: nVote }, (_, i) => () => {
+const valid = [], seats = []
+const cast = async (seat, i, label, ph) => {
   const order = orderFor(i)
-  return agent(
+  const b = await agent(
 `${brief}
 
 Options:
 
 ${order.map((p, j) => `${L[j]}. ${pool[p].label}\n${pool[p].option}`).join('\n\n')}
 
-Rank every option, best first, by letter. You vote alone and do not know who proposed what; judge each on its merits against the question${a.criteria ? ' and the criteria' : ''}. Mark any option that breaks a hard constraint as out (still rank it). If none of them is an acceptable answer, or the question itself is wrongly framed, rank them anyway and set none_acceptable: that is a valid result.`,
-    { label: `vote ${i + 1}`, phase: 'Vote', schema: BALLOT, effort, model: a.judge_model ?? a.model })
-    .then(b => b && { ...b, order })
-}))).filter(Boolean)
-
-// Map letters back to pool indices; drop malformed rankings rather than guess.
-const valid = []
-for (const b of ballots) {
-  const idx = b.ranking.map(x => L.indexOf(String(x).trim().toUpperCase()[0])).filter(j => j >= 0 && j < k).map(j => b.order[j])
+Rank every option, best first, by letter. You vote alone; judge each on its merits against the question${a.criteria ? ' and the criteria' : ''}. Mark any option that breaks a hard constraint as out (still rank it). If none of them is an acceptable answer, or the question itself is wrongly framed, rank them anyway and set none_acceptable: that is a valid result.`,
+    { label, phase: ph, schema: BALLOT, effort: seat.effort ?? effort, ...(seat.model ? { model: seat.model } : {}), ...(seat.agentType ? { agentType: seat.agentType } : {}) })
+  seats.push({ label, seat: seatName(seat), returned: !!b })
+  if (!b) return
+  // Map letters back to pool indices; drop a malformed ranking rather than guess.
+  const idx = b.ranking.map(x => L.indexOf(String(x).trim().toUpperCase()[0])).filter(j => j >= 0 && j < k).map(j => order[j])
   const uniq = [...new Set(idx)]
-  if (uniq.length !== k) { log(`dropped a ballot ranking ${uniq.length}/${k} options`); continue }
-  const out = b.out.map(x => L.indexOf(String(x).trim().toUpperCase()[0])).filter(j => j >= 0 && j < k).map(j => b.order[j])
+  if (uniq.length !== k) { log(`dropped ${label}: it ranked ${uniq.length}/${k} options`); return }
+  const out = b.out.map(x => L.indexOf(String(x).trim().toUpperCase()[0])).filter(j => j >= 0 && j < k).map(j => order[j])
   valid.push({ rank: uniq, out, none_acceptable: b.none_acceptable === true, why_first: b.why_first, worry: b.worry })
 }
+// Decided: at least two ballots, and a majority says none of these, or one eligible option holds a majority of
+// first choices, or a majority has ruled every option out. Two ballots that differ on "none of these" are undecided.
+const decided = () => {
+  const n = valid.length
+  if (n < 2) return false
+  const none = valid.filter(v => v.none_acceptable).length
+  if (none * 2 > n) return true
+  if (none && n < 3) return false // one of two objecting is a disagreement; one of three is a minority
+  const outs = Array(k).fill(0)
+  for (const v of valid) v.out.forEach(p => outs[p]++)
+  const ok = p => outs[p] * 2 <= n
+  if (![...Array(k).keys()].some(ok)) return true
+  const first = Array(k).fill(0)
+  for (const v of valid) { const r = v.rank.filter(ok); if (r.length) first[r[0]]++ }
+  return first.some(c => c * 2 > n)
+}
+
+phase('Vote')
+await parallel(voterSeats.map((s, i) => () => cast(s, i, `vote ${i + 1}`, 'Vote')))
+for (let t = 0; t < tieSeats.length && !decided(); t++) {
+  if (t === 0) phase('Tiebreak')
+  log(`undecided after ${valid.length} ballot(s); tiebreak ${t + 1} on ${seatName(tieSeats[t])}`)
+  await cast(tieSeats[t], voterSeats.length + t, `tiebreak ${t + 1}`, 'Tiebreak')
+}
+const split = !decided()
+
 const n = valid.length
 if (!n) throw new Error('no valid ballots')
 
@@ -186,8 +120,6 @@ const maxScore = method === 'plurality' ? n : n * Math.max(ke - 1, 0)
 const table = ranked.map(p => ({
   label: pool[p].label,
   first: first[p], borda: borda[p], out: outs[p], eligible: eligible(p),
-  proposed_by: pool[p].proposed_by ?? null,
-  first_choice_of: pool[p].first_choice_of ?? null,
 }))
 // "None of these" is a result: every option ruled out, or a majority saying no option is acceptable.
 const noneAcceptable = valid.filter(v => v.none_acceptable).length * 2 > n
@@ -196,7 +128,7 @@ if (ke === 0 || noneAcceptable) {
     question: a.question, method, voters: n, winner: null, winner_option: null,
     none_eligible: ke === 0, none_acceptable: noneAcceptable,
     note: ke === 0 ? 'a majority of voters ruled out every option' : 'a majority of voters found no option acceptable',
-    table, reasons: valid.filter(v => v.none_acceptable).map(v => v.why_first), pool, pool_repairs: repairs,
+    split: false, seats, table, reasons: valid.filter(v => v.none_acceptable).map(v => v.why_first), pool,
   }
 }
 const winner = ranked[0], runner = ke > 1 ? ranked[1] : null
@@ -205,8 +137,12 @@ return {
   question: a.question,
   method,
   voters: n,
-  winner: pool[winner].label,
-  winner_option: pool[winner].option,
+  // A split is not a win: the leader is named, and the caller reports the split.
+  winner: split ? null : pool[winner].label,
+  winner_option: split ? null : pool[winner].option,
+  leader: pool[winner].label,
+  split,
+  seats,
   margin: runner === null ? 'the only eligible option' : `${score[winner]} vs ${score[runner]} (${pool[runner].label}) of ${maxScore} possible`,
   agree: {
     plurality: pool[pl[0]].label,
@@ -220,5 +156,4 @@ return {
   reasons_for_winner: valid.filter(v => v.rank[0] === winner).map(v => v.why_first),
   worries_about_winner: valid.filter(v => v.rank[0] === winner).map(v => v.worry),
   pool,
-  pool_repairs: repairs,
 }

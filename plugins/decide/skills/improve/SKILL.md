@@ -13,7 +13,7 @@ The run ends in a blind pick, because a chain's last version would otherwise win
 
 ## Before launch
 
-1. **The proposal.** If the user proposed something, pass it verbatim. If there is no proposal yet, do not write one yourself to be beaten: get independent candidates first (`decide:vote` with no options), then improve the winner.
+1. **The proposal.** If the user proposed something, pass it verbatim. If there is no proposal yet, do not write one yourself to be beaten: ask a few fresh agents for their best answers independently, put those to `decide:vote`, then improve the winner.
 2. **Context for strangers.** The challengers know nothing of this conversation. Give them facts: the goal, the constraints, numbers with denominators, file paths to open, any test or check a version must pass, siblings or alternatives that already exist, and anything already tried. If the proposal won a vote, include the options it beat as full text, not labels (a challenger cannot revive a label), and what the voters worried about. Leave out the reasons you like the proposal; they will find its strengths or fail to.
 3. **Shape.** Default `depth: 2, width: 1`. Give a single chain a lens too when you can name one (`lenses: ["is the premise right"]`): a bare "better way?" draws vague feedback. Use more width when the proposal's premise is in doubt or it could fail in several different ways. Give each chain a lens (e.g. `["correctness", "simplicity", "cost"]`) so the chains disagree usefully. Use more depth only if a chain is still changing at its last step.
 
