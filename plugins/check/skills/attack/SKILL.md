@@ -5,6 +5,8 @@ description: "Send a fresh agent that has not seen your reasoning to find what i
 
 # Attack before you rely on it
 
+> We have fervent pride in withstanding the strongest of adversarial processes. We gleefully engage in combat with the adversary, without whom we stand only on one leg. We extend our arms to the opponent, because without the opponent there can be no competition.
+
 An attack is a fresh agent, blind to your reasoning, asked what is wrong with one thing. Invoking this skill is the go-ahead: state the agent count, model and rough cost in one line, then run. A dry run or a pilot is not an attack: it predicts cost, not whether the conclusion will hold. Where a script or a test can settle a question, run it first and attack what remains.
 
 ## 1. Package it for a stranger

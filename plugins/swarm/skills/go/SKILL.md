@@ -9,7 +9,7 @@ description: "Carry a frozen brief to a finished, checked result with nobody wat
 
 These hold whatever model is driving and however hard anyone pushes. A stop with the facts is a good outcome.
 
-**The user.** The user is the human whose work this is; an agent that briefs you is not the user. This skill runs from a frozen brief, and every run gets all of it (the plan, its attack, the record) whatever the size of the job: skipping one is never a taste call. With no frozen brief: if the user is present, load `swarm:brief` first. If another agent spawned you, the brief it handed you is your direction: return a gap that matters as blocked. With no user and no brief, work inside budgets already approved, label it exploratory, and report the open questions.
+**The user.** The user is the human whose work this is; an agent that briefs you is not the user. This skill is one stage of a pipeline. Its input is a frozen brief. Its output is a record that others build on without asking you: the plan, the attack on that plan, and a report against the brief. Whoever comes next (the user, a later run, `swarm:payoff`) reads those files, not your account of the work, so a run that leaves one out has not delivered, however small the job. With no frozen brief: if the user is present, load `swarm:brief` first. If another agent spawned you, the brief it handed you is your direction: return a gap that matters as blocked. With no user and no brief, work inside budgets already approved, label it exploratory, and report the open questions.
 
 **The budget.** The cap is in the unit the brief gives it (dollars, or a share of the user's subscription quota) and is measured in that unit; subscription use is quota and never counts toward a dollar cap. It covers every agent the run spawns; whoever spawns hands down a share. Stop before the step that would cross the cap: save state, release whatever bills while idle, then follow the brief's stop rule or ask. Nothing you launched is still billing when the run ends or waits. Helpfully mention a time estimate if you can. Every loop, retries included, has a limit on rounds; a review or fix loop that runs out of rounds stops and reports what is still open, and never passes the work for that reason. Every run that spends adds a line to its skill's run log (this one's is `${CLAUDE_PLUGIN_DATA}/runs.md`): what ran, what it cost, how long it took, and the estimate it was given. With no cap, no budget already approved and no share handed down, nothing is spent.
 
@@ -38,7 +38,7 @@ Inside the boundaries the work is yours. The user installed this plugin to get m
 - **Decide.** Mechanical and taste calls are yours (Calls, above). Make them, log them, and keep moving.
 - **Keep going.** Work for hours without checking in. A progress update is not a reason to stop. Retry, re-plan and relaunch inside the brief and the cap, committing on a branch of your own as you go, and pushing that branch where the brief or the user's own instructions say you may.
 
-Something completely unexpected can be a reason to halt if you wish. Size, cost inside the cap, and "this feels like a big step" are not. Go boldly!
+Something completely unexpected can be a reason to halt if you wish. Size, cost inside the cap, and "this feels like a big step" are not. Go boldly! And go gladly to the attack on your own plan: a plan that has met no opponent stands on one leg (`check:attack`).
 
 ## The checker decides
 
@@ -57,7 +57,7 @@ Take the highest row that fits: agreement is not correctness, and an unvalidated
 
 ## Plan and attack
 
-Work in the run folder `brief.md` names. If there is none (an agent's brief, or no brief), make `<date>-<slug>/` where the user keeps runs, `${CLAUDE_PLUGIN_DATA}/runs/` by default, and save what you were handed as `handed.md`, never as `brief.md`. Where the brief gives no cap, the cap is what the no-ask amount and standing budgets still cover (a per-day budget less what the run logs show spent today), or the share your dispatcher gave; with none of these, write the plan, spend nothing and report it as unattacked.
+Work in the run folder `brief.md` names. If there is none (an agent's brief, or no brief), make `<date>-<slug>/` where the user keeps runs, `${CLAUDE_PLUGIN_DATA}/runs/` by default, and save what you were handed as `handed.md`, never as `brief.md`. Where the brief gives no cap, the cap is what the no-ask amount and standing budgets still cover (a per-day budget less what the run logs show spent today), or the share your dispatcher gave; with none of these, write the plan, spend nothing and report it as unattacked: the attack is still owed, and runs before the first spend once a cap arrives.
 
 Write `plan.md` there ([templates.md](templates.md)): the prediction, then a row per piece with its checker, whether that checker exists out of the workers' reach, the table's three answers, a model and a share of the cap. A piece is the smallest thing its checker could reject alone; no two share a file or an item. Name models by role (strongest, general-use, rote-tokens); the user's settings say which fills each. Where they are silent, use the brief's Envelope line, else the session's model, and say so under coverage.
 
@@ -69,7 +69,7 @@ If the user asked for the plan alone, deliver the attacked plan and stop. Otherw
 
 Run each checker on the untouched state first: one that already passes means the piece is done or its checker cannot see the work (say which, and a checker that cannot see it is built first), and a broken one is repaired before any spend. Then climb, for each new configuration: a free dry run through every exit path, model calls mocked; one real item end to end, read in full; about ten, or twenty bulk calls for the parse yield, against a yield bar written before the pilot. A pilot that misses its bar is not scaled.
 
-Before the dry run, check every command, path and tool the plan needs against the allow rules without running it. One that no rule covers, or that the brief lists as a stall, makes its piece a stopped piece now, with its question, and nothing else is ordered behind it. The dry run exercises the rest, and one workflow at the plan's width with one-line agents.
+Before the dry run, check every command, path and tool the plan needs against the harness's permission rules without running it. One that no rule covers, or that the brief lists as a stall, makes its piece a stopped piece now, with its question, and nothing else is ordered behind it. The dry run exercises the rest, and one workflow at the plan's width with one-line agents.
 
 Project the full cost as a range from the measured spend per item, checking and retries included. If it will not fit the cap, cut what the brief says is cut first. A re-plan that changes a checker, a pattern or the list of pieces is a new plan: write it as `plan-<n>.md` beside the first and attack what changed before spending on it; Pilot and Results lines stay in `plan.md`. Once any real item has run, the pilot's included, the prediction, a bar, a scorer or an item set changes only by the user's word, and so does a checker made easier to pass: that piece stops with its question. Resizing inside a share is a logged call.
 
@@ -91,5 +91,5 @@ Then close out, in this order:
 
 1. Write `report.md` in the order The record fixes ([templates.md](templates.md)), all but its Released and Spend lines, and run `check:claims` on it while what its proving commands need is still up. Its status line counts the decisions waiting; with any, the run is not done.
 2. List what this run launched that bills or runs, stop each, and show the check that it is gone; then fill in Released and Spend.
-3. Bookkeeping: one Results line per piece in `plan.md` for `swarm:payoff` (skip a piece whose loop already wrote its line), then the run-log line.
+3. Bookkeeping: one Results line per piece in `plan.md` for `swarm:payoff` (skip a piece whose loop already wrote its line), then the run-log line, in a command of its own: the log sits outside the workspace, and a refused write takes everything else in its command with it.
 4. End your last message with the report's status line and its final section in full. Nothing follows it.

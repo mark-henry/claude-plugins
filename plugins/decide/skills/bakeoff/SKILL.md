@@ -17,7 +17,7 @@ The script can't stop anchoring on its own: anchoring enters through the `args` 
 
 ## Step 0: freeze the brief
 
-If the conversation doesn't already contain a `## Frozen brief` for this problem, invoke the `swarm:brief` skill and run its interview with the user first. Don't launch without one: a vague brief is built into every agent downstream, and the red team grades against its own guess.
+If there is no frozen brief for this problem (a `brief.md` from `swarm:brief`, headed `## Frozen brief`), invoke the `swarm:brief` skill and run its interview with the user first. Don't launch without one: a vague brief is built into every agent downstream, and the red team grades against its own guess.
 
 Map the brief onto `args`: Bar and Fallback bar become `target` (the red team grades "survives" against it as written); Out of scope, the firm Requirements, Stop rules and the Cap become `constraints`; Wants, For and Context facts become `context`. Before mapping, strip any diagnosis or solution example that crept into the brief.
 
