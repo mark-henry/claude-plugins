@@ -40,25 +40,25 @@ Each item is quoted from the body of `lab:experiment` as it stood before commit 
 
 ### Noise and seeds
 
-- "Three seeds a side make a figure, not a test [11]. By exact arithmetic, a one-sided rank test of 3 against 3 reaches at best p = 0.05, 4 against 4 about 0.014, and 2 of 3 against 0 of 3 gives p = 0.2." Supports Rule 4: noise floor (the 3-against-3 and 4-against-4 figures; the 2-of-3-against-0-of-3 figure is no longer referenced).
+- "Three seeds a side make a figure, not a test [11]. By exact arithmetic, a one-sided rank test of 3 against 3 reaches at best p = 0.05, 4 against 4 about 0.014, and 2 of 3 against 0 of 3 gives p = 0.2." Supports Rule 4: noise floor ("three seeds a side make a figure, not a test"; the p-values themselves are no longer in the body).
 - "With a handful of seeds, don't write "significant": Agarwal et al. [11] advise interval estimates over dichotomous significance claims (Henderson and Bouthillier test significance, but with many runs)." Supports Rule 11: declared denominator, beyond noise (seeds as the unit, never "significant").
 - "Several samples per item fixed in advance, or scoring from token probabilities, cuts within-item noise [2]." No longer referenced.
 - "Criteria drift on contact with outputs [5]" Supports Rule 7: freeze (read every item the scorer fails before the freeze, because criteria drift).
 
 ### Multi-sample and multi-agent methods
 
-- "On GSM8K with gpt-3.5-turbo (2023), at nine responses each (debate: 3 agents, 2 rounds), debate scored 83.0 and self-consistency 88.2 against 76.7 for one answer [6]; the authors attribute debate's gain to consistency across generations, not self-correction." Supports Rule 3: controls (a multi-sample method meets its simple baseline at a matched token budget).
-- "No self-revision without an external signal (shown on 2023 models [6]; recheck on current ones)" Supports Rule 3: controls (self-correction is one of the methods that must meet the baseline); the external-signal requirement itself is no longer referenced.
+- "On GSM8K with gpt-3.5-turbo (2023), at nine responses each (debate: 3 agents, 2 rounds), debate scored 83.0 and self-consistency 88.2 against 76.7 for one answer [6]; the authors attribute debate's gain to consistency across generations, not self-correction." Supports the plan page's arm table in templates.md (a multi-sample method meets its simple baseline at a matched budget); the sentence is no longer in the body.
+- "No self-revision without an external signal (shown on 2023 models [6]; recheck on current ones)" Supports the same arm-table row; the external-signal requirement itself is no longer referenced.
 
 ### Cost and token use
 
 - "in one published system (2025), multi-agent runs used about 15x the tokens of a chat and single agents about 4x a chat, so roughly 4x a single agent by implication [7]" Supports Rule 13: the sentence (the comparator must be named).
-- "compute (token use alone explained 80% of performance variance on one browsing benchmark in 2025 [7])" Supports Rule 3: controls (matched token budget); not listed as a parity break in Rule 1 any more.
+- "compute (token use alone explained 80% of performance variance on one browsing benchmark in 2025 [7])" Supports the same arm-table row (matched budget); not listed as a parity break in Rule 1 any more.
 - "identical agentic runs vary in cost (on one coding benchmark the costliest of four runs averaged about 2x the cheapest, at worst 30x in tokens [9])" Supports Order of events, step 4 (say what it should cost); the contingency multiple and the range pricing of agentic arms are no longer referenced.
 
 ### Prompts
 
-- "in one practitioner's report, expanding a 103-word loop prompt to 1,500 words made the agent "slower and dumber" until it was cut back (anecdote, 2025 model) [10]" Supports Rule 6: instrument (prompts whose wording could move the result); the length point itself is no longer referenced.
+- "in one practitioner's report, expanding a 103-word loop prompt to 1,500 words made the agent "slower and dumber" until it was cut back (anecdote, 2025 model) [10]" No longer referenced.
 
 ### Reward hacking and tampering
 
@@ -80,7 +80,7 @@ Each item is quoted from the body of `lab:experiment` as it stood before commit 
 
 - [3] Cited only for the scientific, nuisance and fixed classes of knob. Supports Rule 1: one difference (a setting tuned on one arm).
 - [4] Cited only for "Fix the seed, check loss at init, overfit one batch". No longer referenced.
-- [8] Cited only for running a multi-sample method against its simple baseline at matched budget. Supports Rule 3: controls.
+- [8] Cited only for running a multi-sample method against its simple baseline at matched budget. Supports the plan page's arm table in templates.md.
 - [12] Cited only for preferring evals whose signal across models is large against checkpoint-to-checkpoint noise. No longer referenced.
-- [23] Cited only for "Never invent an effect size or compute post-hoc power". Supports Rule 4: noise floor.
+- [23] Cited only for "Never invent an effect size or compute post-hoc power". No longer referenced.
 - [24] Cited only for sending a skill or plugin treatment to `claude plugin eval`. Supports the scope line in the skill's description.

@@ -9,6 +9,8 @@
   prereg.py ls [DIR]                  open records, and how well past predictions landed
 
 Stdlib only. A record is JSON; see `new` for the fields. Exit code 1 on a refusal or a parity failure.
+The tool of the lab:experiment skill: its SKILL.md ("The record and its tool") says when each command runs,
+and its checks.md what each does and does not show.
 """
 from __future__ import annotations
 
@@ -20,7 +22,7 @@ STATUSES = {"draft", "open", "closed", "abandoned", "exploratory"}
 
 TEMPLATE = {
     "question": "One sentence: what this comparison decides.",
-    "bar": "DESIGN.md#BAR-CODENAME, or 'none, exploratory'",
+    "bar": "plan.md#BAR_NAME, or 'none, exploratory'",
     "decision": "What we do if the bar passes, and if it fails.",
     "varies": ["model", "base_model"],
     "arms": {"untreated": {"out": "logs/.../untreated", "command": "..."},
@@ -130,8 +132,10 @@ def cmd_open(a):
     rec["opened"] = {"utc": now(), "host": socket.gethostname(), "frozen_sha256": frozen_part(rec), **state}
     rec["status"] = "exploratory" if exploratory else "open"
     save(a.path, rec)
-    print(f"opened {a.path} at {(state.get('commit') or '?')[:8]}{' (dirty)' if diff else ''}; launch now. "
-          f"Commit the record before launch if it gates a DESIGN.md row or the run costs over $10.")
+    print(f"opened {a.path} at {(state.get('commit') or '?')[:8]}{' (dirty)' if diff else ''}; "
+          + ("exploratory: its numbers cannot pass or fail a bar or pick an arm." if exploratory else
+             "pin the record (commit it, or have a script log its hash) before a treated arm produces output "
+             "on the items the counted run scores."))
 
 
 def cmd_stamp(a):

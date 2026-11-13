@@ -1,6 +1,6 @@
 {
   "name": "lab",
-  "description": "ML-lab rigor. supervisor: the rulebook and sign-off: thirteen rules (one recorded difference between arms, prediction first, controls, noise floor, leakage, a validated instrument, the freeze, a script-written run record), each with the evidence that shows it, asked before launch and before a number is quoted. experiment: run one experiment (fine-tune, RL, LLM eval or judge) through its stages: prior art, a dated plan page, an attack before spend, a slow-start ladder, a claim-first report. prereg: preregister a comparison before it runs: numeric predictions with fixed denominators, commit and diff stamped, arm-parity check, then predicted vs observed.",
+  "description": "ML-lab rigor. experiment: the one guideline for a single experiment (fine-tune, RL, LLM eval or judge): the order of events, thirteen rules (one recorded difference between arms, prediction first, controls, noise floor, leakage, a validated instrument, the freeze, a script-written run record) each with how to meet it, the preregistration record with its tool, and the sign-off. supervisor: the door to that sign-off, where a fresh agent rules on the design before launch and on the number before it is quoted.",
   "author": {
     "name": "Mark Henry"
   },

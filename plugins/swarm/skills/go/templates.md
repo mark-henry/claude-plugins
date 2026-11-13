@@ -9,7 +9,7 @@ Angle brackets are gaps to fill; delete what does not apply.
 Bar: <from the brief, with its denominator>    Fallback bar: <…>
 Cap: <in the brief's unit: dollars, or a share of quota>    Cut first: <from the brief>    Held back for verify and report: <share>
 Prediction, written before any result: <expected result and range; what would surprise>
-Numbers that will meet a bar: <lab:prereg record, or none>
+Numbers that will meet a bar: <prereg record (`lab:experiment`), or none>
 
 | Piece (owns) | Cites | Checker | Exists, out of reach? | Work it as, how wide | Model role | Share; stops on | Accepted when |
 |---|---|---|---|---|---|---|---|

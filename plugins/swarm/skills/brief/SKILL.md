@@ -78,7 +78,7 @@ A permission is secured when the harness will no longer prompt for it, not when 
 
 ## Attack, then freeze
 
-Test 5 is run with `check:attack`; if it is not installed, send the fresh agents yourself. Each gets the draft brief and the five tests, never the conversation or your favorite reading. One attacks the bar. One is the builder of test 3: it plans from the draft alone and returns its questions ranked, with every command, path outside the workspace and workflow size its plan would hit. Ask for the cap before the attack, so the attackers see it. One round is the default; `check:attack` says when another is earned (a confirmed blocking finding was fixed), three at most.
+Test 5 is run with `check:attack`; if it is not installed, send the fresh agents yourself. Each gets the draft brief and the five tests, never the conversation or your favorite reading. One attacks the bar. One is the builder of test 3: it plans from the draft alone and returns its questions ranked, with every command, path outside the workspace and workflow size its plan would hit. Ask for the cap before the attack, so the attackers see it. One round is the default; `check:attack` says when another is earned, three at most.
 
 Sort what returns. Already answered. The user's: a wrong guess changes what gets built, it needs their word under a boundary, it changes something they said, or it is a shortcut. Yours: the rest; settle each as one dated line under your assumptions, never as new text in the brief's body. The user's go to them in one batch, with yours alongside as assumptions they can correct.
 

@@ -1,6 +1,6 @@
 # Templates for lab:experiment
 
-Angle brackets are gaps to fill. An empty field is an unchecked threat: fill it or write "n/a: reason". The run record's fields are `lab:supervisor` rule 8's and are not repeated here.
+Angle brackets are gaps to fill. An empty field is an unchecked threat: fill it or write "n/a: reason". The run record's fields are rule 8's in [SKILL.md](SKILL.md) and are not repeated here; the prereg record's are written by `prereg.py new`.
 
 ## plan.md, the experiment's plan page
 

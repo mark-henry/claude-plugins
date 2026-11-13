@@ -1,6 +1,6 @@
 # The rules in full, and what shows each
 
-For each of `lab:supervisor`'s rules: the conditions and exceptions the short form leaves out, then the evidence to open, at launch and at quote. "Evidence" alone means the same evidence at both moments. Rerun a check rather than read its old output.
+For each of `lab:experiment`'s thirteen rules, under the same number: the conditions and exceptions the short form in [SKILL.md](SKILL.md) leaves out, then the evidence to open, at launch and at quote. This file is the standard the supervisor (the fresh agent of the skill's Sign-off section) rules by. `prereg.py` is in this directory. "Evidence" alone means the same evidence at both moments. Rerun a check rather than read its old output.
 
 ## Pinned
 
@@ -27,7 +27,7 @@ For each of `lab:supervisor`'s rules: the conditions and exceptions the short fo
 
 ## What the tools do and do not show
 
-- `prereg.py open` checks that a non-exploratory record has a bar, a decision, and a `[low, high]` prediction and a denominator for every arm and metric. It does not check that an interval could miss, and it accepts the untouched template, placeholders and all: read every field. Its frozen hash is stored in the record itself: only the record's pin at each such run's commit shows the predictions came first. `lab:prereg` lets a cheap record be committed with its results; that does not meet rule 2 for a counted run.
+- `prereg.py open` checks that a non-exploratory record has a bar, a decision, and a `[low, high]` prediction and a denominator for every arm and metric. It does not check that an interval could miss, and it accepts the untouched template, placeholders and all: read every field. Its frozen hash is stored in the record itself: only the record's pin at each such run's commit shows the predictions came first.
 - `prereg.py parity` compares launch arguments outside `varies`, the instance files it finds, the commits and any dirty trees. It reads one stamp per arm folder, compares every arm to the first against one `varies` list, and only warns when it finds no instance files, so a PASS is support for rule 1, not proof, and a FAIL on a control arm's declared difference is expected.
 - `prereg.py stamp` records the commit, the uncommitted diff and the command. Its `dirty` list ignores untracked files, and a second stamp into one folder overwrites the first: give a relaunch its own folder. `close` and `parity` read only the folder each arm's frozen `out` names, so after a relaunch they see the parent run or nothing: for a relaunched arm do their checks by hand against the final run's record and report.
 - `prereg.py close` refuses a record whose frozen fields changed, and scores each prediction as hit or miss. It does not apply the bar. Running it again rewrites the record, so check on a copy.

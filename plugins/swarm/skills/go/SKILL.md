@@ -53,7 +53,7 @@ What varies between jobs is the checker: it sets the pattern, the width, the sto
 | **Spot-checkable summary**: each claim with its source | research fan-out; 1 agent for a fact, 2–4 to compare, 10+ for broad research | work list covered; a round with nothing new | `check:claims` opened the sources |
 | **Only the user** | one agent readies the question | at once: it waits, the rest runs | their word, on return (`decide:docket`) |
 
-Take the highest row that fits: agreement is not correctness, and an unvalidated judge is advisory. A piece needing two kinds of checker is two pieces. A built checker is accepted by someone other than its builder. An experiment's design is such a build: `lab:experiment`, with `lab:prereg` and `lab:supervisor` before a counted run. A choice the plan lists under "Choices sent out" goes to blind judges: `decide:vote` for a short list, `decide:improve` for one proposal, `decide:bakeoff` for a wide space.
+Take the highest row that fits: agreement is not correctness, and an unvalidated judge is advisory. A piece needing two kinds of checker is two pieces. A built checker is accepted by someone other than its builder. An experiment's design is such a build: `lab:experiment`, with its prereg record and its sign-off before a counted run. A choice the plan lists under "Choices sent out" goes to blind judges: `decide:vote` for a short list, `decide:improve` for one proposal, `decide:bakeoff` for a wide space.
 
 ## Plan and attack
 

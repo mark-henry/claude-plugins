@@ -97,6 +97,21 @@ class Freeze(unittest.TestCase):
         self.assertIn("changed after open", r.stdout + r.stderr)
 
 
+class Open(unittest.TestCase):
+    def test_open_says_to_pin_before_treated_output_and_names_no_cost_threshold(self):
+        # A record for a counted run is pinned before any treated output, at any cost: never "commit it with the results".
+        d = repo_with_arms({"untreated": {"model": "a"}, "treated": {"model": "b"}})
+        rp = d / "prereg" / "r.json"
+        rec = json.loads(rp.read_text())
+        rec.update(bar="plan.md#BAR_M", decision="d", predictions={a: {"m": [0.1, 0.9]} for a in ("untreated", "treated")})
+        rp.write_text(json.dumps(rec))
+        r = run(d, "open", "prereg/r.json")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("pin the record", r.stdout)
+        self.assertIn("before a treated arm produces output", r.stdout)
+        self.assertNotIn("$10", r.stdout)
+
+
 class Stamp(unittest.TestCase):
     def test_dirty_paths_are_recorded_whole(self):
         d = repo_with_arms({"untreated": {}, "treated": {}})
