@@ -70,7 +70,7 @@ An untreated arm at the same settings, a simple baseline, a positive control tha
 
 ### Rule 4: noise floor
 
-A floor measured on this harness that spans what the claim spans: for a claim about a treatment, the unchanged baseline and the treated arm each on at least three training seeds (data order and initialization), or three reruns of the judge or sampler when that is the treatment.
+A floor measured on this harness that spans what the claim spans: for a claim about a treatment, the unchanged baseline on at least three training seeds (data order and initialization); the treated arm's seed count is rule 11's, or three reruns of the judge or sampler when that is the treatment.
 
 - Measure and price the floor first: it sets kill thresholds and n, and the baseline seeds often cost more than the treatment. If they do not fit the cap, run shorter with more seeds, or word the claim now as "these checkpoints on these items".
 - Floor runs come before the FREEZE and stay exploratory: the counted untreated arm is run again, interleaved with the treated runs, so price the baseline twice.
@@ -140,7 +140,7 @@ A scorer, judge, metric or prompt that is new, changed or meeting a new kind of 
 
 ### Rule 11: declared denominator, beyond noise
 
-The number is the preregistered metric over its declared denominator, with an interval or every seed's value, and the untreated arm and simple baseline beside it, and the all-items rate too where arms can differ in the denominator (attempts, parsed, not refused). A difference is claimed only if it exceeds rule 4's floor and, with seeds as the unit, every treated run beats every untreated run, three or more a side; with items as the unit, for a claim about these checkpoints on these items, its paired interval excludes zero; a null only if the positive control passed, with the largest effect its interval excludes. Where every arm sits at the metric's floor or below the simple baseline, nothing is claimed.
+The number is the preregistered metric over its declared denominator, with an interval or every seed's value, and the untreated arm and simple baseline beside it, and the all-items rate too where arms can differ in the denominator (attempts, parsed, not refused). A difference is claimed only if it exceeds rule 4's floor and, with seeds as the unit, every treated run lies on the same side of every untreated run, three or more a side; with items as the unit, for a claim about these checkpoints on these items, its paired interval excludes zero; a null only if the positive control passed, with the largest effect its interval excludes or, with seeds as the unit, a positive control that cleared the floor in the same way. Where every arm sits at the metric's floor or below the simple baseline, nothing is claimed.
 
 - With a handful of seeds, draw every run and report the range ("range of three", not ±); never "significant".
 - With items as the unit, cluster standard errors on the unit of randomization and pair on shared items: samples of one item are not independent.
@@ -160,7 +160,7 @@ As it will be quoted, its comparator, unit and scope are the artifact's; it cred
 
 ## Sign-off
 
-At launch and at quote the designer launches one fresh agent with this brief, unaltered, and nothing else: `You are the supervisor of <experiment> at <launch|quote>. Load lab:experiment, read Sign-off and checks.md, launch no agent. Experiment folder: <path> @ <commit>. Sentence to be quoted: <verbatim, at quote>. Open everything yourself; return the Verdict block.` The brief and the reply are appended verbatim to `signoff.md` in the experiment folder and pinned; the report quotes that file's last verdict and how many came before it. Where no fresh agent can be launched, the designer's own pass is labeled a self-review and signs nothing.
+At launch and at quote the designer launches one fresh agent with this brief, unaltered, and nothing else: `You are the supervisor of <experiment> at <launch|quote>. Load lab:experiment, read Sign-off and checks.md, launch no agent. Experiment folder: <path> @ <commit>. Sentence to be quoted: <verbatim, at quote>, in <path or link of the draft it will appear in>. Waivers and amendments: <for each, where it was sent: transcript path and line, or channel link | none>. Open everything yourself; return the Verdict block.` The brief and the reply are appended verbatim to `signoff.md` in the experiment folder and pinned; every reply is appended, NOT SIGNED included, and asking again without changing the evidence earns nothing: the earlier verdict stands; beside each number quoted, the report gives that file's last verdict at quote on that number's sentence, and how many verdicts on that sentence came before it. Where no fresh agent can be launched, the designer's own pass is labeled a self-review and signs nothing.
 
 The supervisor launches no run and fixes nothing; it reruns checks (fixtures, hashes, intersections). Open the evidence yourself: a summary is not evidence, and evidence you cannot find is not met. "n/a" needs a reason. No other rule is applied.
 

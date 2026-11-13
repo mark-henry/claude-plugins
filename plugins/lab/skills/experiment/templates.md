@@ -61,7 +61,7 @@ Beside it: untreated <…>; simple baseline <…>; positive control <…>; floor
 Read: parse yield <k/n>; audit <verdict>; effective denominator <…>; gain where predicted? <…>
 Not excluded: <RIVAL_…>    Guards and kills that fired: <KILL_…>    Amendments, waivers: <…>
 Would change my mind: <…>
-Supervisor: <signoff.md's last verdict: SIGNED | SIGNED WITH WAIVER | NOT SIGNED: rules unmet, what would meet each; verdicts before it: n>
+Supervisor: <per number: signoff.md's last verdict at quote on its sentence: SIGNED | SIGNED WITH WAIVER | NOT SIGNED: rules unmet, what would meet each; verdicts before it: n>
 Next: <proposal, price>
 Needs your decision: <numbered, each with a recommendation; or "Nothing needs you.">
 ```
