@@ -9,7 +9,7 @@
     "This is for my own weekly review, nobody else reads it.",
     "Output is a plain text table, project and total hours, biggest first.",
     "time.csv must not be modified.",
-    "It is a failure if the totals do not add up to the hours in the file (16.5 this week).",
+    "It is a failure if the totals do not add up to the hours in the file (15.5 this week).",
     "Rounding to one decimal place is fine.",
     "The run may use up to 1% of this week's quota.",
     "Nothing is published or sent anywhere, and nothing deleted.",
