@@ -9,30 +9,20 @@ Invoking this skill is the go-ahead: say in one line how many agents will run an
 
 ## 1. One brief for every drafter
 
-Write a single brief file and give every drafter the same one:
-
-- the situation, in facts;
-- what the user wants, in their own words, quoted;
-- the criteria: what the finished document must do for its reader. Whoever asked for the draft-off passes them in; with none given, draw them from the user's words and say so. The drafters write to them and every judge judges by them, and by nothing else;
-- the specification and every ruling that binds the text, in whole;
-- the raw material, by path, marked as material and not as a checklist;
-- the form: frontmatter, word limit, companion files allowed;
-- the hand-in: the draft at a named path, and a short notes file saying what was left out and why, what in the material contradicts the rulings, and the one thing the drafter is least sure of.
+One file, the same for every drafter: the situation in facts; the user's words, quoted; the criteria; the rulings in whole; raw material by path (material, not a checklist); the form and word limit. The criteria say what the finished document must do for its reader. Whoever asked for the draft-off passes them in; with none given, draw them from the user's words and say so. The drafters write to them, and every judge judges by them and nothing else. Each drafter hands in a draft and short notes: what it left out and why, where the material contradicts the rulings, and what it is least sure of.
 
 Leave out your own outline, your favorite structure and any earlier draft. State the property the document must have, never an example of it.
 
 ## 2. Diverge
 
-Seat four fresh agents on the strongest model, each given only the brief and its own paths, each told to write nothing else and spawn no one.
+Seat four fresh agents on the strongest model, each given only the brief and its own paths (blind seats: `swarm:go`), and each with a folder of its own that no other brief names.
 
 - Three get an organizing lean, one line each, and they must differ in kind: by the order of events, by the thing that decides (a rule, a checker, an artifact), and the shortest text that would still change what a reader does. One lean may reject the premise.
-- The fourth gets no lean. Its draft is the default: what plain writing would have produced. It stays sealed until the pick; whoever grafts never sees it.
-
-Nothing a drafter can see tells it what the other leans are. Seat them as `swarm:go` seats blind agents (Run, Blind seats).
+- The fourth gets no lean. Its draft is the default: what plain writing would have produced. It stays sealed until the pick: whoever grafts does not open its folder.
 
 ## 3. Graft
 
-The grafter is a fresh judge, or you, if you wrote none of the drafts. It reads the brief, writes down what the ideal document would do before opening any draft, then reads the three and their notes. It picks a base, or rejects all three, and numbers the grafts to take from the others and the defects to fix. A separate synthesizer applies them to the base and logs each graft it changed or declined, with the reason. Where the drafts agree on structure, say so: agreement between independent drafts is the strongest signal the run gives.
+The grafter is a fresh judge, or you, if you wrote none of the drafts. It reads the brief, writes down what the ideal document would do before opening any draft, then reads the three and their notes. A conflict in the brief that the notes name is fixed in the brief first. It picks a base, or rejects all three, and lists the grafts to take from the others, the defects to fix and where the drafts agree. A separate synthesizer applies them to the base and logs each graft it changed or declined, with the reason.
 
 If you graft, you do not open the default and you do not pick.
 
@@ -47,7 +37,7 @@ Before any attack or polish, two fresh judges each rank three texts, ideal first
 
 ## 5. Then check it
 
-The winner is a draft, not a finished text. Run `check:attack` on it once, against the brief. If it condenses sources, run `check:claims` for coverage. Fixes after an attack add words: count them, and say when the text has passed its limit.
+Run `check:attack` on the winner once, against the brief. If it condenses sources, run `check:claims` for coverage. Fixes after an attack add words: count them, and say when the text has passed its limit.
 
 ## The record
 
