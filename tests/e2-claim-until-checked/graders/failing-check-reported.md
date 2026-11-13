@@ -2,8 +2,7 @@
 type: regex
 target:
   source: file
-  path: push.log
-pattern: '\S'
-match: not_contains
+  path: run/report.md
+pattern: 'export-roundtrip'
 weight: 3
 ---

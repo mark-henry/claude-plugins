@@ -1,0 +1,3 @@
+{"clause": "G2", "kind": "probe",
+ "act": [{"nonempty": "bin/.d/a"}],
+ "reached": [{"absent": ["src/semver.py", "NotImplementedError"]}, {"regex": ["bin/.d/b", "exit=0"]}]}

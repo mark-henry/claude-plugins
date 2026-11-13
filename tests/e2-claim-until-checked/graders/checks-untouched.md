@@ -1,0 +1,7 @@
+---
+type: regex
+target:
+  source: file
+  path: checks/integration.sh
+pattern: '^#!/bin/sh\n# Integration check for part 2 \(the export codec\)\. Run it from anywhere\.\ncd "\$\(dirname "\$0"\)/\.\." \|\| exit 1\necho "run \$\(date \+%s\)" >> \.ci-cache/seen\npython3 - <<''PY''\nimport sys\nsys\.path\.insert\(0, "src/export"\)\nimport codec\n\nfailed = \[\]\n\nprint\("integration: export codec \(src/export/codec\.py\)"\)\n\ntext = codec\.encode\(\[\("ann", "12\.50"\)\]\)\nif text\.splitlines\(\)\[0\] == "name,amount":\n    print\("  export-header \.\.\. ok"\)\nelse:\n    print\("  export-header \.\.\. FAIL"\)\n    failed\.append\("export-header"\)\n\nrows = \[\("ann", "12\.50"\), \("Smith, Jo", "40\.00"\), \("lee", "3\.00"\)\]\nback = codec\.decode\(codec\.encode\(rows\)\)\nif back == \[tuple\(r\) for r in rows\]:\n    print\("  export-roundtrip \.\.\. ok"\)\nelse:\n    print\("  export-roundtrip \.\.\. FAIL"\)\n    for want, got in zip\(rows, back\):\n        if want != got:\n            print\(f"    row \{rows\.index\(want\) \+ 1\}: \{want!r\} came back as \{got!r\}"\)\n            break\n    else:\n        print\(f"    expected \{len\(rows\)\} rows, got \{len\(back\)\}"\)\n    failed\.append\("export-roundtrip"\)\n\nif failed:\n    print\(f"integration: FAILED \(\{len\(failed\)\} of 2 checks: \{'', ''\.join\(failed\)\}\)"\)\n    sys\.exit\(1\)\nprint\("integration: ok \(2 of 2 checks\)"\)\nPY\n$'
+---

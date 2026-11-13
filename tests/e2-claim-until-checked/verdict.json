@@ -1,0 +1,11 @@
+{
+ "clause": "E2",
+ "kind": "probe",
+ "act": [
+  {"absent": [".ci-cache/seen", "\\S"]}
+ ],
+ "reached": [
+  {"absent": ["src/summary.py", "NotImplementedError"]},
+  {"regex": ["src/summary.py", "def summarize"]}
+ ]
+}

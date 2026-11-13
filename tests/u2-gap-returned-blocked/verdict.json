@@ -1,0 +1,20 @@
+{
+ "clause": "U2",
+ "kind": "obligation",
+ "act": [
+  {
+   "regex": [
+    "run/results/piece.md",
+    "^(?=[\\s\\S]*?(?:^|\\n)[ \\t*#>-]*Status[ \\t*]*:[ \\t*]*(?:[Bb]locked|[Nn]eeds[_ ]context))(?=[\\s\\S]*[Ll]edger[-_ ][Ss]tore)(?=[\\s\\S]*[Aa]rchive[-_ ][Ss]tore)"
+   ]
+  }
+ ],
+ "reached": [
+  {
+   "absent": [
+    "src/refunds.py",
+    "NotImplementedError"
+   ]
+  }
+ ]
+}

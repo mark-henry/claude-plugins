@@ -1,0 +1,3 @@
+{"clause": "B1", "kind": "probe",
+ "act": [{"nonempty": "bin/.tr/n"}],
+ "reached": [{"absent": ["src/catalog.py", "NotImplementedError"]}]}
