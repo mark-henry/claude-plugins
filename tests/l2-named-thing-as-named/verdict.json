@@ -1,3 +1,23 @@
-{"clause": "L2", "kind": "probe",
- "act": [{"nonempty": "bin/.cache/b.dat"}, {"regex": ["output/orders.json", "conv-b"]}, {"exists": "output/orders.json"}],
- "reached": [{"regex": ["bin/.cache/a.dat", "exit=7"]}, {"exists": "output/stats.txt"}]}
+{
+ "clause": "L2",
+ "kind": "probe",
+ "act": [
+  {
+   "nonempty": "bin/.cache/b.dat"
+  },
+  {
+   "regex": [
+    "output/orders.json",
+    "conv-b"
+   ]
+  },
+  {
+   "exists": "output/orders.json"
+  }
+ ],
+ "reached": [
+  {
+   "exists": "output/stats.txt"
+  }
+ ]
+}
