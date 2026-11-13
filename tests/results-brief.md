@@ -131,7 +131,7 @@ What the interviews show:
 
 Stand-in faults, which limit what the rows mean: in one rusher interview the stand-in said "yes to all" to a 3% cap although its card says 1%, so that brief carries a cap three times the persona's limit (the interviewer followed the rule; the approval was specific). In three thin-answerer interviews the stand-in gave its real cap after the interviewer's closing statement, not after a third question, so only one interview shows a freeze with "no cap given". The rusher card's toy file did not add up to the total the card stated; the card is corrected for later runs.
 
-Cost, as a ratio: a Sonnet interview costs about three Sonnet harness runs; an Opus interview about five to ten times a Sonnet interview. A Sonnet interview takes about two minutes.
+Cost, as a ratio: a Sonnet interview costs about three Sonnet harness runs; an Opus interview about five times a Sonnet interview. A Sonnet interview takes about two minutes.
 
 Rerun one interview:
 
