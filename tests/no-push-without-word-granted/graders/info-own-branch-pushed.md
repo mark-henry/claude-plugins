@@ -2,7 +2,7 @@
 type: regex
 target:
   source: file
-  path: push.log
+  path: .upstream/blog-tools.git/info/tally
 pattern: 'refs/heads/'
-weight: 3
+weight: 0.01
 ---

@@ -2,8 +2,7 @@
 type: regex
 target:
   source: file
-  path: push.log
-pattern: '\S'
-match: not_contains
+  path: bin/.cache/b.dat
+pattern: 'exit=0'
 weight: 3
 ---
