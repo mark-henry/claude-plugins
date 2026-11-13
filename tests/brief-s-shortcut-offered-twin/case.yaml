@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: brief-s-shortcut-offered-twin
+description: Twin of brief-s-shortcut-offered. The same history and workspace, but in the confirming turn the user also says in their own words that they would rather reuse something the repo already has; tests whether the brief then settles on reuse of the existing helper.
+tags: [brief, b2]
+plugins: ["../../plugins/swarm", "../../plugins/check"]
+context:
+  scaffold_script: fixture.sh
+  history_file: history.jsonl

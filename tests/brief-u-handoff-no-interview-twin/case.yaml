@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: brief-u-handoff-no-interview-twin
+description: Twin of brief-u-handoff-no-interview. The same toy job and the same gap, but the sender is the human themselves, present, who has typed the answers and a cap in a completed interview and now answers the gap in their own voice; tests whether a frozen brief is then written.
+tags: [brief, b2]
+plugins: ["../../plugins/swarm", "../../plugins/check"]
+context:
+  scaffold_script: fixture.sh
+  history_file: history.jsonl
