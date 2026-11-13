@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Token use of an agent and everything it spawned, read from the session's transcripts. Works while agents run.
+
+usage: swarm-tokens [<subagents dir>] [--agent <id> | --match <text>] [--json]
+  <subagents dir>  a session's subagents folder, holding agent-<id>.jsonl and agent-<id>.meta.json.
+                   Default: the most recently written one under ~/.claude/projects.
+  --agent <id>     report this agent and its descendants.
+  --match <text>   find the agent whose description, or the start of whose first prompt, contains <text>
+                   (case does not matter). An agent can find itself by quoting its own task.
+  With neither, every agent in the folder is reported.
+
+Counts are exact: each API reply's usage, counted once per message id. `weighted` is in input-token equivalents
+(input 1, cache write 1.25, cache read 0.1, output 5), the usual price ratios; compare it across runs of one model,
+and convert between models with your own rates. The session's own turns are not in this folder.
+"""
+import glob, json, os, sys
+
+def usage(path):
+    by_model, seen = {}, set()
+    try:
+        lines = open(path, errors='replace')
+    except OSError:
+        return by_model
+    for line in lines:
+        try:
+            m = json.loads(line).get('message') or {}
+        except Exception:
+            continue
+        u, mid = m.get('usage'), m.get('id')
+        if not isinstance(u, dict) or mid in seen:
+            continue
+        seen.add(mid)
+        t = by_model.setdefault(m.get('model') or '?', dict(input=0, cache_write=0, cache_read=0, output=0))
+        t['input'] += u.get('input_tokens') or 0
+        t['cache_write'] += u.get('cache_creation_input_tokens') or 0
+        t['cache_read'] += u.get('cache_read_input_tokens') or 0
+        t['output'] += u.get('output_tokens') or 0
+    return by_model
+
+def weighted(t):
+    return round(t['input'] + 1.25 * t['cache_write'] + 0.1 * t['cache_read'] + 5 * t['output'], 2)
+
+def add(a, b):
+    for k in ('input', 'cache_write', 'cache_read', 'output'):
+        a[k] = a.get(k, 0) + b[k]
+    return a
+
+def first_prompt(path):
+    try:
+        with open(path, errors='replace') as f:
+            c = (json.loads(f.readline()).get('message') or {}).get('content')
+    except Exception:
+        return ''
+    if isinstance(c, list):
+        c = ' '.join(b.get('text', '') for b in c if isinstance(b, dict))
+    return (c or '')[:400]
+
+def main(argv):
+    args, d, agent, match, as_json = argv[1:], None, None, None, False
+    while args:
+        a = args.pop(0)
+        if a == '--json': as_json = True
+        elif a == '--agent': agent = args.pop(0)
+        elif a == '--match': match = args.pop(0).lower()
+        elif a in ('-h', '--help'): print(__doc__); return 0
+        else: d = a
+    if not d:
+        dirs = glob.glob(os.path.expanduser('~/.claude/projects/*/*/subagents'))
+        if not dirs: sys.exit('no subagents folder found; pass one')
+        d = max(dirs, key=os.path.getmtime)
+    meta = {}
+    for f in glob.glob(os.path.join(d, 'agent-*.meta.json')):
+        try: meta[os.path.basename(f)[6:-10]] = json.load(open(f))
+        except Exception: pass
+    for f in glob.glob(os.path.join(d, 'agent-*.jsonl')):
+        meta.setdefault(os.path.basename(f)[6:-6], {})
+    if match:
+        hits = [i for i, m in meta.items() if match in (m.get('description') or '').lower()
+                or match in first_prompt(os.path.join(d, f'agent-{i}.jsonl')).lower()]
+        if len(hits) != 1: sys.exit(f'--match found {len(hits)} agents: {sorted(hits)[:8]}')
+        agent = hits[0]
+    kids = {}
+    for i, m in meta.items():
+        kids.setdefault(m.get('parentAgentId'), []).append(i)
+    if agent and agent not in meta: sys.exit(f'no agent {agent} in {d}')
+    order, stack = [], ([agent] if agent else sorted(kids.get(None, [])))
+    depth = {i: 0 for i in stack}
+    while stack:
+        i = stack.pop(0); order.append(i)
+        for k in sorted(kids.get(i, [])):
+            depth[k] = depth[i] + 1
+        stack = sorted(kids.get(i, [])) + stack
+    agents, by_model = {}, {}
+    sub = dict(input=0, cache_write=0, cache_read=0, output=0)
+    for i in order:
+        own = dict(input=0, cache_write=0, cache_read=0, output=0)
+        models = usage(os.path.join(d, f'agent-{i}.jsonl'))
+        for mname, t in models.items():
+            add(own, t); add(by_model.setdefault(mname, dict(input=0, cache_write=0, cache_read=0, output=0)), t)
+        add(sub, own)
+        agents[i] = dict(own, weighted=weighted(own), description=meta[i].get('description', ''), models=sorted(models),
+                         parent=meta[i].get('parentAgentId'), finished=meta[i].get('finished'), depth=depth[i])
+    out = dict(folder=d, root=agent, agents=agents, by_model={m: dict(t, weighted=weighted(t)) for m, t in by_model.items()},
+               subtree=dict(sub, weighted=weighted(sub)))
+    if as_json:
+        print(json.dumps(out, indent=1)); return 0
+    print(f"{'agent':<44} {'model':<18} {'input':>9} {'cache wr':>10} {'cache rd':>11} {'output':>9} {'weighted':>11}")
+    for i, a in agents.items():
+        name = ('  ' * a['depth'] + (a['description'] or i))[:43] + ('' if a['finished'] else ' *')
+        print(f"{name:<44} {','.join(a['models'])[:18]:<18} {a['input']:>9} {a['cache_write']:>10} {a['cache_read']:>11} {a['output']:>9} {a['weighted']:>11.0f}")
+    for m, t in sorted(out['by_model'].items()):
+        print(f"{'total ' + m:<63} {t['input']:>9} {t['cache_write']:>10} {t['cache_read']:>11} {t['output']:>9} {t['weighted']:>11.0f}"[19:] if False else
+              f"{'total, ' + m:<44} {'':<18} {t['input']:>9} {t['cache_write']:>10} {t['cache_read']:>11} {t['output']:>9} {t['weighted']:>11.0f}")
+    print('* still running. weighted = input + 1.25 cache write + 0.1 cache read + 5 output, in input-token equivalents.')
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))
