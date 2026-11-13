@@ -56,7 +56,7 @@ Keep the brief, the four drafts with their notes, the ideal and graft list, the 
 ```markdown
 | Date | Document | Kind | Leans | Grafted by | Base | Rankings (first choice per judge) | Outcome | Tokens | Minutes | Record |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 2026-11-12 | swarm:go | skill | by stage; by checker; shortest | caller | by checker | result, result | result | 1.1M | 55 | <path> |
+| 2027-01-15 | onboarding guide (example row; delete) | guide | by stage; by checker; shortest | caller | by checker | result, default, result | result | 900k | 50 | <path> |
 ```
 
 Outcome is one of `result`, `base`, `default`, `none`, `split`, `no pick`. Read the file before a run: when `default` or `split` makes up a third of the rows for a kind of document, the process is not earning its cost for that kind.
