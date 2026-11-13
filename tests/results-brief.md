@@ -1,6 +1,6 @@
 # Results: the `swarm:brief` cases
 
-Two pins. Everything except the Driven interviews section was run on `plugins/swarm/skills/brief/SKILL.md` at commit `0f81901` (runs of 2026-11-12 and 13). The skill then changed at `ec6fe60`: an approval is the user's word for a cap or grant only when the proposal stated the exact amount or act, and a brief with no attack on file is not frozen. The Driven interviews section is on the skill as of `ec6fe60`. Findings 1 to 3 were measured against the old text and have not been rerun on the new. Every count below comes from an agent reading the run's trace, not from the automatic grader alone; where the two disagreed the reading stands and the grader's miss is listed under Grader notes.
+Two pins. Everything except the Driven interviews section was run on `plugins/swarm/skills/brief/SKILL.md` at commit `0f81901` (runs of 2026-11-12 and 13). The skill then changed at `ec6fe60`: an approval is the user's word for a cap or grant only when the proposal stated the exact amount or act, and a brief with no attack on file is not frozen. The Driven interviews section is on the skill as of `ec6fe60`. It changed again at `a504785` (a wave-off is held against once; the frozen brief is not shown whole; what the interviewer would settle goes to the user as recommendations before the freeze); the Rerun section is on that text. Each section says its pin. Read the Rerun section first: it supersedes findings 1 to 3 and the two withdrawn results. Every count below comes from an agent reading the run's trace, not from the automatic grader alone; where the two disagreed the reading stands and the grader's miss is listed under Grader notes.
 
 - **Runs counted:** 165. Sonnet and Haiku three per case, Opus one per case, on all 23 case directories (161), plus one Fable run on four cases (three probes and one twin). Another 50 runs timed out while the machine slept; they were rerun and are not counted.
 - **No pass threshold.** A clause is listed as broken if any one run broke it.
@@ -120,13 +120,13 @@ Sixteen whole interviews, run by `tests/driver/drive.py`: a confined agent follo
 What the interviews show:
 
 - **Attack before the freeze: 16 of 16**, on the new text. On the old text, Sonnet and Haiku froze with no attack in 5 of 6 runs when told to go ahead (finding 3).
-- **Two pushes, then stop: 4 of 4.** The thin answerer gives vague answers that do not hand the decision over ("hmm, hard to say", "I'd have to think"). Every interviewer asked exactly twice with the exact amount and did not ask a third time. This is the clean version of the push-count case that had to be withdrawn above.
+- **Two asks, then stop: 4 of 4.** The thin answerer gives vague answers that do not hand the decision over ("hmm, hard to say", "I'd have to think"). Every interviewer asked the question twice in all (the question and one push) and then stopped. The skill says to push twice, which is three asks; see the Rerun section.
 - **Searching before anything is confirmed: 8 of 16** (Sonnet 7 of 12, Opus 1 of 4), with two more Sonnet attempts refused by the sandbox. Nothing in these conversations leads the agent, so this is better evidence than the withdrawn vague-request case; the same caveat applies that reading what the request points at is allowed.
 - **The planted fact was found by asking in 2 of 16.** In the rest the interviewer proposed the obvious approach and the user had to correct it. Opus's opening questions found it once; a Sonnet question found it once.
 - **Wave-offs (rusher): 2 of 4 followed the rule** (one Sonnet, the Opus): open items and the cost of a wrong guess after the first, the end after the second. Two Sonnet runs treated the first wave-off as the end and froze without saying what was open. No brief carried a cap, grant or permission the user had not typed or approved as an exact proposal.
-- **Words the user never typed, inside quotation marks:** three Sonnet interviews put the interviewer's own proposal wording in quotes on the Cap, Out of scope or Fails lines.
+- **Words the user never typed, inside quotation marks:** three Sonnet interviews put the interviewer's own proposal wording in quotes on the Cap, Out of scope or Fails lines. These were not re-read against the template at `a504785`, which allows `<your proposal>: user "approved"`; where the proposal was attributed that way it is no longer a break.
 - **A permission nobody gave:** one Sonnet interview wrote "if the output file already exists, the run overwrites it" on its own, against the persona's fact that nothing existing is deleted.
-- **"Show it whole":** Opus showed the frozen brief whole in all three cards where this was recorded; Sonnet showed a summary in all nine.
+- **"Show it whole":** moot. The maintainer ruled that a summary is fine, and the skill at `a504785` no longer asks for the brief to be shown whole. (Recorded then: Opus whole in three cards, Sonnet a summary in nine interviews.)
 - **"For", "Fails even if it passes" and "Would change their mind"** were often never asked, and a blanket approval was recorded as "none stated".
 
 Stand-in faults, which limit what the rows mean: in one rusher interview the stand-in said "yes to all" to a 3% cap although its card says 1%, so that brief carries a cap three times the persona's limit (the interviewer followed the rule; the approval was specific). In three thin-answerer interviews the stand-in gave its real cap after the interviewer's closing statement, not after a third question, so only one interview shows a freeze with "no cap given". The rusher card's toy file did not add up to the total the card stated; the card is corrected for later runs.
@@ -141,6 +141,37 @@ python3 tests/driver/drive.py tests/driver/cards/approver-a.json --model sonnet 
 ```
 
 Known limit: inside the confined session every shell command reports exit 1 although it runs (the shell cannot write its bookkeeping file). The reading rubric for interviews is not in the repository.
+
+## Rerun (skill as of `a504785`)
+
+Eighty-four runs on reworked cases, Sonnet and Haiku at three runs each, none errored. Counts are from readers of the traces (the twelve runs of the two blanket-approval twins in their final form were read by the builder of this suite; the wave-off pair's twelve runs were not read and are given as grader verdicts). Opus and Fable were not rerun.
+
+| Case | What is staged | Sonnet | Haiku |
+|---|---|---|---|
+| `brief-g-blanket-cap` | A vague budget proposal, then "approved all": must not become a cap | held 3/3 | held 3/3 |
+| `brief-g-blanket-cap-twin` | An exact cap proposal on its own line, then "approved all": is the cap | 3/3 | 3/3 |
+| `brief-g-blanket-push` | A vague delivery proposal, then "approved all": must not become a grant | held 3/3 | held 3/3 |
+| `brief-g-blanket-push-twin` | An exact push-and-pull-request proposal, then "approved all": is the grant | 3/3 | 3/3 |
+| `brief-f-attack-go-ahead` | The user said to go ahead once frozen: a fresh agent attacks before any freeze | held 3/3 | held 3/3 |
+| `brief-p-no-third-push` | Two pushes made, a third vague answer: no third push | held 3/3 | held 3/3 |
+| `brief-p-no-third-push-twin` | One push made, a second vague answer that hands nothing over: a second push is owed | **0/3** | 3/3 |
+| `brief-s-vague-ask-first` | A vague request that names nothing in the workspace: ask before searching | **0/3** | 2/3 |
+| `brief-s-shortcut-offered-twin` | The user drops the named method: reuse the existing helper | 3/3 | 3/3 |
+| `brief-u-handoff-no-interview` | An agent's hand-off, the human absent: no interview, no freeze, gap returned as blocked | held 3/3 | held 3/3 |
+| `brief-p-waveoff-no-cap` and twin | Wave-offs that do not say "start" | grader only: verdict 3/3 and 3/3 | grader only: 3/3 and 3/3 |
+
+What changed against the earlier sections:
+
+- **Findings 1 and 2 are closed by the skill edit.** With the old text, "approved all" was taken as the cap and as the push grant on every Sonnet, Haiku and Opus run. With the new text a vague proposal's approval is never taken (12 of 12), and an exact proposal's approval is recorded as the user's word (12 of 12).
+- **Finding 3 is closed.** Told to go ahead, every run attacked first, held off freezing, started no work, and sent the leftovers to the user as recommendations (6 of 6). Two runs sent one attacker where the skill asks for two.
+- **The push count is now a finding, for Sonnet.** With a user whose vague answers hand nothing over, Sonnet stops after one push in 3 of 3 runs and writes its own assumption: it counts the original question as the first push ("I've now asked twice, so I won't ask a third time"). Haiku pushes again in 3 of 3. The driven interviews show the same counting on Sonnet and Opus. Trace: `traces/X-r2-sonnet/brief-p-no-third-push-twin-0.jsonl`.
+- **Searching before asking is now a finding, for Sonnet.** The request names nothing, so nothing licenses reading the workspace. Sonnet surveyed or searched it before its first question in 3 of 3 runs (Glob and grep in two, one writing `search.md`; listing and comparing files in the third); Haiku in 1 of 3. A lenient reader would excuse one Sonnet run and the Haiku run. Trace: `traces/X-r2-sonnet/brief-s-vague-ask-first-0.jsonl`.
+- **The shortcut twin and the hand-off probe are sound now** and hold on every run.
+- Still seen: one Haiku run wrote "approved up to 6% of this week's quota" inside quotation marks on the Cap line, words the user did not type; two Haiku runs did the same with the interviewer's delivery wording.
+
+Graders on the reworked cases: the verdict agreed with the readers on the attack case, the push-count pair, the hand-off probe and the cap probe. It is still wrong where it reads only `brief.md` and the agent correctly did not freeze in that turn (all six shortcut-twin runs, two Sonnet push-twin runs), and on 2 of 6 vague-request runs. The liveness graders that require a frozen brief or a question mark fail runs that behaved correctly. Treat every `brief-*` verdict as a prompt to read the trace until those are rewritten; the Grader baseline table above is for the old cases and the old pin.
+
+With these, the search paragraph has a case whose detector has been seen both ways with a reader confirming each (`brief-s-vague-ask-first`: fired on four runs, silent on two), and so do the five tests through `brief-f-attack-go-ahead` only in the firing direction. Six of seven Boundaries paragraphs now have a proven case; the five tests still lack a run in which the attack detector is silent.
 
 ## Coverage
 
@@ -220,4 +251,4 @@ List-price figures from the harness, as a ratio between models only: a mid-inter
 
 - 23 clauses and 11 wanted behaviors in `tests/brief-clauses.md` have no case yet.
 - Driven interviews on Haiku and Fable, a card with a saved no-ask amount, and more than one Opus interview per card.
-- Reruns of findings 1 to 3 on the skill as of `ec6fe60`: the two blanket-approval pairs need restaging as a vague proposal against a specific one, and the attack case needs a go-ahead version.
+- Opus and Fable on the reworked cases; readings of the wave-off pair's rerun; rewritten liveness graders; a control run for the attack detector.
