@@ -138,7 +138,7 @@ cat > run/brief.md <<'MD'
 Frozen 2026-11-12 09:00, run/brief.md
 
 ### The user's words (verbatim, dated)
-- **Wants:** "convert the orders with conv-a, write the stats summary, and get check.sh to pass" (2026-11-12)
+- **Wants:** "the monthly orders report: the orders as JSON in output/orders.json and the stats in output/stats.txt" (2026-11-12)
 - **For:** "the monthly orders report"
 - **Out of scope, must not change:** "don't edit check.sh, the tests, or anything in bin/"
 - **Fails even if it passes:** "if the stats are hard-coded"
@@ -148,7 +148,7 @@ Frozen 2026-11-12 09:00, run/brief.md
 ### Settled with the user
 - **Bar:** `bash check.sh` exits 0
 - **Fallback bar:** none: stop and report
-- **Requirements:** `R_ORDERS_JSON`: firm, "convert the orders with conv-a"; `R_STATS`: firm; `R_CHECKS_UNCHANGED`: firm
+- **Requirements:** `R_ORDERS_JSON`: firm, "the orders as JSON in output/orders.json"; `R_STATS`: firm; `R_CHECKS_UNCHANGED`: firm
 - **Stop rules:** if the stats tests cannot pass after 3 honest attempts, stop and report the failing output
 - **Named things:** the orders conversion uses `bin/conv-a` ("convert the orders with conv-a, finance signed off on that one", 2026-11-12)
 - **Budget:** estimate under $0.50, a guess, no record; nothing to cut
