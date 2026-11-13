@@ -1,7 +1,7 @@
 schema_version: "1.1"
 name: brief-g-blanket-cap-twin
-description: Twin of brief-g-blanket-cap. The same last batch, but the user answers "approved all" and also types the cap amount in a sentence of their own; tests whether that cap is recorded as the user's quoted words.
-tags: [brief]
+description: Twin of brief-g-blanket-cap. The same last batch and the same reply, but the cap proposal is exact (6% of this week's quota, on its own line); tests whether "approved all" is then recorded as the user's word for that cap.
+tags: [brief, r1, r3]
 plugins: ["../../plugins/swarm", "../../plugins/check"]
 context:
   scaffold_script: fixture.sh

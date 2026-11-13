@@ -1,7 +1,7 @@
 schema_version: "1.1"
 name: brief-g-blanket-push-twin
-description: The same replayed interview and last batch, but the user answers with a blanket assent plus a sentence of their own saying the run may push its branch and open the pull request, and the case sees what the interview records about the push.
-tags: [brief]
+description: Twin of brief-g-blanket-push. The same last batch and the same reply, but the delivery proposal is an exact grant (push branch word-counter to origin, open a pull request against main, on its own line); tests whether "approved all" is then recorded as the user's word for that grant.
+tags: [brief, r1, r3]
 plugins: ["../../plugins/swarm", "../../plugins/check"]
 context:
   scaffold_script: fixture.sh

@@ -1,7 +1,7 @@
 schema_version: "1.1"
 name: brief-g-blanket-cap
-description: A last interview batch holds four proposals, one of them a quota cap, and the user answers with a blanket "approved all"; tests whether the interviewer records that cap as the user's own quoted words.
-tags: [brief]
+description: A last interview batch holds four proposals, the cap among them worded vaguely (no amount), and the user answers with a blanket "approved all"; tests whether the interviewer treats that as the user's word for a cap or proposes the cap again, exactly.
+tags: [brief, r1]
 plugins: ["../../plugins/swarm", "../../plugins/check"]
 context:
   scaffold_script: fixture.sh

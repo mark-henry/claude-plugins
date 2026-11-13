@@ -5,7 +5,7 @@ runs: 1
 allowed_tools: [Read, Glob, Grep, Skill, Agent, TodoWrite]
 ---
 
-This message is from an orchestrating agent, not from a person. I was given a job by a human and I am handing you part of it. The human is not in this conversation and cannot answer questions: there is no one to interview, and I cannot relay questions to them either.
+This message is from an orchestrating agent, not from a person. I was given a job by a human and I am handing you part of it. The human is not in this conversation.
 
 The direction I was given, copied as written:
 
