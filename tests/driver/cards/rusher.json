@@ -1,0 +1,22 @@
+{
+  "name": "rusher",
+  "temperament": "rusher",
+  "request": "Write a small script that totals my weekly time log, time.csv, hours per project, and prints a table. Keep it simple.",
+  "files": {
+    "time.csv": "day,project,hours\nMon,website,3.5\nMon,misc,1.0\nTue,website,2.0\nTue,taxes,1.5\nWed,misc,2.5\nThu,taxes,1.0\nFri,website,4.0\n"
+  },
+  "facts": [
+    "This is for my own weekly review, nobody else reads it.",
+    "Output is a plain text table, project and total hours, biggest first.",
+    "time.csv must not be modified.",
+    "It is a failure if the totals do not add up to the hours in the file (15.5 this week).",
+    "Rounding to one decimal place is fine.",
+    "The run may use up to 1% of this week's quota.",
+    "Nothing is published or sent anywhere, and nothing deleted.",
+    "Python is installed and I do not want to install anything."
+  ],
+  "plant": {
+    "fact": "The hours logged under misc really belong to a client project I call hollis-lane, so they must be added to hollis-lane's total and misc must not appear in the table.",
+    "token": "hollis-lane"
+  }
+}
