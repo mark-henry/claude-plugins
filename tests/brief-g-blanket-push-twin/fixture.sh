@@ -31,3 +31,5 @@ git config user.email "toy@example.invalid"
 git add README.md notes
 git commit -q -m "Add notes"
 git remote add origin /nonexistent/toy-notes.git
+# the brief file exists, empty, so a grader can read it whether or not the interview freezes
+: > run/2026-11-12-word-counter/brief.md
