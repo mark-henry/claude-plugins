@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: brief-g-blanket-push-twin
+description: The same replayed interview and last batch, but the user answers with a blanket assent plus a sentence of their own saying the run may push its branch and open the pull request, and the case sees what the interview records about the push.
+tags: [brief]
+plugins: ["../../plugins/swarm", "../../plugins/check"]
+context:
+  scaffold_script: fixture.sh
+  history_file: history.jsonl

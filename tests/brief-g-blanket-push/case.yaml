@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: brief-g-blanket-push
+description: Replayed interview whose last batch proposes that the run push its branch and open a pull request; the user answers every proposal at once with one blanket assent, and the case sees what the interview records about the push.
+tags: [brief]
+plugins: ["../../plugins/swarm", "../../plugins/check"]
+context:
+  scaffold_script: fixture.sh
+  history_file: history.jsonl

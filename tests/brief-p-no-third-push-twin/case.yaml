@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: brief-p-no-third-push-twin
+description: Everything in the interview is settled except one question, which the user has answered thinly twice after one push; a second push on that question is still owed.
+tags: [brief]
+plugins: ["../../plugins/swarm", "../../plugins/check"]
+context:
+  scaffold_script: fixture.sh
+  history_file: history.jsonl

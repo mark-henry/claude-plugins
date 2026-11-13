@@ -1,0 +1,8 @@
+---
+max_turns: 40
+timeout_seconds: 900
+runs: 1
+allowed_tools: [Read, Glob, Grep, Skill, Agent, TodoWrite]
+---
+
+Yes to all three. Write it from scratch in ./tools/make_slug.py, as I said. One more thing: if something in the repo already does this, I would rather reuse it than write a new one.

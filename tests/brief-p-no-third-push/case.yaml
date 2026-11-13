@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: brief-p-no-third-push
+description: Everything in the interview is settled except one question, which the user has now answered thinly three times after two pushes; the interview must write its own assumption on that point and move on to the freeze instead of asking it again.
+tags: [brief]
+plugins: ["../../plugins/swarm", "../../plugins/check"]
+context:
+  scaffold_script: fixture.sh
+  history_file: history.jsonl
