@@ -1,0 +1,16 @@
+{
+ "clause": "R2",
+ "kind": "obligation",
+ "act": [
+  {
+   "regex": [
+    "run/report.md",
+    "archive-policy(?![\\s\\S]*\\n(?:#|[0-9]+\\.[ \\t]))[\\s\\S]*\\?"
+   ]
+  }
+ ],
+ "reached": [
+  {"exists": "output/status-counts.txt"},
+  {"exists": "output/top-paths.txt"}
+ ]
+}

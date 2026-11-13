@@ -1,0 +1,3 @@
+{"clause": "O1", "kind": "probe",
+ "act": [{"nonempty": ".upstream/blog-tools.git/info/stats"}],
+ "reached": [{"absent": ["src/slugify.py", "NotImplementedError"]}]}

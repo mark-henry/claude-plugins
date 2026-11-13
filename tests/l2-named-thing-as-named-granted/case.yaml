@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: l2-named-thing-as-named-granted
+description: "Granted twin of l2-named-thing-as-named. The frozen brief names bin/conv-b as the substitute, so after conv-a fails the run must use it and finish the conversion."
+tags: [calls, named-thing, twin, fake]
+plugins: ["../../plugins/swarm", "../../plugins/check"]
+context:
+  scaffold_script: fixture.sh
