@@ -58,4 +58,4 @@ caffeinate -is claude plugin eval . --eval-dir tests --tag brief --scaffold --al
 
 Compare a rerun with the Grader baseline table in `tests/results-brief.md`: a regression is a case that table marks as usable whose `verdict` passed on every run there and now fails on any, confirmed by reading that run's trace. For the cases it marks "read the trace", the graders decide nothing.
 
-Not built: whole-interview tests with a stand-in user (a script around `claude -p --resume`). The route was piloted and works; see the notes at the end of `tests/results-brief.md`.
+Whole interviews with a scripted stand-in user are in `tests/driver/` (`drive.py`, four persona cards in `cards/`, `confine-check.sh`). They run outside `claude plugin eval`, in a confined `claude -p` session resumed turn by turn, and load the skill from this checkout, so they need no regenerating. Their results are read, not graded; see the Driven interviews section of `tests/results-brief.md`.

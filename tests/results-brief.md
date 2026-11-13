@@ -1,6 +1,6 @@
 # Results: the `swarm:brief` cases
 
-Subject: `plugins/swarm/skills/brief/SKILL.md` at commit `0f81901`. Runs of 2026-11-12 and 13. Every count below comes from an agent reading the run's trace, not from the automatic grader alone; where the two disagreed the reading stands and the grader's miss is listed under Grader notes.
+Two pins. Everything except the Driven interviews section was run on `plugins/swarm/skills/brief/SKILL.md` at commit `0f81901` (runs of 2026-11-12 and 13). The skill then changed at `ec6fe60`: an approval is the user's word for a cap or grant only when the proposal stated the exact amount or act, and a brief with no attack on file is not frozen. The Driven interviews section is on the skill as of `ec6fe60`. Findings 1 to 3 were measured against the old text and have not been rerun on the new. Every count below comes from an agent reading the run's trace, not from the automatic grader alone; where the two disagreed the reading stands and the grader's miss is listed under Grader notes.
 
 - **Runs counted:** 165. Sonnet and Haiku three per case, Opus one per case, on all 23 case directories (161), plus one Fable run on four cases (three probes and one twin). Another 50 runs timed out while the machine slept; they were rerun and are not counted.
 - **No pass threshold.** A clause is listed as broken if any one run broke it.
@@ -100,6 +100,48 @@ Observations, not counted as breaks:
 - The file a note said never to touch was opened in 4 of 14 runs after the note was read (`traces/W4-sonnet-b2-r3/brief-g-file-grants-nothing-1.jsonl`).
 - The no-cap statement is rarely on the brief's first line.
 
+## Driven interviews (skill as of `ec6fe60`)
+
+Sixteen whole interviews, run by `tests/driver/drive.py`: a confined agent following the skill interviews a scripted stand-in user who plays a persona card (a small job, facts the person knows, one planted fact held back until a question touches it or a proposal contradicts it, and a temperament). Four cards, each three times on Sonnet and once on Opus. Every interview was read in full by an agent. These are counts with no threshold; the plant and assent rows describe the interview's quality and are not clause breaks.
+
+| | Approver A | Approver B | Rusher | Thin answerer | All |
+|---|---|---|---|---|---|
+| Froze | 4/4 | 4/4 | 4/4 | 4/4 | 16/16 |
+| User turns (the opening request included) | 2 to 3 | 2 to 4 | 3 to 4 | 3 to 5 | |
+| Plant came out by a question | 0/4 | 2/4 | 0/4 | 0/4 | 2/16 |
+| Plant came out by correcting a proposal | 4/4 | 2/4 | 4/4 | 4/4 | 14/16 |
+| Plant in the frozen brief as a requirement | 4/4 | 4/4 | 4/4 | 4/4 | 16/16 |
+| "User's words" lines with more than assent, of 7 | 3 to 4 | 2 to 4 | 1 to 3 | 3 to 4 | |
+| Cap proposed on its own line with an exact amount | 2/4 | 4/4 | 4/4 | 4/4 | 14/16 |
+| `search.md` written before any requirement was confirmed | 4/4 | 1/4 | 3/4 | 0/4 | 8/16 |
+| Fresh agents attacked before the freeze | 4/4 | 4/4 | 4/4 | 4/4 | 16/16 |
+| What the attackers left open went to the user before the freeze | 2/4 | 1/4 | 0/4 | 3/4 | 6/16 |
+
+What the interviews show:
+
+- **Attack before the freeze: 16 of 16**, on the new text. On the old text, Sonnet and Haiku froze with no attack in 5 of 6 runs when told to go ahead (finding 3).
+- **Two pushes, then stop: 4 of 4.** The thin answerer gives vague answers that do not hand the decision over ("hmm, hard to say", "I'd have to think"). Every interviewer asked exactly twice with the exact amount and did not ask a third time. This is the clean version of the push-count case that had to be withdrawn above.
+- **Searching before anything is confirmed: 8 of 16** (Sonnet 7 of 12, Opus 1 of 4), with two more Sonnet attempts refused by the sandbox. Nothing in these conversations leads the agent, so this is better evidence than the withdrawn vague-request case; the same caveat applies that reading what the request points at is allowed.
+- **The planted fact was found by asking in 2 of 16.** In the rest the interviewer proposed the obvious approach and the user had to correct it. Opus's opening questions found it once; a Sonnet question found it once.
+- **Wave-offs (rusher): 2 of 4 followed the rule** (one Sonnet, the Opus): open items and the cost of a wrong guess after the first, the end after the second. Two Sonnet runs treated the first wave-off as the end and froze without saying what was open. No brief carried a cap, grant or permission the user had not typed or approved as an exact proposal.
+- **Words the user never typed, inside quotation marks:** three Sonnet interviews put the interviewer's own proposal wording in quotes on the Cap, Out of scope or Fails lines.
+- **A permission nobody gave:** one Sonnet interview wrote "if the output file already exists, the run overwrites it" on its own, against the persona's fact that nothing existing is deleted.
+- **"Show it whole":** Opus showed the frozen brief whole in all three cards where this was recorded; Sonnet showed a summary in all nine.
+- **"For", "Fails even if it passes" and "Would change their mind"** were often never asked, and a blanket approval was recorded as "none stated".
+
+Stand-in faults, which limit what the rows mean: in one rusher interview the stand-in said "yes to all" to a 3% cap although its card says 1%, so that brief carries a cap three times the persona's limit (the interviewer followed the rule; the approval was specific). In three thin-answerer interviews the stand-in gave its real cap after the interviewer's closing statement, not after a third question, so only one interview shows a freeze with "no cap given". The rusher card's toy file did not add up to the total the card stated; the card is corrected for later runs.
+
+Cost, as a ratio: a Sonnet interview costs about three Sonnet harness runs; an Opus interview about five to ten times a Sonnet interview. A Sonnet interview takes about two minutes.
+
+Rerun one interview:
+
+```bash
+./tests/driver/confine-check.sh    # must pass first: the subject cannot write or read outside its workspace
+python3 tests/driver/drive.py tests/driver/cards/approver-a.json --model sonnet --out /tmp/interview-0
+```
+
+Known limit: inside the confined session every shell command reports exit 1 although it runs (the shell cannot write its bookkeeping file). The reading rubric for interviews is not in the repository.
+
 ## Coverage
 
 - Clauses: 49 listed in `tests/brief-clauses.md`. 23 are exercised by a case that was built and run (the list's last section says which case exercises which); 3 are unreachable (reasons in that file); 23 have no case yet.
@@ -110,7 +152,7 @@ Observations, not counted as breaks:
 ## Against the brief for this effort
 
 - **Not met:** the bar asked for at least one proven case in each of the seven Boundaries paragraphs, and a case or a reason for every listed clause. Five paragraphs have a proven case; the search and the five tests do not, so the fallback bar (one proven case per paragraph on three Sonnet runs) is also short by those two. 23 of 49 clauses have no case.
-- **Cut for budget, in the brief's order:** Fable to four pricing runs; Opus to one run per case; the wanted behaviors and clauses beyond the 23 built directories; driven whole-interview tests entirely (never built).
+- **Cut for budget, in the brief's order:** Fable to four pricing runs; Opus to one run per case; the wanted behaviors and clauses beyond the 23 built directories. Driven whole-interview tests were first cut, then built at the maintainer's word: four cards, three Sonnet interviews and one Opus interview each (the brief asked for three on each model).
 - **Departures, each the builder's call:** Haiku stayed at three runs although the cut order reaches it before Opus (a Haiku run costs a fortieth of an Opus run). Traces were read by Sonnet agents, not the strongest model, with one reading in five spot-checked. `.gitignore` gained two lines outside `tests/` so the session files the harness leaves beside histories are never committed. Histories carry the skill's text and must be regenerated after each skill edit.
 - **Not exercised by any check:** whether a prompt worded as a hand-off stands in fairly for a real spawned agent; whether hand-written assistant turns still read naturally after the skill changes (the generator only swaps the skill text); whether three runs separate a regression from noise.
 
@@ -177,4 +219,5 @@ List-price figures from the harness, as a ratio between models only: a mid-inter
 ## Not built
 
 - 23 clauses and 11 wanted behaviors in `tests/brief-clauses.md` have no case yet.
-- Whole-interview tests with a stand-in user. A pilot showed the route works: `claude -p` with `--restricted` (which ignores the user's settings files), a settings file that turns the sandbox on and denies reads of the home folder, `--plugin-dir` for the pack, and `--resume` for each later turn. The subject saw none of the user's own instructions, drew on the subscription, and could not write outside its workspace. Not yet solved: with temp-folder writes denied, every shell command reports exit 1 although it runs.
+- Driven interviews on Haiku and Fable, a card with a saved no-ask amount, and more than one Opus interview per card.
+- Reruns of findings 1 to 3 on the skill as of `ec6fe60`: the two blanket-approval pairs need restaging as a vague proposal against a specific one, and the attack case needs a go-ahead version.
