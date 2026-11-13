@@ -65,8 +65,11 @@ def sha(path):
     return h.hexdigest()[:16]
 
 
+FROZEN = ("question", "bar", "decision", "varies", "watched", "arms", "metrics", "predictions", "mechanism", "surprises")
+
+
 def frozen_part(rec):
-    keep = {k: rec[k] for k in ("question", "bar", "decision", "varies", "watched", "arms", "metrics", "predictions", "mechanism", "surprises") if k in rec}
+    keep = {k: rec[k] for k in FROZEN if k in rec}
     return hashlib.sha256(json.dumps(keep, sort_keys=True).encode()).hexdigest()[:16]
 
 
@@ -106,6 +109,13 @@ def cmd_open(a):
     rec = load(a.path)
     if rec.get("opened"):
         die(f"already opened {rec['opened']['utc']}; predictions are frozen. Write a new record with \"parent\": \"{a.path}\"")
+    # the untouched template is not a record: refuse the fields it wrote, by name
+    for f in ("question", "bar"):
+        if rec.get(f) == TEMPLATE[f]:
+            die(f"{f} is still the template's placeholder; write the real one")
+    for arm, spec in (rec.get("arms") or {}).items():
+        if isinstance(spec, dict) and spec.get("command") == "...":
+            die(f"arm {arm}: command is still the template's placeholder; write the real launch command")
     exploratory = rec.get("status") == "exploratory" or str(rec.get("bar", "")).startswith("none")
     for f in ("question", "arms", "metrics", "max_usd"):
         if not rec.get(f):
@@ -248,7 +258,7 @@ def cmd_close(a):
     if not rec.get("opened"):
         die("never opened: these numbers have no prediction to be scored against. Report them as exploratory")
     if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
-        die("question, arms, metrics, predictions, mechanism or surprises changed after open; restore them or write a new record")
+        die(f"a frozen field ({', '.join(FROZEN[:-1])} or {FROZEN[-1]}) changed after open; restore it or write a new record")
     root = Path(sh("git", "rev-parse", "--show-toplevel", cwd=Path(a.path).parent) or ".")
     observed, rows, hits, total = {}, [], 0, 0
     for arm, spec in rec["arms"].items():

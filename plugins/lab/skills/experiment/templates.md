@@ -46,7 +46,7 @@ Fill in order; do not look at line 6 before lines 1–5 are written.
 6. Headline: <BAR_<NAME>: value, n/N, interval or every seed; untreated and simple baseline beside it; all-items rate; floor>
 7. Effective denominator: <items where arms differed>    Other aggregations: <does it survive>
 8. Rivals: <RIVAL_<NAME>: excluded by <control> | not excluded; new ones the reading surfaced>
-9. Human's blind packet: <path, n, draw rule, taxonomy>
+9. Blind read, where a human did one: <path, n, draw rule, taxonomy | n/a: unattended>
 10. <H_<NAME>>: hit | miss; confirmed | rejected | unresolved; fired guards and kills; leak audit if above the predicted interval
 ```
 
@@ -61,7 +61,7 @@ Beside it: untreated <…>; simple baseline <…>; positive control <…>; floor
 Read: parse yield <k/n>; audit <verdict>; effective denominator <…>; gain where predicted? <…>
 Not excluded: <RIVAL_…>    Guards and kills that fired: <KILL_…>    Amendments, waivers: <…>
 Would change my mind: <…>
-Supervisor: <SIGNED | NOT SIGNED: rules unmet, what would meet each>
+Supervisor: <signoff.md's last verdict: SIGNED | SIGNED WITH WAIVER | NOT SIGNED: rules unmet, what would meet each; verdicts before it: n>
 Next: <proposal, price>
 Needs your decision: <numbered, each with a recommendation; or "Nothing needs you.">
 ```

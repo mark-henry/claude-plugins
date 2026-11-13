@@ -112,6 +112,40 @@ class Open(unittest.TestCase):
         self.assertNotIn("$10", r.stdout)
 
 
+class Placeholders(unittest.TestCase):
+    def test_open_refuses_the_untouched_template_and_names_each_placeholder_field(self):
+        d = repo_with_arms({"untreated": {}, "treated": {}})
+        self.assertEqual(run(d, "new", "prereg/t.json").returncode, 0)
+        rp = d / "prereg" / "t.json"
+        r = run(d, "open", "prereg/t.json")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("question", r.stderr)
+        rec = json.loads(rp.read_text()); rec["question"] = "does the treatment raise solves?"; rp.write_text(json.dumps(rec))
+        r = run(d, "open", "prereg/t.json")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("bar", r.stderr)
+        rec["bar"] = "plan.md#BAR_SOLVES"; rp.write_text(json.dumps(rec))
+        r = run(d, "open", "prereg/t.json")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("command", r.stderr)
+        self.assertIn("untreated", r.stderr)
+        for arm in rec["arms"].values():
+            arm["command"] = "python train.py"
+        rp.write_text(json.dumps(rec))
+        self.assertEqual(run(d, "open", "prereg/t.json").returncode, 0)
+
+    def test_close_refusal_names_every_frozen_field(self):
+        d = repo_with_arms({"untreated": {"model": "a"}, "treated": {"model": "b"}})
+        rp = d / "prereg" / "r.json"
+        rec = json.loads(rp.read_text()); rec["status"] = "exploratory"; rp.write_text(json.dumps(rec))
+        self.assertEqual(run(d, "open", "prereg/r.json").returncode, 0)
+        rec = json.loads(rp.read_text()); rec["varies"] = ["model", "seed"]; rp.write_text(json.dumps(rec))
+        r = run(d, "close", "prereg/r.json")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        for field in ("question", "bar", "decision", "varies", "watched", "arms", "metrics", "predictions", "mechanism", "surprises"):
+            self.assertIn(field, r.stderr)
+
+
 class Stamp(unittest.TestCase):
     def test_dirty_paths_are_recorded_whole(self):
         d = repo_with_arms({"untreated": {}, "treated": {}})

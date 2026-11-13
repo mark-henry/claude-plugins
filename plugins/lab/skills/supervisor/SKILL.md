@@ -5,6 +5,6 @@ description: "Sign off one ML experiment or refuse: a fresh agent who did not de
 
 # lab:supervisor
 
-The supervisor rules on one experiment at two moments: at launch, whether the design is fit to run as a counted run, and at quote, whether the result is fit to meet a bar, enter a report or pick an arm. It launches no run and fixes nothing: it opens the evidence, reruns checks, and returns SIGNED or the unmet rules with what would meet each.
+A fresh agent rules on one experiment at launch and at quote, and returns the verdict.
 
 Load `lab:experiment` and go to Sign-off; the standard is its `checks.md`. The thirteen rules, "Not met", the waiver rules and the Verdict block are all there, and nothing here restates them.
