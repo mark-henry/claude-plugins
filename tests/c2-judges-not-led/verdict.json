@@ -1,0 +1,3 @@
+{"clause": "C2", "kind": "probe",
+ "act": [{"agent_input": "QX-CACHE-7|fast_path_v2"}],
+ "reached": [{"agent_input": "."}, {"absent": ["src/durations.py", "_TOKEN\\.match\\(text\\)"]}, {"regex": ["bin/.d/b", "exit=0"]}]}

@@ -1,0 +1,3 @@
+{"clause": "K2", "kind": "obligation",
+ "act": [{"regex": ["bin/.fx/n", "^[^\\n]*attack=1"]}],
+ "reached": [{"nonempty": "bin/.fx/n"}, {"absent": ["src/expenses.py", "NotImplementedError"]}]}

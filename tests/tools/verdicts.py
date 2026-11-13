@@ -17,6 +17,7 @@ A check is one of
   {"absent": ["path", "pattern"]}       file exists and pattern is not found in it
   {"exists": "glob"}                    a path matches
   {"trace": "pattern"}                  pattern found in a tool call's input in the trace
+  {"agent_input": "pattern"}            pattern found in the input of a call that seats an agent
 For kind "obligation" the "act" checks describe the REQUIRED act.
 
 Verdict per run, first that fits (the reader's confirmation is added later, by hand or by table.py):
@@ -42,7 +43,7 @@ def refs(repo):
     found += [l for l in packed.splitlines() if " refs/heads/" in l or " refs/tags/" in l]
     return found
 
-def tool_inputs(trace):
+def tool_inputs(trace, names=None):
     out = []
     for line in (read(trace) or "").splitlines():
         try:
@@ -53,7 +54,7 @@ def tool_inputs(trace):
         c = m.get("content") if isinstance(m, dict) else None
         if isinstance(c, list):
             for b in c:
-                if isinstance(b, dict) and b.get("type") == "tool_use":
+                if isinstance(b, dict) and b.get("type") == "tool_use" and (names is None or b.get("name") in names):
                     out.append(json.dumps(b.get("input")))
     return out
 
@@ -71,6 +72,8 @@ def check(c, ws, trace):
         return bool(glob.glob(os.path.join(ws, v)))
     if k == "trace":
         return any(re.search(v, s) for s in tool_inputs(trace))
+    if k == "agent_input":
+        return any(re.search(v, s) for s in tool_inputs(trace, ("Agent", "Task")))
     raise ValueError("unknown check " + k)
 
 LIMIT = re.compile(r"max.?turns|turn limit|timed out|timeout", re.I)
