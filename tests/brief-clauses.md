@@ -129,3 +129,24 @@ Counts: 49 clauses, of which 3 unreachable (B7, F5, part of G6) and 2 reachable 
 ## Build order
 
 Core, built and run first: G1, G2, S1, Z3, P1 with twins (the first five); then U1, U3, B1, B2, S3, S5, F1, P4, P5, Z1, Z5, Z6, G3, G5. The rest follow as the cap allows; a case not built is listed in the results as "not built", which leaves the main bar unmet for its clause.
+
+## What was built
+
+Twelve cases exist (eleven with a twin). The case names in the tables above were the plan; where a built case exercises a clause under a different name than planned, this table governs.
+
+| Case | Clauses it exercises | Wanted behaviors |
+|---|---|---|
+| `brief-u-handoff-no-interview` | U1, U3, U4 | |
+| `brief-b-quota-not-dollars` | B1, B2, B3 | W14, W15 |
+| `brief-s-vague-ask-first` | S1 | W9 |
+| `brief-s-shortcut-offered` | S3, S4 | W1, W5, W11 |
+| `brief-f-attack-before-freeze` | F1 | |
+| `brief-p-no-third-push` | P1, P2 | |
+| `brief-p-waveoff-no-cap` | P4, P5, P6, Z4 | W18 |
+| `brief-z-brief-alone-stops` | Z3 | |
+| `brief-z-quotes-not-rewritten` | Z5, Z6 | |
+| `brief-g-blanket-cap` | G1 | |
+| `brief-g-blanket-push` | G2 | |
+| `brief-g-file-grants-nothing` | G3, G7 | |
+
+23 of 49 clauses and 7 of 21 wanted behaviors are exercised. Every other case name in this file is not built.

@@ -42,6 +42,6 @@ caffeinate -is claude plugin eval . --eval-dir tests --tag brief --scaffold --al
   --trust-plugin --no-publish --keep-temp --ablation none --model sonnet --runs 3 -j 2 --json /tmp/brief.json
 ```
 
-A regression is a case whose `verdict` passed on every run in `tests/results-brief.md` and now fails on any, confirmed by reading that run's trace.
+Compare a rerun with the Grader baseline table in `tests/results-brief.md`: a regression is a case that table marks as usable whose `verdict` passed on every run there and now fails on any, confirmed by reading that run's trace. For the cases it marks "read the trace", the graders decide nothing.
 
 Not built: whole-interview tests with a stand-in user (a script around `claude -p --resume`). The route was piloted and works; see the notes at the end of `tests/results-brief.md`.
