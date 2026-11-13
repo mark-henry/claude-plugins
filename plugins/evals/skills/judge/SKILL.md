@@ -23,7 +23,7 @@ Also there: `generate-synthetic-data`, `build-review-interface`, `evaluate-rag`,
 - **One item per call.** Several items in one call let earlier items leak into later verdicts; with the shared rubric first and cached, one item per call costs little more.
 - **Pairwise judges have position bias**, strongest when the candidates are close, which is exactly when A/B decisions get made. Run each pair in both orders.
 - **Say which model family judged.** Where the judge shares a family with an arm, say so and use a neither-family judge where available; a fresh same-family judge is a disclosed fallback.
-- **Keep a ledger of cases seen while tuning.** "Agreement or better fit on selected disagreements is not generalization" (transect). After any rubric edit, reread every definition together, not just the one you changed.
+- **Keep a ledger of cases seen while tuning.** After any rubric edit, reread every definition together, not just the one you changed.
 - **A burned test set stays burned.** If the test result is too low and you go back to dev, label fresh test items; rerunning the old split is tuning on test.
 - **A judge validated on one distribution is unvalidated on another** (another model's outputs, synthetic inputs, a new arm). Re-check before applying it there.
 - **Re-validate** after any change of judge model, task model, prompt or data distribution, and periodically otherwise (≥100 fresh traces every 2–4 weeks).
@@ -44,3 +44,5 @@ Record each judge so it can be reproduced and audited:
 - Corrected pass rate: <θ̂> (CI …) from observed <p_obs>
 - Valid for: <distribution / arms>; re-validate on <trigger>
 ```
+
+The source behind the tuning-ledger rule is in [references/evidence.md](references/evidence.md).

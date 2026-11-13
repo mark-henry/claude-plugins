@@ -7,7 +7,7 @@ description: "Pick among discrete options by blind vote: independent proposers w
 
 Invoking this skill is the user's opt-in to running a Workflow (proposers + one pooling agent + voters). The script is `vote.js` in this directory. `scriptPath` refuses plugin paths, so copy the script to your scratchpad and run `Workflow({scriptPath: "<scratchpad>/vote.js", args: {...}})`.
 
-**Vote or gauntlet?** A vote picks a point from a set. It works best when the answer is one of several discrete options and the errors of independent judges are mostly uncorrelated. At matched budget, sampling independently and taking the majority beat multi-agent debate (88.2% vs 83.0% on GSM8K with gpt-3.5 at 9 responses each; the gains credited to debate came from aggregation [1]). `decide:improve` moves a single point. Each challenger amends or replaces the current version, which suits continuous spaces: polishing wording, tuning a design, or noticing that "actually there's a library for this". The two compose. Run a vote to pick the starting point, then run `decide:improve` on the winner with the voters' worries as its agenda and the beaten options as full text; its closing pick already puts the vote's winner up against every revision.
+**Vote or gauntlet?** A vote picks a point from a set. It works best when the answer is one of several discrete options and the errors of independent judges are mostly uncorrelated. `decide:improve` moves a single point. Each challenger amends or replaces the current version, which suits continuous spaces: polishing wording, tuning a design, or noticing that "actually there's a library for this". The two compose. Run a vote to pick the starting point, then run `decide:improve` on the winner with the voters' worries as its agenda and the beaten options as full text; its closing pick already puts the vote's winner up against every revision.
 
 How it works:
 1. **Propose.** Unless `options` are given, `proposers` agents each work alone and list their two or three best answers, best first, as genuinely different choices. Each starts its search from a different place (the practitioner's default, the simplest, existing tools, robustness, the skeptic's pick, cheapest to reverse, most ambitious). Asking each proposer for one option doesn't work: on a question with an obvious answer, every proposer writes it and nothing is left to vote on. Each option's `first_choice_of` (how many proposers ranked it first) is a self-consistency signal in its own right.
@@ -44,5 +44,4 @@ Report in this order:
 
 A vote measures agreement, not correctness. Voters from the same model share blind spots, so a confident wrong answer can win unanimously. When the stakes are high and a check exists (tests, a benchmark, the user's own judgment on two finalists), run the check on the top two instead of trusting the margin.
 
-## Sources
-1. Huang et al., "Large Language Models Cannot Self-Correct Reasoning Yet", ICLR 2024, Sec. 4 and Table 7: https://arxiv.org/abs/2310.01798
+The study behind these instructions is in [references/evidence.md](references/evidence.md).

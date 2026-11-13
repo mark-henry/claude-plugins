@@ -33,7 +33,7 @@ The human rules on every case, and the human's ruling is what goes in the log. T
 - **Change the prompt only on a pattern.** Wait until two or three fails share a cause; one case is an anecdote, and editing on anecdotes makes a prompt that zigzags. Say which logged cases the change answers.
 - **Promote clear critiques to worked examples** in the prompt (input, decision, one-line reason), especially near a boundary between two behaviors. Keep the examples few, and keep the cases they came from out of any later test.
 - **Re-run an earlier failing case after a prompt change**, as a regression check, and log it as a new line with the new prompt version.
-- **Graduate when the log reaches about 30 cases.** At that point the critiques are a labelled set: if the component's decisions matter enough to quote a number, move to `evals:judge` (dev/test split, TPR and TNR) rather than continuing one by one.
+- **Graduate when the log reaches about 30 cases.** At that point the critiques are a labeled set: if the component's decisions matter enough to quote a number, move to `evals:judge` (dev/test split, TPR and TNR) rather than continuing one by one.
 
 ## The log
 
@@ -45,6 +45,4 @@ One JSON line per case, appended to the log the component names (for example a r
 
 `ruled_by: agent-only` marks a line the human never ruled on: its verdict is only the agent's bet, so don't promote it to an example or count it in `bet_hit`. The share of bets that hit, over the lines the human ruled, says how far the agent's taste tracks the human's on this component.
 
-## Sources
-
-- Hamel Husain, "Using LLM-as-a-Judge For Evaluation: A Complete Guide" (critique shadowing): https://hamel.dev/blog/posts/llm-judge/
+The source for the method is in [references/evidence.md](references/evidence.md).
