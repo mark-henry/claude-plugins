@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: brief-z-brief-alone-stops
+description: A frozen-brief interview on a one-function toy job is complete except its last batch; the user asked for the brief alone, and the prompt answers that batch.
+tags: [brief]
+plugins: ["../../plugins/swarm", "../../plugins/check"]
+context:
+  scaffold_script: fixture.sh
+  history_file: history.jsonl

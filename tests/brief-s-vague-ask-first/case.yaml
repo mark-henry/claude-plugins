@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: brief-s-vague-ask-first
+description: A vague first request about a small workspace of notes, with nothing yet confirmed by the user, shows whether the interview asks first or goes looking around the workspace and the web for shortcuts before any requirement has been confirmed.
+tags: [brief]
+plugins: ["../../plugins/swarm", "../../plugins/check"]
+context:
+  scaffold_script: fixture.sh
+  history_file: history.jsonl

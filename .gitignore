@@ -2,3 +2,7 @@ __pycache__/
 .DS_Store
 runs.md
 tests/results/
+
+# session files the harness leaves beside a replayed history
+tests/*/[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*.jsonl
+tests/*/[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*-[0-9a-f]*/
