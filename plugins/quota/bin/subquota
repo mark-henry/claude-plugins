@@ -15,7 +15,7 @@
 #   rate     = headroom / hours to reset   (the burn rate the account can afford)
 #   weight   = share of total rate, at least FLOOR; 0 if no headroom
 #   an account ahead of pace (left < target) with headroom gets FLOOR and no share: work goes to accounts with slack
-#   an account with no reading (after a proxy restart) gets FLOOR, so it serves a request and can be read
+#   an account with no reading (after a proxy restart) gets FLOOR_UNREAD, so it serves a request soon and can be read
 #   if no account has headroom, the protected account takes everything (its reserve is for that)
 #   only an account with no headroom gets 0, because weight 0 takes it out of the pool the proxy fails
 #   over to: e.g. a session whose account has hit the Fable cap (7d_oi) could not move anywhere else
@@ -39,12 +39,13 @@ set -euo pipefail
 : "${QUOTA_MANAGEMENT_KEY_FILE:=~/.cli-proxy-api/management-key}"
 : "${QUOTA_PROTECTED_EMAIL:=}"                           # main account that must not run out; empty = none
 : "${QUOTA_RESERVE:=10}"                                 # % of its weekly quota kept for the web app; a last resort
-: "${QUOTA_FLOOR:=10}"                                   # minimum weight for an account with headroom
+: "${QUOTA_FLOOR:=1}"                                    # minimum weight for an account with headroom: in the pool, ~no new sessions
+: "${QUOTA_FLOOR_UNREAD:=10}"                            # weight for an account with no reading, so it serves a request soon and can be read
 : "${QUOTA_LOG:=~/Library/Logs/quota-rebalance.log}"
 : "${QUOTA_SESSION_AUTH_DIR:=~/.cache/claude-mitm/session-auth}"  # written by claude-mitm's addon
 [[ -f ~/.config/quota.env ]] && source ~/.config/quota.env
 API=$QUOTA_PROXY_URL/v0/management
-PROTECTED_EMAIL=$QUOTA_PROTECTED_EMAIL RESERVE=$QUOTA_RESERVE FLOOR=$QUOTA_FLOOR
+PROTECTED_EMAIL=$QUOTA_PROTECTED_EMAIL RESERVE=$QUOTA_RESERVE FLOOR=$QUOTA_FLOOR FLOOR_UNREAD=$QUOTA_FLOOR_UNREAD
 SESSION_AUTH_DIR=${QUOTA_SESSION_AUTH_DIR/#\~/$HOME}
 LOG=${QUOTA_LOG/#\~/$HOME} KEY_FILE=${QUOTA_MANAGEMENT_KEY_FILE/#\~/$HOME}
 export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
@@ -102,7 +103,7 @@ fi
 # Emits tab-separated rows: "L<TAB>report line", "P<TAB>account at or ahead of pace" and
 # "W<TAB>name<TAB>email<TAB>old<TAB>new<TAB>why"
 rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg mine "$session_auth" \
-  --argjson reserve "$RESERVE" --argjson floor "$FLOOR" '
+  --argjson reserve "$RESERVE" --argjson floor "$FLOOR" --argjson floor_unread "$FLOOR_UNREAD" '
   def week: 604800;
   def epoch: (.[0:19] + "Z" | fromdateiso8601) -
     ((.[19:] | capture("(?<s>[+-])(?<h>\\d\\d):(?<m>\\d\\d)$")) as $z
@@ -193,7 +194,7 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
        end ] as $c
    | ($c | map(.rate) | add // 0) as $total
    | $c[]
-   | .new = (if .nodata then $floor
+   | .new = (if .nodata then $floor_unread
              elif $total == 0 and .email == $prot then 100
              elif .head <= 0 then 0
              elif .behind then $floor
