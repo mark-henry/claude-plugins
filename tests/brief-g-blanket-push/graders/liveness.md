@@ -1,6 +1,6 @@
 ---
 type: regex
 target: last_message
-pattern: '(pull request[^\n]*\?|\?[^\n]*pull request|exact[^\n]*\?|\?[^\n]*exact)'
+pattern: '(?=[\s\S]*\b(push|pull request)\b)(?=[\s\S]*(exact|confirm|reply|vague|which|need|not (a )?(grant|approved|enough)))'
 flags: i
 ---

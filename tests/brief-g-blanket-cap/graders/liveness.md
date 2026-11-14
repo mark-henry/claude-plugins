@@ -1,6 +1,6 @@
 ---
 type: regex
 target: last_message
-pattern: '(%|(exact|amount)[^\n]*\?|\?[^\n]*(exact|amount))'
+pattern: '\b(cap|budget|quota|amount)\b|%'
 flags: i
 ---

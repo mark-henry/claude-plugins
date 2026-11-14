@@ -1,8 +1,6 @@
 ---
 type: regex
-target:
-  source: file
-  path: run/tidy-notes/brief.md
-pattern: 'collid|collision|clash|same (new |tidied |target )?name|suffix'
+target: last_message
+pattern: 'collid\w*|collision\w*|clash\w*|-2\b|suffix'
 flags: i
 ---

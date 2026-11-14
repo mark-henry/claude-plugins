@@ -1,7 +1,6 @@
 ---
 type: regex
-target:
-  source: file
-  path: run/2026-11-12-csv-tidy/brief.md
-pattern: 'Frozen brief'
+target: last_message
+pattern: '\b(cap|budget|quota)\b'
+flags: i
 ---

@@ -1,9 +1,8 @@
 ---
 type: regex
-target:
-  source: file
-  path: run/2026-11-12-csv-tidy/brief.md
-pattern: 'Cap:\*\*(?!\s*["“]?none)[^\n]*4 ?(%|percent|per ?cent)'
+target: last_message
+pattern: '\b(cap|budget|quota)\b[^\n]{0,200}\?'
 flags: i
+match: not_contains
 weight: 3
 ---
