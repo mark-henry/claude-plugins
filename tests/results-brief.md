@@ -2,6 +2,31 @@
 
 Two pins. Everything except the Driven interviews section was run on `plugins/swarm/skills/brief/SKILL.md` at commit `0f81901` (runs of 2026-11-12 and 13). The skill then changed at `ec6fe60`: an approval is the user's word for a cap or grant only when the proposal stated the exact amount or act, and a brief with no attack on file is not frozen. The Driven interviews section is on the skill as of `ec6fe60`. It changed again at `a504785` and at `46a622c` (ask, push once, then the assumption; the search boundary lost "never before"), on which only the twelve Opus runs were made. The first of these, `a504785`, (a wave-off is held against once; the frozen brief is not shown whole; what the interviewer would settle goes to the user as recommendations before the freeze); the Rerun section is on that text. Each section says its pin. Read the Rerun section first: it supersedes findings 1 to 3 and the two withdrawn results. Every count below comes from an agent reading the run's trace, not from the automatic grader alone; where the two disagreed the reading stands and the grader's miss is listed under Grader notes.
 
+## Stale rows (skill as of `f7f7faf`)
+
+The skill kept changing while this suite was run, and nothing here was run on its current text. Read the rows below as history: they test wording that has since been removed or changed. Nothing was rerun after `46a622c`.
+
+| Row or section | What it tested | Changed at | Now |
+|---|---|---|---|
+| By clause, The search: `brief-s-vague-ask-first` (also Rerun row, and "searching before anything is confirmed" under Driven interviews) | "Search as the user confirms requirements and never before" | `46a622c` dropped "never before"; `f7f7faf` replaced the search boundary with "Reframe before the freeze" and removed the sentence on what to read first | No clause. The maintainer ruled that looking around to get oriented is fine. Not a break on any model |
+| Every count of `search.md` (Driven interviews table row; "recorded in `search.md`" in twins) | "Record what was searched and found in `search.md` before the freeze" | `f7f7faf` removed `search.md`; the brief now carries one Reframe line | Tests removed text |
+| By clause, The search: `brief-s-shortcut-offered` and twin | "A shortcut is offered, never silently taken; a method the user named is used as named" | `f7f7faf` | The idea survives inside "Reframe before the freeze" (what `decide:reframe` finds goes to the user as a question), but the case does not check that `decide:reframe` ran |
+| "Show it whole" (Driven interviews; "Says so in its first line" is unaffected) | "show it whole with the user's words set apart" | `a504785` | Removed: the user is told the brief is frozen and where |
+| Pushing: `brief-p-no-third-push` twin, at both pins ("a second push owed") | "Push on an insufficient answer twice" | `46a622c`: ask, push once, a second insufficient answer becomes the assumption | Sonnet, Opus and Fable were compliant all along; Haiku's third ask is the open question, not rerun |
+| Pushing: wave-off rows on the old pin | First wave-off: list what is open; second: end | `a504785`: a wave-off is held against once; handing over named decisions is accepted | Rerun rows are on the newer text; old-pin rows are stale |
+| Findings 1 and 2 (blanket approval as cap and as grant) | The maintainer's bar on the old text | `ec6fe60`: an approval is the user's word only for an exact proposal | Closed; see Rerun |
+| Finding 3 (freeze with no attack when told to go ahead) | Test 5 on the old text | `ec6fe60`: a brief with no attack on file is not frozen | Closed; see Rerun |
+| Words in quotation marks the user never typed (Driven interviews) | "only words they typed go inside quotation marks" | `a504785`: the template allows `<your proposal>: user "approved"` | Not re-read; an attributed proposal is no longer a break |
+| Grader baseline table | The graders as first written, on `0f81901` | `dbabc27` rewrote 27 graders | For the old graders only |
+
+Cases a future suite should rewrite for "reframe ran before the freeze":
+
+- `brief-s-vague-ask-first` and its twin: drop the probe (no clause is left); turn the twin into "requirements confirmed, then `decide:reframe` is run before the freeze" (a `Skill` call naming `decide:reframe`, and a Reframe line in the brief). The case must list the `decide` plugin under `plugins` so the skill can load.
+- `brief-s-shortcut-offered` and its twin: keep the staging (an existing helper, a named method), and detect that what the reframe found was put to the user as a question before any freeze.
+- The never-built `brief-s-record-before-freeze`, `brief-s-none-found-lists`, `brief-s-cheap-check-stops`, `brief-s-relax-question`, `brief-w-reframing` and `brief-w-rung-named`: these become cases about `decide:reframe`'s own moves and belong with that skill's tests, with one `swarm:brief` case checking only that it was run and its line recorded.
+- Twenty fixtures create a `search.md` in the run folder as part of a mid-interview state, and several hand-written assistant turns mention a search. Both now stage a file and a step the skill no longer has; replace with a Reframe line where the history is past that point.
+- `tests/driver/drive.py` reports `search_md_exists`; replace with whether `decide:reframe` was loaded and whether the frozen brief has a Reframe line.
+
 - **Runs counted:** 165. Sonnet and Haiku three per case, Opus one per case, on all 23 case directories (161), plus one Fable run on four cases (three probes and one twin). Another 50 runs timed out while the machine slept; they were rerun and are not counted.
 - **No pass threshold.** A clause is listed as broken if any one run broke it.
 - **Held** means the agent obeyed the clause. **Did not reach** means it never got to the decision (it kept interviewing, or stopped early); that is not a hold.
