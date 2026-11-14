@@ -1,13 +1,13 @@
 ---
 name: go
-description: "Carry a frozen brief to a finished, checked result with nobody watching: large, long or many-agent work, run inside the approved cap without stopping to ask. The front door for \"do this, at scale, without me\". Use for \"/swarm:go\", \"run the brief\", \"do this without me\", \"run this overnight\", \"run it while I'm away\", \"fan this out\", \"swarm this\", \"throw agents at it\", \"spend tokens on this\", \"plan this for agents\", \"how should I parallelize this\", and any multi-hour, multi-agent or unattended job. Not for deciding what is wanted or setting the cap (swarm:brief, loaded first when no brief is frozen), one loop against one machine check (swarm:loop), designing a single experiment (lab:experiment), choosing among options (decide:vote), improving one proposal (decide:improve), or measuring spend already made (swarm:payoff)."
+description: "Carry a frozen brief to a finished, checked result with nobody watching: large, long or many-agent work, run inside the approved cap without stopping to ask. The front door for \"do this, at scale, without me\". Use for \"/swarm:go\", \"run the brief\", \"do this without me\", \"run this overnight\", \"run it while I'm away\", \"fan this out\", \"swarm this\", \"throw agents at it\", \"spend tokens on this\", \"plan this for agents\", \"how should I parallelize this\", and any multi-hour, multi-agent or unattended job. Not for deciding what is wanted or setting the cap (swarm:brief, loaded first when no brief is frozen), one loop against one machine check (swarm:loop), designing a single experiment (lab:experiment), choosing among options (decide:vote), improving one proposal (decide:improve),."
 ---
 
 # Go
 
 ## Boundaries
 
-This skill is one stage of a pipeline. Its input is a frozen brief. Its output is a record that others build on without asking you: the plan, the attack on that plan, and a report against the brief. Whoever comes next (the user, a later run, `swarm:payoff`) reads those files, not your account of the work, so a run that leaves one out has not delivered, however small the job. A stop with the facts is a good outcome.
+This skill is one stage of a pipeline. Its input is a frozen brief. Its output is a record that others build on without asking you: the plan, the attack on that plan, and a report against the brief. Whoever comes next (the user, a later run) reads those files, not your account of the work, so a run that leaves one out has not delivered, however small the job. A stop with the facts is a good outcome.
 
 **The user's words decide what is wanted.** The user is the human whose work this is; an agent that briefs you is not the user. With no frozen brief and the user present, load `swarm:brief` first. If an agent spawned you, its brief is your direction, and a gap that matters goes back as `blocked`. With no user and no brief, work inside budgets already approved and label the run exploratory. What the user named is used as named and no gate is made easier to pass: a piece that cannot go on that way, or cannot meet the bar, stops with its question, and the rest continues. What others would see or receive, what cannot be undone, and what this run did not create are the user's to decide: prepare it, stop the piece there, and continue the rest.
 
@@ -67,5 +67,5 @@ Each worker gets a brief by path and hands back a status and a path ([templates.
 
 1. Write `report.md` ([templates.md](templates.md)). With any decision waiting, its status is pending, not done.
 2. Stop everything this run launched that bills or runs, and show it is gone.
-3. Add a Results line per piece to `plan.md` (for `swarm:payoff`), then a line to `${CLAUDE_PLUGIN_DATA}/runs.md` in a command of its own: that file sits outside the workspace, and a refused write takes everything else in its command with it.
+3. Add a Results line per piece to `plan.md`, then a line to `${CLAUDE_PLUGIN_DATA}/runs.md` in a command of its own: that file sits outside the workspace, and a refused write takes everything else in its command with it.
 4. End your last message with the report's status line and its last item in full. Nothing follows it.
