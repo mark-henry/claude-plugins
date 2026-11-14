@@ -13,9 +13,9 @@ These hold whatever model is driving and however hard anyone pushes. The rest of
 
 **The user.** The user is the human whose work this is; an agent that briefs you is not the user. If another agent spawned you, the brief it handed you is your direction: do not interview, and return a gap that matters as blocked. Without the user in the conversation, write no frozen brief and fill no line of "The user's words": what you were handed stays an agent's direction. With no user and no brief, work inside budgets already approved, label it exploratory, and report the open questions.
 
-**The budget.** The budget is part of the brief. The interview gives an estimate in the units the run will actually draw on: dollars for metered spend (rented machines, paid APIs), and for work on the user's subscription tokens (by model role, weighted as `swarm-tokens` weights them), with the share of quota that many tokens has cost before where the run log shows it, never a list-price dollar figure. The two are separate meters: subscription use is quota and never counts toward a dollar cap. The estimate is quoted from the run log of the skill that will do the run (this plugin's is `${CLAUDE_PLUGIN_DATA}/runs.md`) or labeled "a guess, no record", and the user answers with a cap in their own words and their own unit ("approved up to $40", "30 million tokens", "20% of this week's quota"). Spend up to the cap is then the run's to make without asking; say so when you ask for it. With no spending guidance anywhere, ask, with the estimate attached. A no-ask amount the user has set is spent without asking. The search and the attacks on the brief need no cap: they run on tokens, and anything in them that costs money is quoted first. Time is estimated, never capped, unless the user names a time.
+**The budget.** The budget is part of the brief. The interview gives an estimate in the units the run will actually draw on: dollars for metered spend (rented machines, paid APIs), and for work on the user's subscription tokens (by model role, weighted as `swarm-tokens` weights them), with the share of quota that many tokens has cost before where `${CLAUDE_PLUGIN_DATA}/exchange.md` shows it, never a list-price dollar figure. The two are separate meters: subscription use is quota and never counts toward a dollar cap. The estimate is quoted from the run log of the skill that will do the run (this plugin's is `${CLAUDE_PLUGIN_DATA}/runs.md`) or labeled "a guess, no record", and the user answers with a cap in their own words and their own unit ("approved up to $40", "30 million tokens", "20% of this week's quota"). Spend up to the cap is then the run's to make without asking; say so when you ask for it. With no spending guidance anywhere, ask, with the estimate attached. A no-ask amount the user has set is spent without asking. The search and the attacks on the brief need no cap: they run on tokens, and anything in them that costs money is quoted first. Time is estimated, never capped, unless the user names a time.
 
-**The search.** During the interview, as the user confirms requirements, look for what makes the work unnecessary or smaller: something that already does it, here or elsewhere; a cheap check that settles the question; a simpler route that cuts the knot; one requirement whose relaxing removes most of the cost. Put the simpler route and the relaxed requirement to the user as questions: they test what the user actually requires. A shortcut is offered, never silently taken, and a method the user named is used as named. Record what was searched and what it found in `search.md` before the freeze; "none found" lists what was searched.
+**Reframe before the freeze.** Before you conclude the interview, with the requirements confirmed, run `decide:reframe` on them: it looks for what makes the work unnecessary or smaller. What it finds goes to the user as a question ("have you considered…?"), because the simpler route and the relaxed requirement test what the user actually requires; if one lands, the interview is not over. A shortcut is offered, never silently taken, and a method the user named is used as named. Its result is the brief's Reframe line; "none found" says what was searched.
 
 **The five tests.** Interview until the brief passes all five:
 
@@ -33,11 +33,11 @@ These hold whatever model is driving and however hard anyone pushes. The rest of
 
 ## The run folder
 
-Name the run (the date and a slug) and make its folder in this plugin's data folder, `${CLAUDE_PLUGIN_DATA}/runs/<run-name>/`, unless the user keeps runs elsewhere. Write its absolute path wherever you cite it: other agents and other plugins' skills cannot expand the variable. Three files live there, each written when it first has content: `search.md`; `rulings.md` (every user sentence that grants, caps or decides, verbatim and dated, amendments after the freeze included); and `brief.md`, which the run cites by path.
+Name the run (the date and a slug) and make its folder in this plugin's data folder, `${CLAUDE_PLUGIN_DATA}/runs/<run-name>/`, unless the user keeps runs elsewhere. Write its absolute path wherever you cite it: other agents and other plugins' skills cannot expand the variable. Two files live there, each written when it first has content: `rulings.md` (every user sentence that grants, caps or decides, verbatim and dated, amendments after the freeze included); and `brief.md`, which the run cites by path.
 
 ## Asking
 
-Read what the request points at and the user's standing instructions first, and ask only what they do not answer. Ask inline in prose, never with a question dialog: a few questions at a time, each with your proposed answer, so "yes" or "approved all" is a valid reply to those questions, never to "are we done?". Put the cap and each grant in a batch as its own line with the exact amount or act, so the user can approve the batch in two words. Goal and purpose come first. Play your understanding back in three piles: stated, inferred, out of scope.
+Ask only what is not already answered. Ask inline in prose, never with a question dialog: a few questions at a time, each with your proposed answer, so "yes" or "approved all" is a valid reply to those questions, never to "are we done?". Put the cap and each grant in a batch as its own line with the exact amount or act, so the user can approve the batch in two words. Goal and purpose come first. Play your understanding back in three piles: stated, inferred, out of scope.
 
 For test 3, settle out loud:
 
@@ -56,13 +56,6 @@ Typical attacks on a bar, beyond test 2's own clauses:
 - **Which threat.** What fails now, and what fails later under training, scale or adversaries?
 
 State the property, never an example of meeting it: an example becomes everyone's obvious answer.
-
-## Making the work smaller
-
-- **Something already does it**, here or elsewhere. Search on independent angles; queries leaving the machine use generic terms only. A found answer must apply at this scale; a bounded search does not prove absence.
-- **A cheap check settles it**: a test, lookup, benchmark or bisect, run rather than read about. If it settles the whole request, write it in `search.md`, tell the user and stop: nothing is left to brief.
-- **The ponytail ladder.** Stop at the first rung that holds and name it: does this need to exist; already in this codebase; in the standard library; a native platform feature; an installed dependency; one line; only then the minimum that works plus one small test. Lazy about the solution, never about reading the code first, and never cutting validation, error handling, security or accessibility.
-- **One requirement carries most of the cost.** Say which, and what dropping it buys.
 
 ## Recommended envelope decisions
 
@@ -107,7 +100,7 @@ Frozen <date, time>, <path>    Attack: <path to brief.attack.md, rounds>
 - **Budget:** <estimate and its source; time; what is cut first>
 - **Envelope:** <roles, limits, data policy; permissions secured, and stalls to expect>
 - **Context facts:** <measured and tried; no diagnosis>
-- **Search:** <searched; found; changed>
+- **Reframe:** <what `decide:reframe` searched and found; what it changed>
 
 ### My assumptions (dated)
 - <assumption; why it is mine; cost if wrong>
