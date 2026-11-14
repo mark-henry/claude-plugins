@@ -12,11 +12,14 @@
 #   headroom = left, except the protected account keeps max(RESERVE, target) back
 #   rate     = headroom / hours to reset   (the burn rate the account can afford)
 #   weight   = share of total rate, at least FLOOR; 0 if no headroom
-#   an unprotected account behind pace (left < target) gets FLOOR and no share: work goes to accounts with slack
+#   an unprotected account ahead of pace (left < target) gets FLOOR and no share: work goes to accounts with slack
 #   an account with no reading (after a proxy restart) gets FLOOR, so it serves a request and can be read
 #   if no account has headroom, the protected account takes everything (its reserve is for that)
+#   while any account is Fable-blocked (its 7d_oi window rejects), every account that could serve Fable
+#   (not Fable-blocked, above its hard reserve) gets at least FLOOR: weight 0 would take it out of the
+#   pool the proxy fails a blocked session's Fable requests over to
 #
-# Pace note, printed under the report only when it applies: every account at or over pace (slack
+# Pace note, printed under the report only when it applies: every account at or ahead of pace (slack
 # rounds to 0 or below), with a request that the agent say so in its first reply of the session.
 #
 # Session affinity: claude-mitm's addon records the auth_index CLIProxyAPI picked for each Claude Code
@@ -95,7 +98,7 @@ if [[ -d $SESSION_AUTH_DIR ]]; then
     session_auth=$(<"$SESSION_AUTH_DIR/$CLAUDE_CODE_SESSION_ID")
 fi
 
-# Emits tab-separated rows: "L<TAB>report line", "P<TAB>account at or over pace" and
+# Emits tab-separated rows: "L<TAB>report line", "P<TAB>account at or ahead of pace" and
 # "W<TAB>name<TAB>email<TAB>old<TAB>new<TAB>why"
 rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg mine "$session_auth" \
   --argjson reserve "$RESERVE" --argjson floor "$FLOOR" '
@@ -107,14 +110,22 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
     | if $m < 120 then "\($m)m" elif $m < 2880 then "\($m / 60 | floor)h" else "\($m / 1440 | floor)d" end;
   def num: if . == null or . == "" then null else tonumber end;
   def pct: round | tostring + "%";
-  def resets: ((.reset - $now) / 3600) as $h
-    | if $h >= 48 then "resets \($h / 24 * 10 | round / 10)d" else "resets \($h | round)h" end;
+  def until(t): ((t - $now) / 3600) as $h
+    | if $h >= 48 then "\($h / 24 * 10 | round / 10)d" else "\($h | round)h" end;
+  def resets: "resets " + until(.reset);
   def who: .email | split("@")[0];
+  def oi(k): .fsig["Anthropic-Ratelimit-Unified-7d_oi-" + k];
 
   # One record per enabled credential, from its newest observation.
   [ .files[] | select(.disabled | not)
     | ([.quota // {}] + [(.model_quotas // {})[]] | map(select((.signals // {}) | length > 0)) | max_by(.observed_at | epoch)) as $o
-    | {name, provider, auth_index, email: (.email // "?"), weight, sig: $o.signals, seen: ($o.observed_at // null | if . then epoch else null end)}
+    # The Fable cap: Fable responses carry an extra weekly window, 7d_oi, the one that rejects Fable.
+    | ((.model_quotas // {}) | to_entries
+       | map(select(.key | startswith("claude-fable")) | .value
+             | select((.signals // {})["Anthropic-Ratelimit-Unified-7d_oi-Utilization"] != null))
+       | max_by(.observed_at | epoch) | .signals) as $fs
+    | {name, provider, auth_index, email: (.email // "?"), weight, sig: $o.signals, fsig: $fs,
+       seen: ($o.observed_at // null | if . then epoch else null end)}
     | if .sig == null then .
       elif .provider == "claude" then
         .used = (.sig["Anthropic-Ratelimit-Unified-7d-Utilization"] | num | if . then . * 100 else null end)
@@ -129,7 +140,17 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
     | .passed = (.reset != null and .reset <= $now)
     | .left = (if .used == null then null elif .passed then 100 else 100 - .used end)
     | .target = (if .passed or .reset == null or .length == null then null else 100 * (.reset - $now) / .length end)
+    | .freset = (oi("Reset") | num)
+    | .fpassed = (.freset != null and .freset <= $now)
+    | .fleft = (if .fpassed then 100 else oi("Utilization") | num | if . == null then null else 100 - . * 100 end end)
+    | .fblocked = (.fleft != null and (.fpassed | not) and (.fleft <= 0 or oi("Status") == "rejected"))
+    # Can take a session whose account is Fable-blocked: Fable not blocked (no reading counts as open),
+    # and general quota above what the account must keep back (for the protected account, its hard reserve).
+    | .fok = (.provider == "claude" and (.fblocked | not)
+              and (.left == null or .left > (if .email == $prot then $reserve else 0 end)))
   ] as $creds
+  | ($creds | map(select(.fblocked))) as $fblocked
+  | ($creds | map(select(.fok))) as $fok
 
   # Report lines
   | ($creds[] | "L\t- \(.provider) \(.email | split("@")[0])" + (if .plan then " \(.plan)" else "" end)
@@ -144,11 +165,19 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
               end)
            + ", seen \(.seen | ago)"
          end)
+      + (if .fblocked then "; Fable blocked, back in \(until(.freset))"
+         elif .fleft != null then "; Fable \(.fleft | pct) left" else "" end)
       + (if $mine != "" and .auth_index == $mine then "  ← this session" else "" end)),
 
-  # Accounts at or over pace
+  # Accounts at or ahead of pace
   ($creds[] | select(.left != null and .target != null) | (.left - .target | round) as $p | select($p <= 0)
    | "P\t\(.provider) \(who) (\($p))"),
+
+  # Fable note: which accounts have hit the Fable cap, and where their sessions fail over to
+  (if ($fblocked | length) == 0 then empty
+   elif ($fok | length) == 0 then "F\tFable blocked on every account."
+   else "F\tFable blocked on \($fblocked | map(who) | join(", ")); its sessions fall back to \($fok | map(who) | join(" or ")) on their next Fable request."
+   end),
 
   # Rebalance proposals for every Claude credential
   ([ $creds[] | select(.provider == "claude")
@@ -169,8 +198,11 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
              elif .behind then $floor
              elif $total == 0 or .rate == 0 then 0
              else ([$floor, (100 * .rate / $total | round)] | max) end)
-   | .why = (if .nodata then "no reading" elif .behind and .left > 0 then "behind pace"
+   | .why = (if .nodata then "no reading" elif .behind and .left > 0 then "ahead of pace"
              else "\(.head | round)pts/\(.hrs | round)h" end)
+   # Weight 0 takes an account out of the pool the proxy fails over to, so while any account is
+   # Fable-blocked, every account that could serve Fable keeps at least the floor.
+   | if ($fblocked | length) > 0 and .fok and .new < $floor then .new = $floor | .why = "Fable fallback" else . end
    | "W\t\(.name)\t\(.email)\t\(.weight // 1)\t\(.new)\t\(.why)"
   )
 ' <<<"$json")
@@ -178,8 +210,10 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
 echo "Quota (weekly % left vs even-spend target, slack):"
 grep '^L' <<<"$rows" | cut -f2- || true
 over=$(grep '^P' <<<"$rows" | cut -f2- || true)
-if [[ -n $over ]]; then
-  echo "At or over pace: $(paste -sd ';' - <<<"$over" | sed 's/;/, /g')."
+fable=$(grep '^F' <<<"$rows" | cut -f2- || true)
+[[ -n $over ]] && echo "At or ahead of pace: $(paste -sd ';' - <<<"$over" | sed 's/;/, /g')."
+[[ -n $fable ]] && echo "$fable"
+if [[ -n $over || -n $fable ]]; then
   echo "(Tell the user this in one line in your first reply of the session; don't repeat it after that.)"
 fi
 
