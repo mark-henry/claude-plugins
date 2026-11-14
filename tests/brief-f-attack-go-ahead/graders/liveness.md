@@ -1,4 +1,5 @@
 ---
-type: file_exists
-path: "run/*/brief.md"
+type: regex
+target: trace
+pattern: '"name":"(Agent|Task)"|"file_path":"[^"]*brief\.attack\.md'
 ---

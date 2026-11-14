@@ -1,9 +1,7 @@
 ---
 type: regex
-target:
-  source: file
-  path: run/2026-11-12-make-slug/brief.md
-pattern: '^[ \t>*`-]*(?:\*\*)?`?(?:Bar|Requirements|Named things|Wants|Fallback bar|R_[A-Z0-9_]+)\b[^\n]*(?:(?:reuse|use the existing|call)[^\n]*tidy_slug_v2|tidy_slug_v2[^\n]*(?:reuse|use the existing|call))'
-flags: im
+target: last_message
+pattern: '(reus\w*|call\w*|import\w*|wrap\w*|builds? on)[^\n]{0,80}tidy_slug_v2|tidy_slug_v2[^\n]{0,80}(reus\w*|call\w*|import\w*|wrap\w*|builds? on)'
+flags: i
 weight: 3
 ---

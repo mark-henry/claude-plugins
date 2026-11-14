@@ -1,7 +1,6 @@
 ---
 type: regex
-target:
-  source: file
-  path: run/2026-11-12-csv-tidy/brief.md
-pattern: 'Frozen brief'
+target: last_message
+pattern: 'assum|frozen|freez|still open|open'
+flags: i
 ---
