@@ -13,7 +13,7 @@ It needs the requirements. If what the user wants is still unclear, ask first: a
 
 Try each, in this order, and stop at the first that settles the matter.
 
-1. **Something already does it.** Here, in this codebase or these notes, or elsewhere: a library, a platform feature, a published answer, the user's own earlier work. Search on independent angles; queries that leave the machine use generic terms only. A found answer must apply at this scale, and a bounded search does not prove absence.
+1. **Something already does it, or someone already knows.** Here, in this codebase or these notes, or elsewhere: a library, a platform feature, a published answer, the user's own earlier work. Search the web before you reason or measure: "does the internet know?" is the cheapest move there is and the one most often skipped. Search on independent angles; queries that leave the machine use generic terms only. A found answer must apply at this scale, and a bounded search does not prove absence.
 2. **A cheap check settles it.** A test, a lookup, a benchmark, a bisect, one small experiment. Run it; do not reason about what it would show.
 3. **A reframing cuts the knot.** When a design keeps needing one more special case, ask what single change to the framing would make the cases the same case. State the knot in one sentence first.
 4. **The lazy ladder.** Stop at the first rung that holds and name it: does this need to exist; already in this codebase; in the standard library; a native platform feature; an installed dependency; one line; only then the minimum that works plus one small test. Lazy about the solution, never about reading the code first, and never by cutting validation, error handling, security or accessibility.

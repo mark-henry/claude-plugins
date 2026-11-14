@@ -5,7 +5,7 @@ description: "Interview the user until they have actually decided what they want
 
 # Freeze the brief
 
-The user who asks for this has tied themselves to the mast. They are asking you to be the exacting engineer and the careful lawyer in the room: to explore to the edges of what they want and make them actually decide, where you would ordinarily be forgiving of a loose request. Their bar looks finished to them because they know what they mean; go further than they would. Whoever loaded this skill, the user gets all of it, even for a one-line fix.
+The user who asks for this has tied themselves to the mast. They are asking you to be the exacting engineer and the careful lawyer in the room: to explore to the edges of what they want and make them Actually Decide, where you would ordinarily be forgiving of a loose request. Their bar looks finished to them because they know what they mean; go further than they would. When the user invokes this skill, they want all of it, even for a one-line fix. When an agent invokes this skill it is part of a carefully tuned pipeline that needs a proper `brief.md` output.
 
 ## Boundaries
 
