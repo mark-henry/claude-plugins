@@ -9,15 +9,16 @@
 #   pace   = left - target; positive is slack, negative is spending ahead of pace
 #
 # Rebalance policy (Claude accounts; weights are relative, session-affine in the proxy):
-#   headroom = left, except the protected account keeps max(RESERVE, target) back
+#   headroom = left, except the protected account keeps RESERVE back
+#   The protected account is the one whose quota is being saved for the claude.ai web app. Its last
+#   RESERVE% is a last resort; above that it is spent like any other account, pace rules included.
 #   rate     = headroom / hours to reset   (the burn rate the account can afford)
 #   weight   = share of total rate, at least FLOOR; 0 if no headroom
-#   an unprotected account ahead of pace (left < target) gets FLOOR and no share: work goes to accounts with slack
+#   an account ahead of pace (left < target) with headroom gets FLOOR and no share: work goes to accounts with slack
 #   an account with no reading (after a proxy restart) gets FLOOR, so it serves a request and can be read
 #   if no account has headroom, the protected account takes everything (its reserve is for that)
-#   while any account is Fable-blocked (its 7d_oi window rejects), every account that could serve Fable
-#   (not Fable-blocked, above its hard reserve) gets at least FLOOR: weight 0 would take it out of the
-#   pool the proxy fails a blocked session's Fable requests over to
+#   only an account with no headroom gets 0, because weight 0 takes it out of the pool the proxy fails
+#   over to: e.g. a session whose account has hit the Fable cap (7d_oi) could not move anywhere else
 #
 # Pace note, printed under the report only when it applies: every account at or ahead of pace (slack
 # rounds to 0 or below), with a request that the agent say so in its first reply of the session.
@@ -37,7 +38,7 @@ set -euo pipefail
 : "${QUOTA_PROXY_URL:=http://127.0.0.1:8317}"            # CLIProxyAPI base URL
 : "${QUOTA_MANAGEMENT_KEY_FILE:=~/.cli-proxy-api/management-key}"
 : "${QUOTA_PROTECTED_EMAIL:=}"                           # main account that must not run out; empty = none
-: "${QUOTA_RESERVE:=15}"                                 # % of its weekly quota the proxy leaves alone
+: "${QUOTA_RESERVE:=10}"                                 # % of its weekly quota kept for the web app; a last resort
 : "${QUOTA_FLOOR:=10}"                                   # minimum weight for an account with headroom
 : "${QUOTA_LOG:=~/Library/Logs/quota-rebalance.log}"
 : "${QUOTA_SESSION_AUTH_DIR:=~/.cache/claude-mitm/session-auth}"  # written by claude-mitm's addon
@@ -145,7 +146,7 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
     | .fleft = (if .fpassed then 100 else oi("Utilization") | num | if . == null then null else 100 - . * 100 end end)
     | .fblocked = (.fleft != null and (.fpassed | not) and (.fleft <= 0 or oi("Status") == "rejected"))
     # Can take a session whose account is Fable-blocked: Fable not blocked (no reading counts as open),
-    # and general quota above what the account must keep back (for the protected account, its hard reserve).
+    # and general quota above what the account must keep back (for the protected account, its reserve).
     | .fok = (.provider == "claude" and (.fblocked | not)
               and (.left == null or .left > (if .email == $prot then $reserve else 0 end)))
   ] as $creds
@@ -186,23 +187,20 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
          .next = (if .passed then .reset + week * ((($now - .reset) / week | floor) + 1) else .reset end)
          | .hrs = ([(.next - $now) / 3600, 1] | max)
          | .tgt = 100 * (.next - $now) / week
-         | .head = (if .email == $prot then .left - ([$reserve, .tgt] | max) else .left end)
-         | .behind = (.email != $prot and .left < .tgt)
+         | .head = (if .email == $prot then .left - $reserve else .left end)
+         | .behind = (.left < .tgt)
          | .rate = (if .behind then 0 else ([.head, 0] | max) / .hrs end)
        end ] as $c
    | ($c | map(.rate) | add // 0) as $total
    | $c[]
    | .new = (if .nodata then $floor
              elif $total == 0 and .email == $prot then 100
-             elif .left <= 0 then 0
+             elif .head <= 0 then 0
              elif .behind then $floor
              elif $total == 0 or .rate == 0 then 0
              else ([$floor, (100 * .rate / $total | round)] | max) end)
-   | .why = (if .nodata then "no reading" elif .behind and .left > 0 then "ahead of pace"
+   | .why = (if .nodata then "no reading" elif .behind and .head > 0 then "ahead of pace"
              else "\(.head | round)pts/\(.hrs | round)h" end)
-   # Weight 0 takes an account out of the pool the proxy fails over to, so while any account is
-   # Fable-blocked, every account that could serve Fable keeps at least the floor.
-   | if ($fblocked | length) > 0 and .fok and .new < $floor then .new = $floor | .why = "Fable fallback" else . end
    | "W\t\(.name)\t\(.email)\t\(.weight // 1)\t\(.new)\t\(.why)"
   )
 ' <<<"$json")

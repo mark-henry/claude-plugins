@@ -31,8 +31,8 @@ t() { if [[ $2 == *"$3"* ]]; then echo "ok    $1"; else echo "FAIL  $1: wanted \
 
 # Both accounts on pace: weights follow the burn rate each can afford (unchanged behavior).
 out=$(proposed "$(cred side 1 0.20 84)" "$(cred main 1 0.14 96)")
-t "on pace: the side account gets its share" "$out" "side 1→76"
-t "on pace: the protected account gets its share" "$out" "main 1→24"
+t "on pace: the side account gets its share" "$out" "side 1→55"
+t "on pace: the protected account gets its share" "$out" "main 1→45"
 
 # The side account has spent ahead of pace (21% left with 45h of 168h to go; even spend would leave 27%).
 out=$(proposed "$(cred side 61 0.79 45)" "$(cred main 39 0.14 96)")
@@ -43,23 +43,24 @@ t "ahead of pace: the on-pace account takes the rest" "$out" "main 39→100"
 out=$(proposed "$(cred side 0 none 0)" "$(cred main 100 0.14 96)")
 t "no data at weight 0: gets the floor so it can be observed" "$out" "side 0→10"
 
+# The protected account is saved for the web app: only its last 10% is a last resort. Short of that it
+# follows the same pace rules as any account, so a point behind its target is the floor, not zero.
+out=$(proposed "$(cred side 100 0.86 18)" "$(cred main 0 0.59 70)")
+t "protected, behind its target but above the reserve: the floor, not zero" "$out" "main 0→10"
+out=$(proposed "$(cred side 100 0.86 18)" "$(cred main 10 0.92 70)")
+t "protected, inside its last 10%: weight 0 while another account has headroom" "$out" "main 10→0"
+out=$(proposed "$(cred side 100 1.00 18)" "$(cred main 10 0.92 70)")
+t "protected, inside its last 10%: takes everything when nothing else is left" "$out" "main 10→100"
+
 # An account with nothing left gets nothing.
 out=$(proposed "$(cred side 30 1.00 45)" "$(cred main 70 0.14 96)")
 t "nothing left: weight 0" "$out" "side 30→0"
 
 # Fable. Weight 0 takes an account out of the proxy's pool, so a session whose account has hit its
-# Fable cap gets "no auth candidates" instead of failing over. (2026-11-13: side has
-# Fable rejected; main is protected and a point behind its target, so weight 0, with Fable to spare.)
+# Fable cap gets "no auth candidates" instead of failing over. (2026-11-13: side has Fable rejected;
+# main is protected, a point behind its target and well above its reserve, with Fable to spare.)
 out=$(proposed "$(cred side 100 0.86 18 1.0 rejected)" "$(cred main 0 0.59 70 0.8)")
-t "Fable blocked elsewhere: the account with Fable left gets the floor" "$out" "main 0→10 (Fable fallback)"
-out=$(proposed "$(cred side 100 0.86 18 0.9)" "$(cred main 0 0.59 70 0.8)")
-t "Fable open everywhere: no fallback needed" "$out" "weights already match"
-out=$(proposed "$(cred side 100 0.86 18 1.0 rejected)" "$(cred main 0 0.59 70 1.0 rejected)")
-t "Fable blocked everywhere: nothing to fall back to" "$out" "weights already match"
-out=$(proposed "$(cred side 100 0.86 18 1.0 rejected)" "$(cred main 0 0.88 70 0.8)")
-t "Fable fallback never dips into the protected reserve" "$out" "weights already match"
-out=$(proposed "$(cred side 100 0.86 18 1.0 rejected)" "$(cred main 0 0.59 70)")
-t "no Fable reading counts as Fable left" "$out" "main 0→10 (Fable fallback)"
+t "Fable blocked elsewhere: the account with Fable left stays in the pool" "$out" "main 0→10"
 
 out=$(report "$(cred side 100 0.86 18 1.0 rejected)" "$(cred main 0 0.59 70 0.8)")
 t "report: Fable left per account" "$out" "Fable 20% left"
