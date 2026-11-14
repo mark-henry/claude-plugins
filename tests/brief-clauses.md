@@ -150,3 +150,20 @@ Twelve cases exist (eleven with a twin). The case names in the tables above were
 | `brief-g-file-grants-nothing` | G3, G7 | |
 
 23 of 49 clauses and 7 of 21 wanted behaviors are exercised. Every other case name in this file is not built.
+
+## Stale after later skill changes
+
+This list was written against the skill at `0f81901`. Clauses whose text has since been removed or changed, with the commit that did it. A future suite should start from the skill's current Boundaries section, not from the tables above.
+
+| Clause | Status | Changed at |
+|---|---|---|
+| S1 (search never before requirements are confirmed), W9 | Removed. Looking around to get oriented is allowed | `46a622c`, `f7f7faf` |
+| S5, S6, W6, W7, W8 (`search.md`, "none found" lists what was searched) | Removed with `search.md`; the brief carries one Reframe line | `f7f7faf` |
+| S2, S3, S4, S7, W1 to W5, W10, W11 (the simpler route, the shortcut, the named method, the cheap check, the relaxed requirement) | Moved into `decide:reframe`, which `swarm:brief` runs before the freeze. The clause to test here is "reframe ran before the freeze and what it found went to the user as a question" | `f7f7faf` |
+| B7 (the search needs no cap) | Reworded with the search; re-read before testing | `f7f7faf` |
+| P1, P8 (push twice; the two pushes are per question) | Changed: ask, push once, a second insufficient answer becomes the assumption; a question is never put a third time | `46a622c` |
+| P3, P4 (wave-offs) | Changed: a wave-off is held against once; handing over named decisions is accepted | `a504785` |
+| Z2 (show it whole) | Removed: the user is told the brief is frozen and where | `a504785` |
+| G1, G2 (blanket approval), G5 (side-by-side record) | Changed: an approval is the user's word for a cap, grant or permission only when the proposal stated it exactly; the template allows `<your proposal>: user "approved"` | `ec6fe60`, `a504785` |
+| F1, F3 (attack before the freeze; leftovers to the user) | Tightened: a brief with no attack on file is not frozen; everything the interviewer would settle goes to the user as recommendations before the freeze | `ec6fe60`, `a504785` |
+| A-rows and the budget rows | Unchanged in substance, except that budgets may now be stated in tokens | `46a622c` |
