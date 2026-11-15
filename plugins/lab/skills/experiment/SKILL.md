@@ -74,7 +74,10 @@ A floor measured on this harness that spans what the claim spans: for a claim ab
 
 - Measure and price the floor first: it sets kill thresholds and n, and the baseline seeds often cost more than the treatment. If they do not fit the cap, run shorter with more seeds, or word the claim now as "these checkpoints on these items".
 - Floor runs come before the FREEZE and stay exploratory: the counted untreated arm is run again, interleaved with the treated runs, so price the baseline twice.
-- Three seeds a side make a figure, not a test. A pilot prices the run; it does not estimate the effect or supply the power calculation.
+- Three seeds a side make a figure, not a test. A pilot prices the run and does not estimate the effect. The floor runs supply the spread for the power calculation.
+- **Power is a gate.** Before any counted run, write the smallest difference that would change the decision, and the chance this design detects it, simulated from the floor runs. Under 80%, add samples or label the run exploratory before it starts; which one is the user's call, asked as its own question.
+- **Screen items, not sets.** Run each item several times on the untreated arm before counting. An item that always or never succeeds is replaced or dropped: it adds cost and no information.
+- **Put the samples where the spread is.** From the floor runs, compare the spread between reruns of the same item with the spread between items. When reruns disagree more, add runs per item; when items disagree more, add items. Say which you chose and the two numbers.
 
 ### Rule 5: leakage and held-out
 
