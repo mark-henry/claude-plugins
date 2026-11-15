@@ -1,21 +1,38 @@
 #!/usr/bin/env bash
-# Supervisor for an oracle-gated agent loop (see the swarm:loop skill).
-# Each pass: a fresh agent reads PROMPT.md, then the supervisor (not the agent) runs the check.
-# The supervisor trusts only the check's exit code and count; it never reads the ledger or the agent's claims.
+# Supervisor for a check-gated agent loop (see the swarm:loop skill).
+# Each pass: a fresh worker reads the prompt, then the supervisor (not the worker) runs the check.
+# The stop decision comes only from what the check writes to $SWARM_RESULT; the worker's exit code,
+# messages and ledger are never read.
+#
+# This is not isolation. Every command runs as the user who launched the script, so a worker can still
+# reach whatever that user can: the check, the state directory, this process. The script keeps its own
+# files out of the worker's directory and environment and refuses layouts that put them inside; real
+# separation needs the worker to run as another user or in a container.
 #
 # usage: AGENT_CMD='...' CHECK_CMD='...' swarm-loop <loop-dir> [max-passes]
-#   <loop-dir>  the agent's working directory (usually the worktree root), holding PROMPT.md.
-#   max-passes  total agent passes for this STATE_DIR, counted across launches (default 20). A relaunch
-#               continues the count and the pass numbering; to run more, raise the number.
-#   AGENT_CMD   required. Reads the prompt on stdin. Run it inside a sandbox if it bypasses permissions.
-#   CHECK_CMD   required. Exit 0 when done; otherwise its last output line starts with the number passing.
-#   FINAL_CMD   optional. Run once when the loop stops for any reason (the full check, the held-out set).
+#   <loop-dir>  the worker's working directory (usually its worktree root); AGENT_CMD runs there.
+#   max-passes  total passes for this STATE_DIR, counted across launches (default 20). A relaunch continues
+#               the count and the pass numbering; to run more, raise the number. A count below the pass
+#               logs on disk is refused as tampering.
+#   AGENT_CMD   required. Reads the prompt on stdin; none of the variables below reach it. Put a timeout
+#               and a budget in it.
+#   CHECK_CMD   required. Runs in CHECK_DIR with LOOP_DIR=<loop-dir> and SWARM_RESULT naming a fresh file
+#               outside both, and writes to that file `done` when done, otherwise the number passing.
+#               No file, or anything else in it, is no count. Its exit code and output are only logged.
+#               Code sharing the check's process or environment can write that file or exit for it: run
+#               the worker's code in a child with SWARM_RESULT unset and compute the result from its output.
+#   FINAL_CMD   optional. Run once in CHECK_DIR when the loop stops for any reason (the held-out set).
+#   PROMPT      the prompt file (default <loop-dir>/PROMPT.md, which draws a warning). Each launch freezes
+#               a copy in STATE_DIR and every pass reads that copy; a prompt changed since the last launch
+#               draws a warning.
+#   CHECK_DIR   the working directory for CHECK_CMD and FINAL_CMD (default: a fresh empty one each run).
 #   STALL       passes without a new best before stopping (default 3).
-#   STATE_DIR   where the supervisor keeps loop.log, logs/, the pass count, and watches for STOP
-#               (default: <loop-dir>.swarm-loop, a sibling outside the agent's tree, so logs never
-#               reach git and held-out output from FINAL_CMD never reaches a later agent).
-# Exit codes: 0 done, 2 max passes, 3 stall, 4 STOP file in STATE_DIR, 5 check unusable before any pass.
-# The check runs once before pass 1: if it already passes, no agent runs.
+#   STATE_DIR   loop.log, logs/, the pass count, the frozen prompt, and STOP. Default:
+#               ${XDG_STATE_HOME:-~/.local/state}/swarm-loop/<loop-dir name>-<checksum of its path>.
+#               Refused inside <loop-dir> or containing it.
+# Exit codes: 0 done, 1 refused, 2 max passes, 3 stall, 4 STOP file in STATE_DIR, 5 no count before any pass.
+# The check runs once before pass 1: if it already passes, no worker runs.
+# Not provided: a timeout or budget, or protection from a worker that kills this script or creates STOP.
 set -euo pipefail
 
 dir=${1:?usage: swarm-loop <loop-dir> [max-passes]}
@@ -24,65 +41,97 @@ stall=${STALL:-3}
 : "${AGENT_CMD:?set AGENT_CMD}" "${CHECK_CMD:?set CHECK_CMD}"
 case "$cap$stall" in *[!0-9]*) echo "max-passes and STALL must be whole numbers" >&2; exit 1 ;; esac
 
-cd "$dir"
-[ -f PROMPT.md ] || { echo "no PROMPT.md in $dir" >&2; exit 1; }
-state=${STATE_DIR:-$(pwd -P).swarm-loop}
-mkdir -p "$state/logs"
+refuse() { echo "swarm-loop: refused: $1" >&2; exit 1; }
+warn() { echo "swarm-loop: warning: $1" >&2; }
+within() { case "$1/" in "$2"/*) return 0 ;; esac; return 1; } # within <path> <dir>: path is dir or under it
+
+dir=$(cd "$dir" && pwd -P)
+prompt=${PROMPT:-$dir/PROMPT.md}
+[ -f "$prompt" ] || refuse "no prompt file at $prompt"
+prompt=$(cd "$(dirname "$prompt")" && pwd -P)/$(basename "$prompt")
+if within "$prompt" "$dir"; then warn "prompt $prompt is inside the loop directory, where the worker can rewrite it for later launches; set PROMPT to a file outside it"; fi
+if [ -n "${CHECK_DIR:-}" ]; then
+  CHECK_DIR=$(cd "$CHECK_DIR" && pwd -P)
+  if within "$CHECK_DIR" "$dir"; then warn "CHECK_DIR is inside the loop directory: the check runs among the worker's files"; fi
+fi
+if [ -z "${STATE_DIR:-}" ]; then
+  [ -e "$dir.swarm-loop" ] && refuse "$dir.swarm-loop holds state from an older swarm-loop, within the worker's reach; move it elsewhere and set STATE_DIR to it to continue that count, or delete it"
+  STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/swarm-loop/$(basename "$dir")-$(printf %s "$dir" | cksum | cut -d' ' -f1)
+fi
+mkdir -p "$STATE_DIR/logs"
+state=$(cd "$STATE_DIR" && pwd -P)
+within "$state" "$dir" && refuse "STATE_DIR $state is inside the loop directory"
+within "$dir" "$state" && refuse "the loop directory is inside STATE_DIR $state"
 log=$state/loop.log
+cd "$dir"
 echo "swarm-loop: logs in $state; touch $state/STOP to stop after the current pass" >&2
 
 # Passes already spent by earlier launches against this state directory.
 used=0
 [ -f "$state/passes" ] && used=$(cat "$state/passes")
-case "$used" in ''|*[!0-9]*) echo "unreadable pass count in $state/passes" >&2; exit 1 ;; esac
+case "$used" in ''|*[!0-9]*) refuse "unreadable pass count in $state/passes" ;; esac
+last=$(ls "$state/logs" | sed -n 's/^pass-\([0-9]*\)\.log$/\1/p' | sort -n | tail -n 1)
+[ "${last:-0}" -gt "$used" ] && refuse "pass count $used in $state/passes is below the log of pass $last; it was changed outside swarm-loop"
 
+if [ -f "$state/prompt.md" ] && ! cmp -s "$prompt" "$state/prompt.md"; then
+  warn "prompt $prompt changed since the last launch"; echo "prompt changed since the last launch" >> "$log"
+fi
+cp "$prompt" "$state/prompt.md"
+
+# Output goes through a pipe, so no file descriptor of the worker or the check points into STATE_DIR.
+hide="env -u AGENT_CMD -u CHECK_CMD -u FINAL_CMD -u CHECK_DIR -u PROMPT -u STATE_DIR -u SWARM_RESULT"
+result=
+side() { # side <command> <log>: run a check-side command in CHECK_DIR, or a fresh empty directory
+  local cwd=${CHECK_DIR:-$(mktemp -d)} rc=0
+  (cd "$cwd" && $hide LOOP_DIR="$dir" SWARM_RESULT="$result" bash -c "$1" 2>&1) | cat > "$2" || rc=$?
+  [ -n "${CHECK_DIR:-}" ] || rm -rf "$cwd"
+  return "$rc"
+}
+check() { # check <log>: sets res to "done", the count passing, or "" for no count; rc to the exit code
+  local rd; rd=$(mktemp -d); result=$rd/result; rc=0
+  side "$CHECK_CMD" "$1" || rc=$?
+  res=$(head -n 1 "$result" 2>/dev/null | tr -d '[:space:]' || true); rm -rf "$rd"; result=
+  [ "$res" = done ] || case "$res" in ''|*[!0-9]*) res= ;; esac
+}
 stop() { # stop <exit-code> <message>
   echo "$2" | tee -a "$log"
   if [ -n "${FINAL_CMD:-}" ]; then
     # One final log per launch, never overwritten: an earlier launch's held-out result stays on disk.
     final=$state/logs/final-pass-$used.log; k=1
     while [ -e "$final" ]; do k=$((k + 1)); final=$state/logs/final-pass-$used-$k.log; done
-    if bash -c "$FINAL_CMD" > "$final" 2>&1; then echo "final check: exit 0 ($final)" | tee -a "$log"
+    if side "$FINAL_CMD" "$final"; then echo "final check: exit 0 ($final)" | tee -a "$log"
     else echo "final check: exit $? (see $final)" | tee -a "$log"; fi
   fi
   exit "$1"
 }
 
-# Runs the check; sets ok=1 if it passed, else n to the count (empty if the last line has no number).
-check() {
-  ok=0
-  if out=$(bash -c "$CHECK_CMD" 2>&1); then ok=1; return; fi
-  n=$(printf '%s\n' "$out" | tail -n 1 | grep -Eo '^[[:space:]]*[0-9]+' | tr -d '[:space:]' || true)
-}
-
-echo "start $(date -u +%FT%TZ) dir $(pwd -P) cap $cap stall $stall passes used $used" >> "$log"
+echo "start $(date -u +%FT%TZ) dir $dir prompt $prompt cap $cap stall $stall passes used $used" >> "$log"
 if [ "$used" -ge "$cap" ]; then
   echo "max passes ($cap) already used by earlier launches; raise max-passes to run more" | tee -a "$log"
   exit 2
 fi
-check
-[ "$ok" = 1 ] && stop 0 "baseline: check already passes, no agent run"
-[ -n "$n" ] || { printf '%s\n' "$out" > "$state/logs/baseline.log"; stop 5 "baseline: check failed without a count on its last line (see $state/logs/baseline.log); fix the check first"; }
-best=$n
+check "$state/logs/baseline-$used.log"
+[ "$res" = done ] && stop 0 "baseline: check already passes, no agent run"
+[ -n "$res" ] || stop 5 "baseline: check wrote no count to SWARM_RESULT (exit $rc, see $state/logs/baseline-$used.log); fix the check first"
+best=$res
 flat=0
-echo "baseline: $n passing" >> "$log"
+echo "baseline: $res passing (check exit $rc)" >> "$log"
 
 for ((i = used + 1; i <= cap; i++)); do
   [ -f "$state/STOP" ] && stop 4 "STOP file found before pass $i"
   echo "pass $i start $(date -u +%FT%TZ)" >> "$log"
   used=$i; echo "$used" > "$state/passes" # counted when it starts: a pass killed midway was still spent
   # An agent that dies or exits nonzero is restarted by the next pass, not fatal.
-  bash -c "$AGENT_CMD" < PROMPT.md > "$state/logs/pass-$i.log" 2>&1 || echo "pass $i: agent exited $?" >> "$log"
-  check
-  [ "$ok" = 1 ] && stop 0 "pass $i: check passed, done"
-  if [ -z "$n" ]; then
-    printf '%s\n' "$out" > "$state/logs/check-$i.log"
-    echo "pass $i: check gave no count (see $state/logs/check-$i.log), counted as 0" >> "$log"
-    n=0
+  cat "$state/prompt.md" | $hide bash -c "$AGENT_CMD" 2>&1 | cat > "$state/logs/pass-$i.log" || echo "pass $i: agent exited $?" >> "$log"
+  check "$state/logs/check-$i.log"
+  [ "$res" = done ] && stop 0 "pass $i: check passed, done"
+  if [ -z "$res" ]; then
+    echo "pass $i: check wrote no count (exit $rc, see $state/logs/check-$i.log), counted as 0" >> "$log"
+    res=0
   else
-    echo "pass $i: $n passing" >> "$log"
+    echo "pass $i: $res passing (check exit $rc)" >> "$log"
   fi
-  if [ "$n" -gt "$best" ]; then best=$n; flat=0; else flat=$((flat + 1)); fi
+  if [ "$res" -gt "$best" ]; then best=$res; flat=0; else flat=$((flat + 1)); fi
   [ "$flat" -ge "$stall" ] && stop 3 "stalled: $stall passes without a new best ($best)"
 done
 stop 2 "hit max passes ($cap), best $best"

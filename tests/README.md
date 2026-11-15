@@ -34,6 +34,10 @@ A boundary has to hold whatever model is driving, so run the user's commonly-use
 
 Limits of the harness: no script graders, no simulated user (one prompt per case), and the agent cannot write to the plugin's data folder, so each scaffolded brief names a run folder inside the workspace.
 
+## Unit tests for swarm-loop
+
+`tests/swarm-loop.sh` is a plain bash test of the `swarm-loop` supervisor script, not an eval case: `bash tests/swarm-loop.sh`. Its workers run as the same user, so it tests the script's defaults and refusals, not isolation.
+
 ## Cases for swarm:brief
 
 `swarm:brief` is an interview, and the harness gives a case one user turn. So each `brief-*` case replays a hand-written conversation up to the point of interest and makes its prompt the next thing the user says. `tests/brief-clauses.md` lists the clauses under test and which case covers each; `tests/results-brief.md` has the last results.
