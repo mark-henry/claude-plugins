@@ -60,7 +60,7 @@
     {
       "name": "check",
       "source": "./plugins/check",
-      "description": "Can this be trusted? attack: a fresh agent that has not seen your reasoning finds what is wrong with a plan, a brief or finished work. One or two blind readers run what can be run and paste the evidence under each finding; you label every finding."
+      "description": "Can this be trusted? attack: a fresh agent that has not seen your reasoning finds what is wrong with a plan, a brief or finished work. One or two blind readers run what can be run and paste the evidence under each finding; you label every finding. eyebrow: before work starts on a plan, ask who has tried it and what happened; a fresh agent on the strongest model says what the people who know the area best would say, and a web search looks for the case against."
     },
     {
       "name": "unattended",

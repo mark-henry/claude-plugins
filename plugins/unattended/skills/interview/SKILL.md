@@ -29,7 +29,7 @@ Estimate in the unit the run will draw on: dollars for metered spend; tokens or 
 
 A permission is secured when the harness no longer prompts for it, not when the user says yes: have them add the rule, or approve a harmless trigger, while they are here.
 
-**The raised eyebrow.** Before you conclude the interview, with the requirements confirmed, ask who has tried this and what happened to them, from two sources. The weights: a fresh agent on the strongest model, given the requirements and none of the user's enthusiasm, says what the people who know this area best would say on hearing the plan, and the likeliest reason it is unnecessary or fails. The internet: search for the case against ("why not", "problems with", "we stopped doing") as well as for whether it already exists; for costly work make it a research fan-out, and have a fresh agent check that the cited pages say what they are cited for. Show the user both, then ask what they still want. What they answer is a requirement like any other; a method the user named is used as named. If something lands, the interview is not over.
+**The raised eyebrow.** Before you conclude the interview, with the requirements confirmed, run `check:eyebrow` on them (if it is not installed: a fresh agent on the strongest model, given the requirements and none of the user's enthusiasm, says what the people who know this area best would say and the likeliest reason the plan is unnecessary or fails; and you search for the case against). Show the user both, then ask what they still want. What they answer is a requirement like any other; a method the user named is used as named. If something lands, the interview is not over.
 
 ## Attack, then freeze
 
