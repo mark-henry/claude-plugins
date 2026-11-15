@@ -1,6 +1,6 @@
 ---
 name: attack
-description: "Send a fresh agent that has not seen your reasoning to find what is wrong with a plan, a brief or a piece of finished work before anyone relies on it or spends on it. It returns findings and changes nothing. Use for \"/check:attack\", \"attack this\", \"have agents attack the plan before we spend\", \"red-team it\", \"pre-mortem\", \"find what's wrong with this\", \"get a fresh review of this\", \"subject it to <model> review\", before any plan spends, and after a task or a rewrite, before the work is merged, reported or built on. Not for a property a script or test can check: run that."
+description: "Send a fresh agent that has not seen your reasoning to find what is wrong with a plan, a brief or a piece of finished work before anyone relies on it or spends on it. It returns findings and changes nothing. Use for \"/check:attack\", \"attack this\", \"have agents attack the plan before we spend\", \"red-team it\", \"pre-mortem\", \"find what's wrong with this\", \"get a fresh review of this\", \"subject it to <model> review\", before any plan spends, and after a task or a rewrite, before the work is merged, reported or built on. Not for a property a script or test can check: run that. Not for whether to do the thing at all, before it is built (check:eyebrow)."
 ---
 
 # Attack before you rely on it
