@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tests for prereg.py. Run: python3 test_prereg.py"""
-import json, subprocess, sys, tempfile, unittest
+import hashlib, json, re, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 PREREG = Path(__file__).with_name("prereg.py")
@@ -152,6 +152,56 @@ class Stamp(unittest.TestCase):
         (d / "code.py").write_text("x = 2\n")
         run(d, "stamp", "logs/untreated")
         self.assertEqual(json.loads((d / "logs" / "untreated" / "git.json").read_text())["dirty"], ["code.py"])
+
+
+OLD = Path(__file__).with_name("fixtures") / "old"   # records and run folders written by the untouched script
+OLD_RECORDS = ("draft", "explore", "counted", "closed", "abandoned")
+
+
+def old_copy():
+    """A fresh git repo holding a copy of the old fixtures, so a command that writes cannot touch the originals."""
+    d = Path(tempfile.mkdtemp())
+    shutil.copytree(OLD / "repo", d, dirs_exist_ok=True)
+    subprocess.run(["git", "init", "-q"], cwd=d, check=True)
+    return d
+
+
+def tree(d):
+    """Every file under d except .git, with run times blanked (close writes the time it ran)."""
+    out = {}
+    for p in sorted(d.rglob("*")):
+        if p.is_file() and ".git" not in p.relative_to(d).parts:
+            out[str(p.relative_to(d))] = re.sub(r'"utc": "\d{8}T\d{4}Z"', '"utc": "T"', p.read_text())
+    return out
+
+
+class OldRecords(unittest.TestCase):
+    """Records made by the untouched script (fixtures/old/prereg_v1.py, byte-identical to it) read exactly as before."""
+
+    def same_as_v1(self, *args):
+        old, new = old_copy(), old_copy()
+        r0 = subprocess.run([sys.executable, str(OLD / "prereg_v1.py"), *args], cwd=old, capture_output=True, text=True)
+        r1 = run(new, *args)
+        self.assertEqual((r1.returncode, r1.stdout, r1.stderr), (r0.returncode, r0.stdout, r0.stderr), args)
+        self.assertEqual(tree(new), tree(old), args)
+        return r1
+
+    def test_close_on_old_records_matches_the_untouched_script(self):
+        for name in OLD_RECORDS:
+            self.same_as_v1("close", f"prereg/{name}.json", "--note", "again")
+        self.assertEqual(self.same_as_v1("close", "prereg/counted.json").returncode, 0)
+
+    def test_parity_on_old_records_matches_the_untouched_script(self):
+        for name in OLD_RECORDS[1:]:
+            self.same_as_v1("parity", f"prereg/{name}.json")
+        self.assertEqual(self.same_as_v1("parity", "prereg/closed.json").returncode, 0)
+
+    def test_ls_on_old_records_matches_the_untouched_script(self):
+        r = self.same_as_v1("ls", "prereg")
+        self.assertIn("calibration: 2/2", r.stdout)
+
+    def test_the_reference_copy_is_the_untouched_script(self):
+        self.assertEqual(hashlib.sha256((OLD / "prereg_v1.py").read_bytes()).hexdigest()[:16], "316feab368dad35e")
 
 
 if __name__ == "__main__":

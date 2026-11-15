@@ -1,0 +1,38 @@
+{
+  "question": "Exploratory look at prompt length.",
+  "varies": [
+    "model"
+  ],
+  "metrics": {
+    "solves": {
+      "num": "solved",
+      "den": "total"
+    }
+  },
+  "max_usd": 1.5,
+  "mechanism": "Longer prompts give the model the format.",
+  "surprises": [
+    "a drop on short items"
+  ],
+  "bar": "none, exploratory",
+  "arms": {
+    "untreated": {
+      "out": "logs/explore/untreated",
+      "command": "python train.py --model u --seed 1"
+    },
+    "treated": {
+      "out": "logs/explore/treated",
+      "command": "python train.py --model t --seed 1"
+    }
+  },
+  "status": "exploratory",
+  "opened": {
+    "utc": "20261115T2134Z",
+    "host": "lab-host",
+    "frozen_sha256": "f0c9415ebdb0c74b",
+    "commit": "ad8a4b521c1477b5d68de9526cd62419b7954876",
+    "branch": "main",
+    "dirty": [],
+    "diff_sha256": null
+  }
+}

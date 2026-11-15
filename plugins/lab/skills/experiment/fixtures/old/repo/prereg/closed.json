@@ -1,0 +1,75 @@
+{
+  "question": "Does the longer prompt raise solves on the toy set?",
+  "varies": [
+    "model"
+  ],
+  "metrics": {
+    "solves": {
+      "num": "solved",
+      "den": "total"
+    }
+  },
+  "max_usd": 1.5,
+  "mechanism": "Longer prompts give the model the format.",
+  "surprises": [
+    "a drop on short items"
+  ],
+  "bar": "plan.md#BAR_SOLVES",
+  "decision": "Ship the longer prompt if it passes; drop it if not.",
+  "arms": {
+    "untreated": {
+      "out": "logs/closed/untreated",
+      "command": "python train.py --model u --seed 1"
+    },
+    "treated": {
+      "out": "logs/closed/treated",
+      "command": "python train.py --model t --seed 1"
+    }
+  },
+  "predictions": {
+    "untreated": {
+      "solves": [
+        0.4,
+        0.6
+      ]
+    },
+    "treated": {
+      "solves": [
+        0.5,
+        0.8
+      ]
+    }
+  },
+  "status": "closed",
+  "opened": {
+    "utc": "20261115T2134Z",
+    "host": "lab-host",
+    "frozen_sha256": "696f797acfe7cf0f",
+    "commit": "ad8a4b521c1477b5d68de9526cd62419b7954876",
+    "branch": "main",
+    "dirty": [],
+    "diff_sha256": null
+  },
+  "observed": {
+    "untreated": {
+      "solves": {
+        "num": 9,
+        "den": 20,
+        "rate": 0.45
+      }
+    },
+    "treated": {
+      "solves": {
+        "num": 13,
+        "den": 20,
+        "rate": 0.65
+      }
+    }
+  },
+  "closed": {
+    "utc": "20261115T2134Z",
+    "hits": 2,
+    "predictions": 2,
+    "note": "fixture"
+  }
+}

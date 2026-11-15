@@ -1,0 +1,45 @@
+{
+  "question": "One sentence: what this comparison decides.",
+  "bar": "plan.md#BAR_NAME, or 'none, exploratory'",
+  "decision": "What we do if the bar passes, and if it fails.",
+  "varies": [
+    "model",
+    "base_model"
+  ],
+  "arms": {
+    "untreated": {
+      "out": "logs/.../untreated",
+      "command": "..."
+    },
+    "treated": {
+      "out": "logs/.../treated",
+      "command": "..."
+    }
+  },
+  "metrics": {
+    "solves": {
+      "num": "targets.count_exact_among_attempts.numerator",
+      "den": "samples.real"
+    }
+  },
+  "predictions": {
+    "untreated": {
+      "solves": [
+        0.6,
+        0.8
+      ]
+    },
+    "treated": {
+      "solves": [
+        0.5,
+        0.75
+      ]
+    }
+  },
+  "mechanism": "Why you expect that: a point estimate, where the gain should concentrate, where the control should tie.",
+  "surprises": [
+    "A named result that would surprise you."
+  ],
+  "max_usd": 2.0,
+  "status": "draft"
+}
