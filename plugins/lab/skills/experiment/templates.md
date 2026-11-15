@@ -42,7 +42,7 @@ Fill in order; do not look at line 6 before lines 1–5 are written.
 2. Instrument ran: <parse yield k/n; errored and missing counted apart from fails>
 3. Samples read per arm: <n, drawn by what rule; validity, refusal, length; tampering attempts>
 4. Controls: <positive control pass or fail; constant output and simple baseline values; where arms sit between the fixture's pass and fail; score against length>
-5. Audit: <evals:audit verdict; run ids; contrasts its sample covered>
+5. Audit: <evals:spot-check verdict; run ids; contrasts its sample covered>
 6. Headline: <BAR_<NAME>: value, n/N, interval or every seed; untreated and simple baseline beside it; all-items rate; floor>
 7. Effective denominator: <items where arms differed>    Other aggregations: <does it survive>
 8. Rivals: <RIVAL_<NAME>: excluded by <control> | not excluded; new ones the reading surfaced>

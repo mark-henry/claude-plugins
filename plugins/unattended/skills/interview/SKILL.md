@@ -1,5 +1,5 @@
 ---
-name: brief
+name: interview
 description: "Interview the user until they have actually decided what they want, then freeze it as a written brief that an unattended run can build against without asking. Use for \"interview me\", \"brief this\", \"freeze the brief\", \"help me figure out what I actually want\", before any costly, long or unattended run, experiment or multi-agent workflow, or when another skill asks for a frozen brief. Not for running the work once the brief is frozen (unattended:go), not for an agent that another agent spawned with a brief in hand, and not for attacking a plan that already exists (check:attack)."
 ---
 

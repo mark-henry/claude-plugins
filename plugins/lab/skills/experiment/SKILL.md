@@ -1,6 +1,6 @@
 ---
 name: experiment
-description: "The one guideline for designing, preregistering, running, reading and signing off a single ML experiment (a fine-tune, an RL or rejection-sampling run, an LLM eval or judge), so that its number means what it will be quoted as meaning. Use for \"/lab:experiment\", \"design this experiment\", \"what do you think of this design?\", \"set up this ablation\", \"what controls do I need?\", \"how many seeds?\", \"is this null real?\", \"prereg\", \"preregister\", before a paid training or eval run, before any run whose number will be compared to a bar, reported or used to choose between arms, and when a surprising number is about to be quoted or built on. Not for deciding what is wanted and the cap (unattended:brief), large or unattended runs (unattended:go), validating an LLM judge (evals:judge), reading a sample of scored items (evals:audit). An eval of a skill or plugin is an experiment too: `claude plugin eval` is the tool that runs its arms, and this skill is still the design."
+description: "The one guideline for designing, preregistering, running, reading and signing off a single ML experiment (a fine-tune, an RL or rejection-sampling run, an LLM eval or judge), so that its number means what it will be quoted as meaning. Use for \"/lab:experiment\", \"design this experiment\", \"what do you think of this design?\", \"set up this ablation\", \"what controls do I need?\", \"how many seeds?\", \"is this null real?\", \"prereg\", \"preregister\", before a paid training or eval run, before any run whose number will be compared to a bar, reported or used to choose between arms, and when a surprising number is about to be quoted or built on. Not for deciding what is wanted and the cap (unattended:interview), large or unattended runs (unattended:go), validating an LLM judge (evals:build-judge), reading a sample of scored items (evals:spot-check). An eval of a skill or plugin is an experiment too: `claude plugin eval` is the tool that runs its arms, and this skill is still the design."
 ---
 
 # lab:experiment
@@ -13,15 +13,15 @@ Every experiment gets a plan page and a written prediction; a small one buys few
 
 One folder per experiment. Inside `unattended:go` this skill designs the experiment piece, and go's attack, pilot ladder and report replace the same steps here; the supervisor's verdict line goes into go's report beside each number quoted. By hand:
 
-1. **Frame.** `unattended:brief`, unless a brief is frozen: bring back the question, the bar with its denominator, the cap and the search record. If a cheap check settles the question, that check is the experiment.
+1. **Frame.** `unattended:interview`, unless a brief is frozen: bring back the question, the bar with its denominator, the cap and the search record. If a cheap check settles the question, that check is the experiment.
 2. **Read the harness** before designing: scorer or reward code, a few full traces, where seeds enter, each checkpoint's provenance, your earlier runs and why each died. Decide where the plan, prereg record and run records will be pinned: private data kept out of a repository needs its hash log first.
 3. **Design** the plan page (templates.md) from "Start from the sentence" and rules 1–8.
 4. **Attack.** `check:attack` on the plan page, with the scorer or reward code and a few raw untreated traces. Close its findings, say in one line what will run and what it should cost, and run it. Nobody approves the plan.
-5. **Untreated first,** on baseline and dev outputs only: the instrument checks, `evals:judge` for an LLM judge a bar reads, the floor runs, the positive control.
+5. **Untreated first,** on baseline and dev outputs only: the instrument checks, `evals:build-judge` for an LLM judge a bar reads, the floor runs, the positive control.
 6. **Predict.** Open and pin the prereg record ("The record and its tool"). Treated smoke and pilot runs come after it and stay exploratory.
 7. **Freeze and launch.** The FREEZE line, then Sign-off at launch. Ask once earlier against a dry run's record, while a *record* block is cheap to fix.
 8. **Counted runs,** arms interleaved in time; `unattended:arbiter` for unattended work against a machine check.
-9. **Read** in the fixed order (templates.md), with `evals:audit`.
+9. **Read** in the fixed order (templates.md), with `evals:spot-check`.
 10. **Quote.** `prereg.py close`; each number in the draft report audited against a tool result from this session; Sign-off at quote, on the sentence as it will be written; `figure:make` draws it.
 11. **Report,** the user's decisions last; then an amendment, a new plan or a stop.
 
@@ -136,7 +136,7 @@ Nothing the FREEZE line or the prereg record names has changed, except by a date
 A scorer, judge, metric or prompt that is new, changed or meeting a new kind of output (a treated arm's is one) has had a sample of its scored items on these runs read by someone not given the hypothesis, ending in a verdict from that reader, or from the human who owns the experiment, of "fit to quote".
 
 - A failed probe can print the hoped-for outcome, and an empty output can look like "no": compare raw records with the rendered view.
-- Give `evals:audit` the run IDs of every treated arm, and check that its sample covers each contrast the claim credits.
+- Give `evals:spot-check` the run IDs of every treated arm, and check that its sample covers each contrast the claim credits.
 
 ### Rule 11: declared denominator, beyond noise
 

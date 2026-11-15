@@ -1,20 +1,20 @@
 ---
-name: audit
-description: "Audit an eval's scores before anyone trusts the aggregate: a subagent pulls a stratified sample of 30–50 scored items (high, middle and low scorers, plus disagreements and outliers), reads each one in full, and flags screwups such as scores too high, scores too low, and broken items. Not a review of the whole eval pipeline (that is Hamel's `eval-audit`). Use for \"/evals:audit\", \"audit the scores\", \"sanity-check this eval\", after any new eval, judge, metric or scoring change produces numbers, before a number is reported or used to pick between arms, and whenever a rate surprises you."
+name: spot-check
+description: "Audit an eval's scores before anyone trusts the aggregate: a subagent pulls a stratified sample of 30–50 scored items (high, middle and low scorers, plus disagreements and outliers), reads each one in full, and flags screwups such as scores too high, scores too low, and broken items. Not a review of the whole eval pipeline (that is Hamel's `eval-audit`). Use for \"/evals:spot-check\", \"audit the scores\", \"sanity-check this eval\", after any new eval, judge, metric or scoring change produces numbers, before a number is reported or used to pick between arms, and whenever a rate surprises you."
 ---
 
 # Audit an eval's scores
 
 An aggregate hides the items that produced it. A mean of 0.72 can be a judge passing empty outputs, a parser zeroing correct answers, or a reference answer that is wrong. Reading a stratified sample finds these every time, and it costs machine effort, not human attention. Run the audit in a subagent first, so the human only sees what survives it.
 
-This is a prescreen, not a substitute for the expert. It catches screwups in how an existing scorer was applied: parser bugs, empty outputs scored as passes, wrong references, leakage. It does not decide what "good" means, and its verdicts are not labels. Defining the criteria and validating a judge's TPR/TNR still need the expert's own labels (`evals:judge`). The human still looks; the audit means they look at an eval that has already been debugged.
+This is a prescreen, not a substitute for the expert. It catches screwups in how an existing scorer was applied: parser bugs, empty outputs scored as passes, wrong references, leakage. It does not decide what "good" means, and its verdicts are not labels. Defining the criteria and validating a judge's TPR/TNR still need the expert's own labels (`evals:build-judge`). The human still looks; the audit means they look at an eval that has already been debugged.
 
 ## When it applies
 
 - A new eval, judge, metric, prompt or scoring change has produced its first real numbers.
 - A number is about to be reported, compared to a bar, or used to choose between arms.
 - A rate surprises anyone, in either direction.
-- A judge built with `evals:judge` is first applied to a new distribution.
+- A judge built with `evals:build-judge` is first applied to a new distribution.
 
 ## Steps
 

@@ -1,6 +1,6 @@
 ---
 name: arbiter
-description: "Keep the judge of \"done\" apart from the worker, and harden it: a check the worker cannot reach, a model judge that sees the work and not the worker's account, and the `arbiter-loop` script for work bigger than one context. Use for \"/unattended:arbiter\", \"a check it can't talk its way past\", \"it keeps saying done when it isn't\", \"keep the scorer away from the agent\", \"held-out set\", \"harden the judge\", \"loop until the tests pass\" (this skill says when goal mode is enough), and the judge of done unattended:go seats. Not for validating a judge that scores many items (evals:judge). Not Claude Code's /loop, a timer."
+description: "Keep the judge of \"done\" apart from the worker, and harden it: a check the worker cannot reach, a model judge that sees the work and not the worker's account, and the `arbiter-loop` script for work bigger than one context. Use for \"/unattended:arbiter\", \"a check it can't talk its way past\", \"it keeps saying done when it isn't\", \"keep the scorer away from the agent\", \"held-out set\", \"harden the judge\", \"loop until the tests pass\" (this skill says when goal mode is enough), and the judge of done unattended:go seats. Not for validating a judge that scores many items (evals:build-judge). Not Claude Code's /loop, a timer."
 ---
 
 # A judge the worker cannot talk past

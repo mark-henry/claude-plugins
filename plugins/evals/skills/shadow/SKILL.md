@@ -1,6 +1,6 @@
 ---
 name: shadow
-description: "Tune a prompt-driven component (a router or selector, a skill, an agent prompt, a workflow step) by shadowing it live, one case at a time: show the input, seal a prediction of what it will do, run it, then the human expert rules pass or fail with a critique, while the agent's prediction and its own verdict stay sealed until the ruling is in and are then scored against it; prompt edits come from patterns across critiques, and the critiques become the prompt's worked examples. Critique shadowing, Hamel Husain's method, at the scale of a handful of cases. Use for \"/evals:shadow\", \"shadow this\", \"let's watch it run a few times\", \"one at a time, predict then run\", \"tune the selector\", or the first live runs of any new skill or prompt. Not for validating a judge whose numbers will be quoted (evals:judge) or for checking an existing score distribution (evals:audit)."
+description: "Tune a prompt-driven component (a router or selector, a skill, an agent prompt, a workflow step) by shadowing it live, one case at a time: show the input, seal a prediction of what it will do, run it, then the human expert rules pass or fail with a critique, while the agent's prediction and its own verdict stay sealed until the ruling is in and are then scored against it; prompt edits come from patterns across critiques, and the critiques become the prompt's worked examples. Critique shadowing, Hamel Husain's method, at the scale of a handful of cases. Use for \"/evals:shadow\", \"shadow this\", \"let's watch it run a few times\", \"one at a time, predict then run\", \"tune the selector\", or the first live runs of any new skill or prompt. Not for validating a judge whose numbers will be quoted (evals:build-judge) or for checking an existing score distribution (evals:spot-check)."
 ---
 
 # Shadow a component, one case at a time
@@ -33,7 +33,7 @@ The human rules on every case, and the human's ruling is what goes in the log. T
 - **Change the prompt only on a pattern.** Wait until two or three fails share a cause; one case is an anecdote, and editing on anecdotes makes a prompt that zigzags. Say which logged cases the change answers.
 - **Promote clear critiques to worked examples** in the prompt (input, decision, one-line reason), especially near a boundary between two behaviors. Keep the examples few, and keep the cases they came from out of any later test.
 - **Re-run an earlier failing case after a prompt change**, as a regression check, and log it as a new line with the new prompt version.
-- **Graduate when the log reaches about 30 cases.** At that point the critiques are a labeled set: if the component's decisions matter enough to quote a number, move to `evals:judge` (dev/test split, TPR and TNR) rather than continuing one by one.
+- **Graduate when the log reaches about 30 cases.** At that point the critiques are a labeled set: if the component's decisions matter enough to quote a number, move to `evals:build-judge` (dev/test split, TPR and TNR) rather than continuing one by one.
 
 ## The log
 

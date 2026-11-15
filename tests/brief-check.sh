@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Checks on the unattended:brief cases that need no model. Run from the repo root.
+# Checks on the unattended:interview cases that need no model. Run from the repo root.
 set -u
 fail=0
 python3 tests/brief-histories.py --check || fail=1

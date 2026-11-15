@@ -1,4 +1,4 @@
-# Clauses of `unattended:brief` under test
+# Clauses of `unattended:interview` under test
 
 The denominator for the `brief` cases: every sentence or part of a sentence in the skill's Boundaries section (at commit `0f81901`) that forbids or requires an act an outside observer could see, plus the behaviors wanted from the interview's search, budget and permission handling. Written before any case was built. Tier A is a one-prompt case, B a replayed-history case, C a driven interview. "Unreachable" means no tier can observe it; the reason is given.
 
@@ -159,7 +159,7 @@ This list was written against the skill at `0f81901`. Clauses whose text has sin
 |---|---|---|
 | S1 (search never before requirements are confirmed), W9 | Removed. Looking around to get oriented is allowed | `46a622c`, `f7f7faf` |
 | S5, S6, W6, W7, W8 (`search.md`, "none found" lists what was searched) | Removed with `search.md`; the brief carries one Reframe line | `f7f7faf` |
-| S2, S3, S4, S7, W1 to W5, W10, W11 (the simpler route, the shortcut, the named method, the cheap check, the relaxed requirement) | Moved into `decide:reframe`, which `unattended:brief` runs before the freeze. The clause to test here is "reframe ran before the freeze and what it found went to the user as a question" | `f7f7faf` |
+| S2, S3, S4, S7, W1 to W5, W10, W11 (the simpler route, the shortcut, the named method, the cheap check, the relaxed requirement) | Moved into `decide:reframe`, which `unattended:interview` runs before the freeze. The clause to test here is "reframe ran before the freeze and what it found went to the user as a question" | `f7f7faf` |
 | B7 (the search needs no cap) | Reworded with the search; re-read before testing | `f7f7faf` |
 | P1, P8 (push twice; the two pushes are per question) | Changed: ask, push once, a second insufficient answer becomes the assumption; a question is never put a third time | `46a622c` |
 | P3, P4 (wave-offs) | Changed: a wave-off is held against once; handing over named decisions is accepted | `a504785` |

@@ -1,6 +1,6 @@
 ---
-name: judge
-description: "Build an LLM judge you can trust: the procedure is Hamel Husain's published evals-skills (error analysis, judge prompt, validation by TPR and TNR on a held-out split), plus house rules they don't cover (one item per call, pairwise order bias, burned test sets, distribution shift, re-validation, a judge record). Use for \"/evals:judge\", \"LLM-as-judge\", \"build a grader\", \"auto-label these\", \"can we trust this judge\", before any bulk judging or labelling run whose numbers will be quoted, and when a judge's verdicts look off."
+name: build-judge
+description: "Build an LLM judge you can trust: the procedure is Hamel Husain's published evals-skills (error analysis, judge prompt, validation by TPR and TNR on a held-out split), plus house rules they don't cover (one item per call, pairwise order bias, burned test sets, distribution shift, re-validation, a judge record). Use for \"/evals:build-judge\", \"LLM-as-judge\", \"build a grader\", \"auto-label these\", \"can we trust this judge\", before any bulk judging or labelling run whose numbers will be quoted, and when a judge's verdicts look off."
 ---
 
 # Build and validate an LLM judge
@@ -15,7 +15,7 @@ Follow Hamel Husain's `evals-skills` plugin (MIT, https://github.com/hamelsmu/ev
 2. `write-judge-prompt`: one binary judge per failure mode, critique before verdict, few-shot examples from the train split including a borderline case.
 3. `validate-evaluator`: train/dev/test split, iterate on dev to TPR and TNR > 90% (80% minimum), run test exactly once, correct the observed pass rate for judge error (Rogan-Gladen) with a bootstrap interval.
 
-Also there: `generate-synthetic-data`, `build-review-interface`, `evaluate-rag`, and `eval-audit` (audits a whole eval *pipeline*; to audit a set of *scores* item by item, use `evals:audit`).
+Also there: `generate-synthetic-data`, `build-review-interface`, `evaluate-rag`, and `eval-audit` (audits a whole eval *pipeline*; to audit a set of *scores* item by item, use `evals:spot-check`).
 
 ## House rules on top
 
@@ -27,7 +27,7 @@ Also there: `generate-synthetic-data`, `build-review-interface`, `evaluate-rag`,
 - **A burned test set stays burned.** If the test result is too low and you go back to dev, label fresh test items; rerunning the old split is tuning on test.
 - **A judge validated on one distribution is unvalidated on another** (another model's outputs, synthetic inputs, a new arm). Re-check before applying it there.
 - **Re-validate** after any change of judge model, task model, prompt or data distribution, and periodically otherwise (≥100 fresh traces every 2–4 weeks).
-- **Before human review of a judge in use, run `evals:audit`** on its scores, so the expert's time goes to taste rather than mechanical screwups. The audit's verdicts are never validation labels.
+- **Before human review of a judge in use, run `evals:spot-check`** on its scores, so the expert's time goes to taste rather than mechanical screwups. The audit's verdicts are never validation labels.
 - **Before expert labels exist, say which rung a number stands on:** a single judge is one opinion; repeated rolls show self-consistency, not correctness; a multi-model cohort shows consensus, still not ground truth.
 - **Minimum viable version** when stakes are low: whenever something significant changes, the expert reviews 20–50 outputs, pass/fail with a note on each.
 
