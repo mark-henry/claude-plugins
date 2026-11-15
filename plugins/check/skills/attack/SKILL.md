@@ -11,4 +11,4 @@ Give each the thing at a fixed hash, what it runs on (checker, data, tests, diff
 
 Ask each: "Find what is wrong with this. Change nothing. Run what can be run before you judge. Under each finding paste the command and its output, or the lines you read, and mark it RAN or READ. A claim you cannot back that way, leave out."
 
-Pool both replies in `<thing>.attack.md`. You label every finding there, in writing: `FIXED`, `DECLINED`, `REFUTED` (you reran it and it did not reproduce), or `TO_USER` (it says something that the user decided will not work, or costs more than they knew). Rerun before you act on one. Report one line per finding with its label.
+Pool both replies in `<thing>.attack.md`. You label every finding there, in writing: `FIXED`, `DECLINED`, `REFUTED` (you reran it and it did not reproduce), or `TO_USER` (it says one of the user's decisions will not work, or costs more than they knew). Rerun before you act on one. Report one line per finding with its label.
