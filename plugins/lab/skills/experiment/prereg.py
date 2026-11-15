@@ -1,37 +1,53 @@
 #!/usr/bin/env python3
-"""Preregister a comparison, check its arms are fair, and score it against what was predicted.
+"""Preregister an experiment, stamp each run, and check it against the standard lines of lab:experiment.
 
-  prereg.py new   PATH                write a template record to fill in
-  prereg.py open  PATH                validate, freeze predictions, stamp commit + uncommitted diff
-  prereg.py stamp OUT_DIR             write git.json (+ code.diff) into a run folder; for harnesses with no stamp
-  prereg.py parity PATH               do the arms differ only in `varies`? same instances, same code?
-  prereg.py close PATH [--note TEXT]  predicted vs observed per arm x metric, status -> closed (apply the bar yourself)
-  prereg.py ls [DIR]                  open records, and how well past predictions landed
+  prereg.py new    PATH                          write a template record (schema 2) to fill in
+  prereg.py open   PATH                          validate; hash the frozen fields and the line-6 fields; hash arm data
+  prereg.py stamp  OUT [options] -- CMD...       snapshot the tree under refs/lab/<run id>, write OUT/stamp.json
+  prereg.py check  PATH | RUN_DIR...             lines 2, 3, 7, 8, 12 and the counted gate, from items.jsonl
+  prereg.py parity PATH                          the arm comparison: arms differ only in `varies` (line 13)
+  prereg.py ledger PATH RUN_DIR                  append one line each time the test split is scored (line 9)
+  prereg.py quote  REPORT PATH|RUN_DIR...        every rate or a/b in REPORT carries a run id (line 10)
+  prereg.py induct PATH                          vet an old record after the fact; never refuses, never edits it
+  prereg.py close  PATH [--note TEXT]            observed per arm, status -> closed
+  prereg.py ls     [DIR]                         records, and how well past predictions landed
 
-Stdlib only. A record is JSON; see `new` for the fields. Exit code 1 on a refusal or a parity failure.
-The tool of the lab:experiment skill: its SKILL.md ("The record and its tool") says when each command runs,
-and its checks.md what each does and does not show.
+Stdlib only; never contacts a tracker (its run id is a string). Exit 1 on a refusal, with one line per thing to
+fix, naming the line of the skill it enforces. Records without "schema" (made before schema 2) are read as before
+by close, ls and parity, and hashed exactly as before. The skill's SKILL.md says when each command runs.
+
+A run folder holds stamp.json (written by `stamp` at launch) and items.jsonl (written by the harness): one JSON
+object per line with id, arm, unit, score (number or null) and status (ok, error, empty, truncated, parse_failure).
+Arms named floor:<name> are trivial policies scored on the same items (line 12).
 """
 from __future__ import annotations
 
-import argparse, datetime, hashlib, json, os, socket, subprocess, sys
+import argparse, collections, datetime, hashlib, json, os, random, re, shlex, socket, statistics, subprocess, sys, tempfile
 from pathlib import Path
 
 IGNORED_ARGS = {"out", "max_usd", "dry_run", "max_connections"}
 STATUSES = {"draft", "open", "closed", "abandoned", "exploratory"}
 
 TEMPLATE = {
+    "schema": 2,
     "question": "One sentence: what this comparison decides.",
     "bar": "plan.md#BAR_NAME, or 'none, exploratory'",
     "decision": "What we do if the bar passes, and if it fails.",
-    "varies": ["model", "base_model"],
-    "arms": {"untreated": {"out": "logs/.../untreated", "command": "..."},
-             "treated": {"out": "logs/.../treated", "command": "..."}},
-    "metrics": {"solves": {"num": "targets.count_exact_among_attempts.numerator", "den": "samples.real"}},
-    "predictions": {"untreated": {"solves": [0.6, 0.8]}, "treated": {"solves": [0.5, 0.75]}},
-    "mechanism": "Why you expect that: a point estimate, where the gain should concentrate, where the control should tie.",
-    "surprises": ["A named result that would surprise you."],
-    "max_usd": 2.0,
+    "primary": {"metric": "... line 6: the one primary metric",
+                "comparison": "... line 6: which arm minus which",
+                "smallest_effect": "... line 6: a number, the smallest difference that would change the decision",
+                "unit": "... line 5: the independent unit (document, task, user), as written in items.jsonl",
+                "higher_is_better": True},
+    "intended_n": "... line 2: items per arm",
+    "failure_threshold": {"share": 0.05, "min_items": 2, "difference": 0.05},
+    "varies": ["model"],
+    "watched": ["."],
+    "arms": {"untreated": {"out": "runs/untreated", "command": "...", "data": []},
+             "treated": {"out": "runs/treated", "command": "...", "data": []}},
+    "pilot": {"runs": [], "pass_at": 0.5},
+    "scorer": {"command": "... line 3: e.g. python3 score.py {output}", "file": "...", "broken": "...", "good": "..."},
+    "floors": {"runs": [], "none_reason": ""},
+    "resample_seed": 20261115,
     "status": "draft",
 }
 
@@ -68,8 +84,12 @@ def sha(path):
 FROZEN = ("question", "bar", "decision", "varies", "watched", "arms", "metrics", "predictions", "mechanism", "surprises")
 
 
+FROZEN2 = FROZEN + ("schema", "primary", "intended_n", "failure_threshold", "pilot", "scorer", "floors", "resample_seed")
+
+
 def frozen_part(rec):
-    keep = {k: rec[k] for k in FROZEN if k in rec}
+    """Hash of the fields frozen at open. Schema-less records hash exactly the keys they always did."""
+    keep = {k: rec[k] for k in (FROZEN2 if rec.get("schema") == 2 else FROZEN) if k in rec}
     return hashlib.sha256(json.dumps(keep, sort_keys=True).encode()).hexdigest()[:16]
 
 
@@ -96,17 +116,7 @@ def die(msg):
     sys.exit(1)
 
 
-def cmd_new(a):
-    p = Path(a.path)
-    if p.exists():
-        die(f"{p} exists")
-    p.parent.mkdir(parents=True, exist_ok=True)
-    save(p, TEMPLATE)
-    print(f"wrote {p}; fill it in, then `prereg.py open {p}`")
-
-
-def cmd_open(a):
-    rec = load(a.path)
+def open_v1(a, rec):
     if rec.get("opened"):
         die(f"already opened {rec['opened']['utc']}; predictions are frozen. Write a new record with \"parent\": \"{a.path}\"")
     # the untouched template is not a record: refuse the fields it wrote, by name
@@ -148,16 +158,6 @@ def cmd_open(a):
              "on the items the counted run scores."))
 
 
-def cmd_stamp(a):
-    out = Path(a.out_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    state, diff = git_state()
-    if diff:
-        (out / "code.diff").write_text(diff)
-    (out / "git.json").write_text(json.dumps({"utc": now(), "host": socket.gethostname(), "argv": a.argv, **state}, indent=2))
-    print(f"stamped {out} at {(state.get('commit') or '?')[:8]}{' (dirty)' if diff else ''}")
-
-
 def args_from_argv(argv):
     """Launch args recovered from a stamped command line: --key value, --key=value, --flag; the rest are positional."""
     args, pos, i = {}, [], 0
@@ -185,15 +185,15 @@ def run_provenance(out):
     """What a run folder says about the code and data it ran on."""
     out = Path(out)
     launch = load(out / "launch.json") if (out / "launch.json").exists() else {}
-    git = launch.get("git") or (load(out / "git.json") if (out / "git.json").exists() else {})
+    git = launch.get("git") or (load(out / "git.json") if (out / "git.json").exists() else
+                                (load(out / "stamp.json") if (out / "stamp.json").exists() else {}))
     files = {f.name: sha(f) for f in sorted(out.glob("*.jsonl")) if f.name in ("real.jsonl", "zero.jsonl", "instances.jsonl")}
     mtime = (out / "launch.json").stat().st_mtime if (out / "launch.json").exists() else None
     args = launch.get("args") or args_from_argv([a for a in git.get("argv") or [] if a != "--"])
     return args, git, files, mtime
 
 
-def cmd_parity(a):
-    rec = load(a.path)
+def parity_v1(a, rec):
     root = Path(sh("git", "rev-parse", "--show-toplevel", cwd=Path(a.path).parent) or ".")
     varies = set(rec.get("varies", [])) | IGNORED_ARGS
     # paths whose code can change a number: the record's, else the repo's prereg/config.json, else the whole repo
@@ -253,8 +253,7 @@ def cmd_parity(a):
     sys.exit(1 if problems else 0)
 
 
-def cmd_close(a):
-    rec = load(a.path)
+def close_v1(a, rec):
     if not rec.get("opened"):
         die("never opened: these numbers have no prediction to be scored against. Report them as exploratory")
     if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
@@ -308,21 +307,751 @@ def cmd_ls(a):
         print(f"calibration: {hits}/{total} intervals hit, mean width {sum(width) / len(width):.2f}")
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# Schema 2: the standard checks. Old records (no "schema") take the *_v1 paths above, unchanged.
+
+ITEM_STATUSES = ("ok", "error", "empty", "truncated", "parse_failure")
+LARGE_BYTES = 5 * 1024 * 1024      # a file over this is listed in the snapshot by sha256, not stored
+RESAMPLES = 2000
+DETECT_Z = 2.8                     # two-sided alpha 0.05, power 0.8
+LINE6 = ("metric", "comparison", "smallest_effect", "unit")
+NA = "n/a"
+
+
+def full_sha(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def placeholder(v):
+    return v is None or v == "" or (isinstance(v, str) and v.startswith("..."))
+
+
+def line6_missing(rec):
+    p = rec.get("primary") or {}
+    miss = [f for f in LINE6 if placeholder(p.get(f))]
+    se = p.get("smallest_effect")
+    if "smallest_effect" not in miss and not (isinstance(se, (int, float)) and not isinstance(se, bool) and se > 0):
+        miss.append("smallest_effect")
+    return miss
+
+
+def line6_part(rec):
+    if line6_missing(rec):
+        return None
+    p = rec["primary"]
+    return hashlib.sha256(json.dumps({k: p[k] for k in LINE6}, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def repo_root(cwd="."):
+    r = sh("git", "rev-parse", "--show-toplevel", cwd=cwd)
+    return Path(r) if r else None
+
+
+def rec_root(path):
+    return repo_root(Path(path).resolve().parent) or Path(".")
+
+
+def data_facts(path):
+    b = Path(path).read_bytes()
+    return {"sha256": hashlib.sha256(b).hexdigest(), "lines": b.count(b"\n") + (1 if b and not b.endswith(b"\n") else 0), "bytes": len(b)}
+
+
+def check_data(entries, root, arm):
+    """Line 13: recompute each declared data file; refuse a mismatch with what the record holds. Returns filled entries."""
+    out = []
+    for e in entries or []:
+        p = root / e["path"]
+        if not p.is_file():
+            die(f"line 13: arm {arm}: data file {e['path']} is missing")
+        facts = data_facts(p)
+        for k in ("sha256", "lines", "bytes"):
+            if k in e and e[k] != facts[k]:
+                die(f"line 13: arm {arm}: {e['path']} {k} is {facts[k]}, the record says {e[k]}; restore the file or write a new record")
+        out.append({**e, **facts})
+    return out
+
+
+def scorer_declared(rec):
+    sc = rec.get("scorer")
+    return isinstance(sc, dict) and not any(placeholder(sc.get(k)) for k in ("command", "file", "broken", "good"))
+
+
+def run_scorer(sc, root):
+    """Line 3: the scorer must fail the broken output and pass the known-good one. Returns (result, problems)."""
+    probs, res = [], {}
+    def passes(f):
+        cmd = sc["command"]
+        cmd = cmd.replace("{output}", shlex.quote(f)) if "{output}" in cmd else f"{cmd} {shlex.quote(f)}"
+        return subprocess.run(cmd, shell=True, cwd=root, capture_output=True, timeout=600).returncode == 0
+    for k in ("file", "broken", "good"):
+        if not (root / sc[k]).is_file():
+            probs.append(f"line 3: scorer {k} {sc[k]} is missing")
+    if probs:
+        return {"error": probs}, probs
+    res["scorer_sha256"] = full_sha(root / sc["file"])
+    res["broken_passed"], res["good_passed"] = passes(sc["broken"]), passes(sc["good"])
+    if res["broken_passed"]:
+        probs.append(f"line 3: the scorer passed the broken output {sc['broken']}; it cannot tell a broken output from a good one")
+    if not res["good_passed"]:
+        probs.append(f"line 3: the scorer failed the known-good output {sc['good']}")
+    return res, probs
+
+
+def read_items(folder, probs):
+    p = Path(folder) / "items.jsonl"
+    if not p.is_file():
+        probs.append(f"{p}: missing; the harness writes one row per item (id, arm, unit, score, status)")
+        return []
+    out = []
+    for k, line in enumerate(p.read_text().splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            r = json.loads(line)
+        except ValueError:
+            probs.append(f"line 2: {p}:{k} is not JSON"); continue
+        miss = [f for f in ("id", "arm", "unit", "score", "status") if f not in r]
+        if miss:
+            probs.append(f"line 2: {p}:{k} lacks {', '.join(miss)}"); continue
+        if r["status"] not in ITEM_STATUSES:
+            probs.append(f"line 2: {p}:{k} status {r['status']!r} is not one of {', '.join(ITEM_STATUSES)}"); continue
+        if r["status"] == "ok" and not (isinstance(r["score"], (int, float)) and not isinstance(r["score"], bool)):
+            probs.append(f"line 2: {p}:{k} has status ok but score {r['score']!r}; an ok row carries a number"); continue
+        out.append(r)
+    return out
+
+
+def mean_ok(rows):
+    xs = [r["score"] for r in rows if r["status"] == "ok"]
+    return sum(xs) / len(xs) if xs else None
+
+
+def fmt(x):
+    return "-" if x is None else f"{x:.3f}"
+
+
+def pilot_rows(rec, root, probs):
+    return [[r for r in read_items(root / run, probs) if not str(r["arm"]).startswith("floor:")]
+            for run in (rec.get("pilot") or {}).get("runs") or []]
+
+
+def line7(rec, runs):
+    """SE of the mean paired difference between the first two baseline pilot runs, resampling units. None if < 2 runs."""
+    if len(runs) < 2:
+        return None
+    a = {r["id"]: r for r in runs[0] if r["status"] == "ok"}
+    b = {r["id"]: r for r in runs[1] if r["status"] == "ok"}
+    by_unit = {}
+    for i in sorted(set(a) & set(b)):
+        by_unit.setdefault(a[i]["unit"], []).append(a[i]["score"] - b[i]["score"])
+    units = sorted(by_unit)
+    if not units:
+        return None
+    rng = random.Random(rec.get("resample_seed", 0))
+    means = []
+    for _ in range(RESAMPLES):
+        ds = [x for u in [rng.choice(units) for _ in units] for x in by_unit[u]]
+        means.append(sum(ds) / len(ds))
+    se = statistics.stdev(means)
+    return {"se": se, "detectable": DETECT_Z * se, "units": len(units), "pairs": sum(map(len, by_unit.values()))}
+
+
+def line7_text(l7, rec):
+    eff = (rec.get("primary") or {}).get("smallest_effect")
+    if l7 is None:
+        return "line 7: fewer than two baseline pilot runs with shared ok items: no detectable difference; the run is exploratory"
+    holds = isinstance(eff, (int, float)) and l7["detectable"] <= eff
+    return (f"line 7: SE {l7['se']:.4f}, detectable difference {l7['detectable']:.4f} (smallest effect {eff}) "
+            f"over {l7['units']} units: {'holds' if holds else 'does not hold; the run is exploratory'}")
+
+
+def line7_holds(l7, rec):
+    eff = (rec.get("primary") or {}).get("smallest_effect")
+    return l7 is not None and isinstance(eff, (int, float)) and l7["detectable"] <= eff
+
+
+def line8(rec, runs):
+    pass_at = (rec.get("pilot") or {}).get("pass_at", 0.5)
+    order, tally = [], {}
+    for rows in runs:
+        for r in rows:
+            if r["status"] != "ok":
+                continue
+            if r["id"] not in tally:
+                order.append(r["id"]); tally[r["id"]] = [0, 0]
+            tally[r["id"]][0] += r["score"] >= pass_at
+            tally[r["id"]][1] += 1
+    lines = [f"  {i} {tally[i][0]}/{tally[i][1]}" for i in order]
+    at0 = sum(1 for i in order if tally[i][0] == 0)
+    at1 = sum(1 for i in order if tally[i][0] == tally[i][1])
+    summary = (f"line 8: {len(order)} items over {len(runs)} baseline pilot runs; {at0} at 0, {at1} at 1, "
+               f"{len(order) - at0 - at1} in between")
+    return {"items": len(order), "at_0": at0, "at_1": at1, "rates": {i: tally[i] for i in order}}, lines, summary
+
+
+def line2(by_arm, arms, intended, thr, probs):
+    """Scored n equals intended n; failure shares under the threshold and equal across arms."""
+    share, min_items = thr.get("share", 0.05), thr.get("min_items", 2)
+    diff = thr.get("difference", share)
+    res = {}
+    for arm in arms:
+        rs = by_arm.get(arm, [])
+        ids = [r["id"] for r in rs]
+        dup = sorted({i for i in ids if ids.count(i) > 1}, key=str)
+        if dup:
+            probs.append(f"line 2: arm {arm} has duplicate ids in items.jsonl: {', '.join(map(str, dup[:5]))}")
+        n = len(rs)
+        fails = collections.Counter(r["status"] for r in rs if r["status"] != "ok")
+        k = sum(fails.values())
+        res[arm] = {"n": n, "failures": dict(fails), "share": k / n if n else None}
+        print(f"line 2: {arm} n {n}" + (f" of {intended} intended" if intended is not None else "") +
+              f", failures {k}" + (f" ({k / n:.1%}: " + ", ".join(f"{s} {c}" for s, c in sorted(fails.items())) + ")" if k else ""))
+        if intended is not None and n != intended:
+            probs.append(f"line 2: arm {arm} scored {n} items, intended {intended}; find the missing or extra items")
+        if n and k / n > share and k >= min_items:
+            probs.append(f"line 2: arm {arm} failure share {k / n:.1%} ({', '.join(f'{s} {c}' for s, c in sorted(fails.items()))}) "
+                         f"exceeds {share:.1%}; fix the harness or raise failure_threshold.share in the record")
+    if intended is None and len({res[a]['n'] for a in arms}) > 1:
+        probs.append("line 2: arms scored different numbers of items: " + ", ".join(f"{a} {res[a]['n']}" for a in arms))
+    for i, x in enumerate(arms):
+        for y in arms[i + 1:]:
+            sx, sy = res[x]["share"], res[y]["share"]
+            kx, ky = sum(res[x]["failures"].values()), sum(res[y]["failures"].values())
+            if sx is not None and sy is not None and abs(sx - sy) > diff and abs(kx - ky) >= min_items:
+                probs.append(f"line 2: failure rates differ between {x} ({sx:.1%}) and {y} ({sy:.1%}) by more than {diff:.1%}")
+    return res
+
+
+def line12(by_arm, arms, rec):
+    floors = sorted(a for a in by_arm if str(a).startswith("floor:"))
+    means = {a: mean_ok(by_arm.get(a, [])) for a in list(arms) + floors}
+    beside = ", ".join(f"{a} {fmt(means[a])}" for a in arms)
+    if floors:
+        print("line 12: " + "; ".join(f"{f} {fmt(means[f])}" for f in floors) + f" beside {beside}")
+    else:
+        reason = (rec.get("floors") or {}).get("none_reason") if rec else ""
+        print(f"line 12: no floor arm{f' ({reason})' if reason else ''}; {beside}")
+    return floors, means
+
+
+def counted_problems(rec, stamps, l7, floors, means, arms):
+    """The counted gate: every arm stamped against this record's line-6 hash, line 7 holds, a floor sits under the best arm."""
+    probs = []
+    l6 = line6_part(rec)
+    if rec.get("status") == "exploratory" or not l6 or (rec.get("opened") or {}).get("line6_sha256") != l6:
+        probs.append("line 6: the record opened exploratory or without hashed line-6 fields (metric, comparison, smallest effect, unit)")
+    for arm, st in stamps.items():
+        r = st.get("record")
+        if st.get("label") != "counted" or not isinstance(r, dict) or r.get("line6_sha256") != l6:
+            probs.append(f"line 6: counted needs every arm stamped --counted against this record's line-6 hash; {arm}'s stamp is not")
+    if not line7_holds(l7, rec):
+        probs.append("line 7: " + ("no detectable difference from two baseline pilot runs" if l7 is None else
+                     f"detectable difference {l7['detectable']:.4f} exceeds the smallest effect {rec['primary']['smallest_effect']}"))
+    if not floors and not (rec.get("floors") or {}).get("none_reason"):
+        probs.append("line 12: no floor:<name> arm in items.jsonl and no floors.none_reason in the record")
+    hib = (rec.get("primary") or {}).get("higher_is_better", True)
+    scored = [means[a] for a in arms if means.get(a) is not None]
+    if scored:
+        best = max(scored) if hib else min(scored)
+        for f in floors:
+            m = means[f]
+            if m is not None and (m >= best if hib else m <= best):
+                probs.append(f"line 12: {f} scores {fmt(m)}, reaching the best arm's {fmt(best)}")
+    return probs
+
+
+def finish(probs, ok_msg=None):
+    for p in probs:
+        print(f"refused: {p}", file=sys.stderr)
+    if ok_msg and not probs:
+        print(ok_msg)
+    sys.exit(1 if probs else 0)
+
+
+def cmd_new(a):
+    p = Path(a.path)
+    if p.exists():
+        die(f"{p} exists")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    save(p, TEMPLATE)
+    print(f"wrote {p}; fill it in, then `prereg.py open {p}`")
+
+
+def cmd_open(a):
+    rec = load(a.path)
+    if rec.get("schema") != 2:
+        return open_v1(a, rec)
+    if rec.get("opened"):
+        die(f"already opened {rec['opened']['utc']}; its fields are frozen. Write a new record with \"parent\": \"{a.path}\"")
+    for f in ("question", "bar"):
+        if rec.get(f) == TEMPLATE[f]:
+            die(f"{f} is still the template's placeholder; write the real one")
+    for arm, spec in (rec.get("arms") or {}).items():
+        if isinstance(spec, dict) and placeholder(spec.get("command")):
+            die(f"arm {arm}: command is still the template's placeholder; write the real launch command")
+    for f in ("question", "arms"):
+        if not rec.get(f):
+            die(f"missing {f}")
+    for arm, spec in rec["arms"].items():
+        if "reused" in spec and not spec["reused"].get("reason"):
+            die(f"arm {arm} reuses a run; say why in reused.reason")
+    if placeholder(rec.get("intended_n")):
+        rec.pop("intended_n", None)
+    root = rec_root(a.path)
+    for arm, spec in rec["arms"].items():
+        if spec.get("data"):
+            spec["data"] = check_data(spec["data"], root, arm)
+    exploratory = rec.get("status") == "exploratory" or str(rec.get("bar", "")).startswith("none")
+    missing = line6_missing(rec)
+    if missing and not exploratory:
+        print(f"line 6: primary.{', primary.'.join(missing)} not set; opened exploratory: these runs cannot be counted")
+        exploratory = True
+    state, diff = git_state(Path(a.path).parent)
+    if diff:
+        dp = Path(a.path).with_suffix(".diff")
+        dp.write_text(diff)
+        state["diff_file"] = dp.name
+    rec["opened"] = {"utc": now(), "host": socket.gethostname(), "frozen_sha256": frozen_part(rec),
+                     "line6_sha256": line6_part(rec) or NA, **state}
+    rec["status"] = "exploratory" if exploratory else "open"
+    save(a.path, rec)
+    print(f"opened {a.path} at {(state.get('commit') or '?')[:8]}; " +
+          ("exploratory: its numbers cannot pass or fail a bar or pick an arm." if exploratory else
+           "stamp each arm with --record and --counted at launch; `check` decides whether it earns the label counted."))
+
+
+def snapshot(root, out, run_id):
+    """Commit the working tree (tracked + untracked, .gitignore respected) under refs/lab/<run id> with a temporary
+    index: the user's index and working tree are never touched. Files over 5 MB not already in HEAD are listed, not stored."""
+    ref = "refs/lab/" + re.sub(r"[^A-Za-z0-9._-]", "-", run_id).strip(".-")
+    if sh("git", "rev-parse", "--verify", "--quiet", ref, cwd=root):
+        die(f"{ref} exists; a stamp is never overwritten: use a new --run-id")
+    head = sh("git", "rev-parse", "--verify", "--quiet", "HEAD", cwd=root)
+    try:
+        out_rel = Path(out).resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        out_rel = None
+    def ls(*args):
+        r = subprocess.run(["git", "ls-files", "-z", *args], cwd=root, capture_output=True, text=True)
+        return [f for f in r.stdout.split("\0") if f and not (out_rel and (f == out_rel or f.startswith(out_rel + "/")))]
+    tracked = set(ls())
+    untracked = ls("-o", "--exclude-standard")
+    modified = set((subprocess.run(["git", "diff", "--name-only", "-z", "HEAD"], cwd=root, capture_output=True, text=True).stdout
+                    if head else "").split("\0")) - {""}
+    large, skip = [], []
+    for f in sorted(tracked | set(untracked)):
+        p = root / f
+        if p.is_file() and not p.is_symlink() and p.stat().st_size > LARGE_BYTES:
+            large.append({"path": f, "sha256": full_sha(p), "bytes": p.stat().st_size})
+            if f not in tracked or f in modified:
+                skip.append(f)
+    with tempfile.TemporaryDirectory() as td:
+        env = {**os.environ, "GIT_INDEX_FILE": os.path.join(td, "index")}
+        g = lambda *c: subprocess.run(["git", *c], cwd=root, env=env, capture_output=True, text=True, check=True).stdout.strip()
+        if head:
+            g("read-tree", head)
+        excl = [f":(top,exclude){x}" for x in skip + ([out_rel] if out_rel else [])]
+        g("add", "-A", "--", ":/", *excl)
+        tree = g("write-tree")
+        env.update(GIT_AUTHOR_NAME="prereg.py stamp", GIT_AUTHOR_EMAIL="lab@localhost",
+                   GIT_COMMITTER_NAME="prereg.py stamp", GIT_COMMITTER_EMAIL="lab@localhost")
+        commit = g("commit-tree", tree, *(["-p", head] if head else []), "-m", f"lab snapshot {run_id}")
+        g("update-ref", ref, commit, "0" * 40)
+    dirty = sorted(modified)
+    return {"ref": ref, "commit": commit, "head": head or NA, "dirty": dirty, "untracked": untracked, "large_files": large}
+
+
+def packages(a):
+    if a.image:
+        return {"image": a.image}
+    try:
+        import importlib.metadata as md
+        dists = sorted({f"{d.metadata['Name']}=={d.version}" for d in md.distributions() if d.metadata["Name"]})
+    except Exception:
+        dists = NA
+    return {"python": sys.version.split()[0], "distributions": dists}
+
+
+def cmd_stamp(a):
+    out = Path(a.out_dir)
+    argv = a.argv
+    if (out / "stamp.json").exists():
+        die(f"{out / 'stamp.json'} exists; a stamp is never overwritten: stamp a new run folder")
+    root = repo_root() or Path(".")
+    rec, rec_info, data = None, NA, []
+    if a.record:
+        rec = load(a.record)
+        if rec.get("schema") != 2:
+            die(f"{a.record} has no schema: an old record; `induct` it, or write a new one with `new`")
+        if not rec.get("opened"):
+            die(f"{a.record} was never opened; `open` it before any run")
+        if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
+            die(f"{a.record} changed after open; restore it or write a new record")
+        if a.arm not in rec.get("arms", {}):
+            die(f"--arm must name one of the record's arms: {', '.join(rec.get('arms', {}))}")
+        data = check_data(rec["arms"][a.arm].get("data"), rec_root(a.record), a.arm)
+        rec_info = {"path": a.record, "sha256": full_sha(a.record), "frozen_sha256": rec["opened"]["frozen_sha256"],
+                    "line6_sha256": rec["opened"].get("line6_sha256", NA)}
+    if a.counted:
+        if rec is None:
+            die("line 6: --counted needs --record, an opened record whose line-6 fields were hashed; stamp without --counted to run exploratory")
+        l6 = line6_part(rec)
+        if rec.get("status") == "exploratory" or not l6 or rec["opened"].get("line6_sha256") != l6:
+            die("line 6: the record opened without hashed line-6 fields (metric, comparison, smallest effect, unit); "
+                "stamp without --counted to run exploratory")
+        probs = []
+        l7 = line7(rec, pilot_rows(rec, rec_root(a.record), probs))
+        if not line7_holds(l7, rec):
+            die(line7_text(l7, rec) + "; stamp without --counted to run exploratory")
+    data += [{"path": d, **data_facts(d)} for d in a.data or []]
+    run_id = a.run_id or f"{out.name}-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    config = NA
+    if a.config:
+        try:
+            values = json.loads(Path(a.config).read_text())
+        except ValueError:
+            values = NA
+        config = {"path": a.config, "sha256": full_sha(a.config), "values": values}
+    snap = snapshot(root, out, run_id) if repo_root() else NA
+    stamp = {"schema": 2, "run_id": run_id, "tracker_run_id": a.run_id or NA, "utc": now(), "host": socket.gethostname(),
+             "argv": argv, "arm": a.arm or NA, "label": "counted" if a.counted else "exploratory", "record": rec_info,
+             "config": config,
+             "model": {"id": a.model or NA, "revision": a.model_revision or NA, "tokenizer_revision": a.tokenizer_revision or NA,
+                       "date": a.model_date or NA},
+             "data": data or NA, "seeds": a.seed or NA, "packages": packages(a),
+             "lab_inputs_sha256": full_sha(root / "lab-inputs.md") if (root / "lab-inputs.md").is_file() else NA,
+             "snapshot": snap}
+    out.mkdir(parents=True, exist_ok=True)
+    with open(out / "stamp.json", "x") as f:
+        f.write(json.dumps(stamp, indent=2) + "\n")
+    if snap == NA:
+        print("warning: not a git repository: no snapshot of the code was taken", file=sys.stderr)
+    elif snap["dirty"] or snap["untracked"]:
+        print(f"warning: uncommitted code ({len(snap['dirty'])} modified, {len(snap['untracked'])} untracked); "
+              f"{snap['ref']} holds it, but commit your code", file=sys.stderr)
+    print(f"stamped {out} as {run_id} ({stamp['label']})" + (f" at {snap['commit'][:8]}" if snap != NA else ""))
+
+
+def load_stamp(folder):
+    p = Path(folder) / "stamp.json"
+    return load(p) if p.is_file() else None
+
+
+def cmd_check(a):
+    probs = []
+    if len(a.sources) == 1 and Path(a.sources[0]).is_file():
+        return check_record(a.sources[0])
+    by_arm, ids = {}, []
+    for src in a.sources:
+        st = load_stamp(src)
+        if st is None:
+            probs.append(f"line 10: {src} has no stamp.json; stamp the run at launch (`prereg.py stamp {src} -- <command>`)")
+            continue
+        print(f"run {st['run_id']}: {src}")
+        for r in read_items(src, probs):
+            by_arm.setdefault(r["arm"], []).append(r)
+    arms = [x for x in by_arm if not str(x).startswith("floor:")]
+    line2(by_arm, arms, None, {}, probs)
+    print("line 3: no record, so no scorer declared; not checked")
+    line12(by_arm, arms, None)
+    print("label: exploratory")
+    finish(probs)
+
+
+def check_record(path):
+    rec = load(path)
+    if rec.get("schema") != 2:
+        die(f"{path} has no schema: an old record; `induct` it")
+    if not rec.get("opened"):
+        die(f"{path} was never opened")
+    if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
+        die(f"{path} changed after open; restore it or write a new record")
+    root = rec_root(path)
+    probs, stamps, by_arm = [], {}, {}
+    arms = list(rec["arms"])
+    folders = [(arm, spec["out"]) for arm, spec in rec["arms"].items()] + [(None, f) for f in (rec.get("floors") or {}).get("runs") or []]
+    for arm, folder in folders:
+        if arm is not None:
+            st = load_stamp(root / folder)
+            if st is None:
+                probs.append(f"line 10: arm {arm} has no stamp.json in {folder}; stamp each run at launch")
+            else:
+                stamps[arm] = st
+                print(f"run {st['run_id']}: {arm} ({st.get('label')})")
+        for r in read_items(root / folder, probs):
+            if r["arm"] not in rec["arms"] and not str(r["arm"]).startswith("floor:"):
+                probs.append(f"line 2: {folder}/items.jsonl names arm {r['arm']!r}, neither a record arm nor floor:<name>")
+                continue
+            by_arm.setdefault(r["arm"], []).append(r)
+    result = {"utc": now(), "record_frozen_sha256": rec["opened"]["frozen_sha256"]}
+    result["line2"] = line2(by_arm, arms, rec.get("intended_n"), rec.get("failure_threshold") or {}, probs)
+    if scorer_declared(rec):
+        res, p3 = run_scorer(rec["scorer"], root)
+        probs += p3
+        result["line3"] = res
+        if not p3:
+            print(f"line 3: the scorer fails {rec['scorer']['broken']} and passes {rec['scorer']['good']}; "
+                  f"{rec['scorer']['file']} sha256 {res['scorer_sha256'][:16]}")
+    else:
+        result["line3"] = "not declared"
+        print("line 3: no scorer declared in the record; not checked")
+    runs = pilot_rows(rec, root, probs)
+    l7 = line7(rec, runs)
+    result["line7"] = l7
+    print(line7_text(l7, rec))
+    if runs:
+        res8, lines, summary = line8(rec, runs)
+        result["line8"] = res8
+        print(f"line 8: per-item pass rates over {len(runs)} baseline pilot runs (pass at {(rec.get('pilot') or {}).get('pass_at', 0.5)}):")
+        print("\n".join(lines))
+        print(summary)
+    floors, means = line12(by_arm, arms, rec)
+    result["line12"] = {"floors": floors, "means": means}
+    label = "exploratory"
+    if any(st.get("label") == "counted" for st in stamps.values()):
+        cp = counted_problems(rec, {a: stamps.get(a, {}) for a in arms}, l7, floors, means, arms)
+        probs += [f"{p} (counted refused; the run stands as exploratory)" for p in cp]
+        label = "counted" if not cp else "exploratory"
+    result["label"], result["refusals"] = label, probs
+    Path(path).with_suffix(".check.json").write_text(json.dumps(result, indent=2) + "\n")
+    print(f"label: {label}")
+    finish(probs)
+
+
+def flat(d, prefix):
+    if not isinstance(d, dict):
+        return {prefix: d}
+    out = {}
+    for k, v in d.items():
+        out.update(flat(v, f"{prefix}.{k}"))
+    return out
+
+
+def features(st):
+    f = dict(args_from_argv(st.get("argv") or []))
+    f.update(flat(st["config"]["values"], "config") if isinstance(st.get("config"), dict) else {"config": st.get("config")})
+    f.update(flat(st.get("model") or {}, "model"))
+    f["seeds"] = st.get("seeds")
+    f["packages"] = st.get("packages")
+    data = st.get("data")
+    f["data"] = sorted(e["sha256"] for e in data) if isinstance(data, list) else data
+    return f
+
+
+def parity_v2(a, rec):
+    root = rec_root(a.path)
+    varies = set(rec.get("varies", [])) | IGNORED_ARGS
+    allowed = lambda k: k in varies or any(k.startswith(v + ".") for v in varies)
+    stamps, problems, notes = {}, [], []
+    for arm, spec in rec["arms"].items():
+        st = load_stamp(root / spec["out"])
+        if st is None:
+            problems.append(f"line 13: arm {arm} has no stamp.json in {spec['out']}: nothing to compare")
+        else:
+            stamps[arm] = st
+            if isinstance(st.get("data"), list):
+                for e in st["data"]:
+                    extra = {k: v for k, v in e.items() if k not in ("path", "sha256", "lines", "bytes")}
+                    notes.append(f"line 13: {arm} data {e['path']} sha256 {e['sha256'][:16]}, {e['lines']} lines" +
+                                 (f", {json.dumps(extra, sort_keys=True)}" if extra else ""))
+    names = list(stamps)
+    skip = [spec["out"] for spec in rec["arms"].values()] + list((rec.get("pilot") or {}).get("runs") or []) + \
+        list((rec.get("floors") or {}).get("runs") or [])
+    rp = Path(a.path).resolve()
+    try:
+        rel = rp.relative_to(root.resolve())
+        skip.append(rel.with_suffix("").as_posix() + ".*")
+    except ValueError:
+        pass
+    watched = rec.get("watched") or ["."]
+    for other in names[1:]:
+        ref = names[0]
+        f0, f1 = features(stamps[ref]), features(stamps[other])
+        for key in sorted(set(f0) | set(f1)):
+            if not allowed(key) and plain(f0.get(key)) != plain(f1.get(key)):
+                problems.append(f"line 13: {key}: {ref}={f0.get(key)!r} {other}={f1.get(key)!r} (not in varies)")
+        s0, s1 = stamps[ref].get("snapshot"), stamps[other].get("snapshot")
+        if not isinstance(s0, dict) or not isinstance(s1, dict):
+            problems.append(f"line 13: no snapshot for {ref if not isinstance(s0, dict) else other}: code parity unverifiable")
+            continue
+        changed = sh("git", "diff", "--name-only", s0["commit"], s1["commit"], "--", *watched,
+                     *[f":(top,exclude,glob){p}" if p.endswith(".*") else f":(top,exclude){p}" for p in skip], cwd=root)
+        if changed is None:
+            problems.append(f"line 13: could not compare the snapshots {s0['ref']} and {s1['ref']}")
+            continue
+        big0 = {x["path"]: x["sha256"] for x in s0.get("large_files", [])}
+        big1 = {x["path"]: x["sha256"] for x in s1.get("large_files", [])}
+        changed = changed.splitlines() + [p for p in sorted(set(big0) | set(big1)) if big0.get(p) != big1.get(p)
+                                          and not any(p == s or p.startswith(s.rstrip("/") + "/") for s in skip)]
+        if changed and not allowed("code"):
+            problems.append(f"line 13: code differs between the {ref} and {other} snapshots: {', '.join(changed)}")
+        else:
+            notes.append(f"code identical across {ref}/{other} snapshots" if not changed else f"code differs (declared): {', '.join(changed)}")
+    for n in notes:
+        print(f"  ok    {n}")
+    for p in problems:
+        print(f"  FAIL  {p}")
+    print("parity: " + ("PASS" if not problems else f"FAIL ({len(problems)})"))
+    sys.exit(1 if problems else 0)
+
+
+def cmd_parity(a):
+    rec = load(a.path)
+    return parity_v2(a, rec) if rec.get("schema") == 2 else parity_v1(a, rec)
+
+
+def cmd_close(a):
+    rec = load(a.path)
+    if rec.get("schema") != 2:
+        return close_v1(a, rec)
+    if not rec.get("opened"):
+        die("never opened: these numbers have no record to be scored against. Report them as exploratory")
+    if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
+        die("a frozen field changed after open; restore it or write a new record")
+    root, probs, observed = rec_root(a.path), [], {}
+    for arm, spec in rec["arms"].items():
+        rows = [r for r in read_items(root / spec["out"], probs) if r["arm"] == arm]
+        observed[arm] = {"n": len(rows), "mean": mean_ok(rows)}
+        print(f"  {arm:<12} n {len(rows)}  mean {fmt(observed[arm]['mean'])}")
+    if probs:
+        finish(probs)
+    rec["observed"] = observed
+    rec["closed"] = {"utc": now(), "hits": 0, "predictions": 0, "note": a.note or ""}
+    if rec["status"] != "exploratory":
+        rec["status"] = "closed"
+    save(a.path, rec)
+    print(f"closed {a.path}; `check` holds the lines, and a fresh agent signs off any number that leaves your hands.")
+
+
+def stamp_ids(folder):
+    st = load_stamp(folder)
+    return {st.get("run_id"), st.get("tracker_run_id")} if st else set()
+
+
+def ledger_path(path):
+    return Path(path).with_suffix(".ledger.jsonl")
+
+
+def cmd_ledger(a):
+    st = load_stamp(a.run_dir)
+    if st is None:
+        die(f"line 9: {a.run_dir} has no stamp.json; stamp the test run at launch, then ledger it")
+    cfg = st.get("config")
+    row = {"utc": now(), "run_id": st["run_id"], "config_sha256": cfg["sha256"] if isinstance(cfg, dict) else NA}
+    lp = ledger_path(a.path)
+    with open(lp, "a") as f:
+        f.write(json.dumps(row) + "\n")
+    n = sum(1 for l in lp.read_text().splitlines() if l.strip())
+    print(f"line 9: test split scored {n} time{'' if n == 1 else 's'} for {a.path} ({lp}); report the count with the pick")
+
+
+NUMBER = re.compile(r"\d[\d.,]*\s?%|(?<![\w/.])\d+/\d+(?![\w/])")
+
+
+def cmd_quote(a):
+    ids = set()
+    for src in a.sources:
+        p = Path(src)
+        if p.is_dir():
+            ids |= stamp_ids(p)
+            continue
+        rec, root = load(p), rec_root(p)
+        for spec in (rec.get("arms") or {}).values():
+            ids |= stamp_ids(root / spec["out"])
+        for f in list((rec.get("pilot") or {}).get("runs") or []) + list((rec.get("floors") or {}).get("runs") or []):
+            ids |= stamp_ids(root / f)
+        lp = ledger_path(p)
+        if lp.is_file():
+            ids |= {json.loads(l).get("run_id") for l in lp.read_text().splitlines() if l.strip()}
+    ids = {i for i in ids if i and i != NA}
+    bad = [(k, l) for k, l in enumerate(Path(a.report).read_text().splitlines(), 1) if NUMBER.search(l) and not any(i in l for i in ids)]
+    for k, l in bad:
+        print(f"refused: line 10: {a.report}:{k} quotes a number with no run id: {l.strip()}", file=sys.stderr)
+    if not bad:
+        print(f"quote: every rate and fraction in {a.report} carries a run id ({len(ids)} known)")
+    sys.exit(1 if bad else 0)
+
+
+def cmd_induct(a):
+    """Vet an old record after the fact. Never refuses, never edits the record; writes <record>.induct.json beside it."""
+    res = {"utc": now(), "record": a.path, "written_before_scoring": "not established", "pilot_power": "not established"}
+    try:
+        res["record_sha256"] = full_sha(a.path)
+        rec = load(a.path)
+        root = rec_root(a.path)
+        res["hash_intact"] = (frozen_part(rec) == rec["opened"]["frozen_sha256"]) if rec.get("opened") else "not established"
+        res["arms"], per_item = {}, {}
+        for arm, spec in (rec.get("arms") or {}).items():
+            folder = root / spec.get("out", "")
+            if not (folder / "items.jsonl").is_file():
+                res["arms"][arm] = "not established (no items.jsonl)"
+                continue
+            probs = []
+            rows = read_items(folder, probs)
+            fails = collections.Counter(r["status"] for r in rows if r["status"] != "ok")
+            res["arms"][arm] = {"n": len(rows), "failures": dict(fails), "mean": mean_ok(rows), "problems": probs}
+            for r in rows:
+                if r["status"] == "ok":
+                    per_item.setdefault(r["id"], []).append(r["score"] >= 0.5)
+        res["saturation"] = ({"items": len(per_item), "at_0": sum(1 for v in per_item.values() if not any(v)),
+                              "at_1": sum(1 for v in per_item.values() if all(v)), "note": "across arms found, not baseline pilots"}
+                             if per_item else "not established (no items.jsonl)")
+        if scorer_declared(rec):
+            res["scorer"] = run_scorer(rec["scorer"], root)[0]
+        else:
+            res["scorer"] = "not established (no scorer declared)"
+    except Exception as e:      # induct never refuses: what it could not read is recorded
+        res["error"] = f"{type(e).__name__}: {e}"
+    out = Path(a.path).with_suffix(".induct.json")
+    out.write_text(json.dumps(res, indent=2, default=str) + "\n")
+    for k in ("hash_intact", "arms", "saturation", "scorer", "written_before_scoring", "pilot_power", "error"):
+        if k in res:
+            print(f"  {k}: {json.dumps(res[k], default=str)}")
+    print(f"inducted {a.path} -> {out}; the record itself is unchanged")
+
+
 def main(argv=None):
+    os.environ["GIT_OPTIONAL_LOCKS"] = "0"      # read-only git calls never rewrite the user's index
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("new", "open", "parity"):
+    for name in ("new", "open", "parity", "induct"):
         sub.add_parser(name).add_argument("path")
     s = sub.add_parser("stamp")
     s.add_argument("out_dir")
-    s.add_argument("argv", nargs=argparse.REMAINDER, help="the launch command, after --")
+    s.add_argument("--record", help="the opened schema-2 record this run belongs to")
+    s.add_argument("--arm", help="which of the record's arms this run is")
+    s.add_argument("--counted", action="store_true", help="claim the label counted (refused unless lines 6 and 7 hold)")
+    s.add_argument("--run-id", help="the tracker's run id (MLflow, W&B, Inspect log); default: folder name + time")
+    s.add_argument("--config", help="the effective configuration file (JSON is stored whole)")
+    s.add_argument("--model"); s.add_argument("--model-revision"); s.add_argument("--tokenizer-revision")
+    s.add_argument("--model-date", help="for an API model: the date the resolved model id was read")
+    s.add_argument("--data", action="append", help="a data file read by the run (repeatable)")
+    s.add_argument("--seed", action="append", help="a seed (repeatable)")
+    s.add_argument("--image", help="image digest; else the running interpreter's package list is recorded")
+    c = sub.add_parser("check")
+    c.add_argument("sources", nargs="+", help="a schema-2 record, or one or more run folders (exploratory)")
     c = sub.add_parser("close")
     c.add_argument("path")
     c.add_argument("--note")
+    l = sub.add_parser("ledger")
+    l.add_argument("path"); l.add_argument("run_dir")
+    q = sub.add_parser("quote")
+    q.add_argument("report"); q.add_argument("sources", nargs="+")
     l = sub.add_parser("ls")
     l.add_argument("dir", nargs="?", default="prereg")
+    argv = list(sys.argv[1:] if argv is None else argv)
+    launch = []
+    if argv[:1] == ["stamp"] and "--" in argv:      # everything after -- is the launch command, options included
+        k = argv.index("--")
+        argv, launch = argv[:k], argv[k + 1:]
     a = ap.parse_args(argv)
-    {"new": cmd_new, "open": cmd_open, "stamp": cmd_stamp, "parity": cmd_parity, "close": cmd_close, "ls": cmd_ls}[a.cmd](a)
+    a.argv = launch
+    {"new": cmd_new, "open": cmd_open, "stamp": cmd_stamp, "parity": cmd_parity, "close": cmd_close, "ls": cmd_ls,
+     "check": cmd_check, "ledger": cmd_ledger, "quote": cmd_quote, "induct": cmd_induct}[a.cmd](a)
 
 
 if __name__ == "__main__":

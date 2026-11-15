@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tests for prereg.py. Run: python3 test_prereg.py"""
-import hashlib, json, random, re, shutil, statistics, subprocess, sys, tempfile, unittest
+import hashlib, json, os, random, re, shutil, statistics, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 PREREG = Path(__file__).with_name("prereg.py")
@@ -151,7 +151,9 @@ class Stamp(unittest.TestCase):
         d = repo_with_arms({"untreated": {}, "treated": {}})
         (d / "code.py").write_text("x = 2\n")
         run(d, "stamp", "logs/untreated")
-        self.assertEqual(json.loads((d / "logs" / "untreated" / "git.json").read_text())["dirty"], ["code.py"])
+        # rewritten for schema 2: the stamp is stamp.json, its dirty list under "snapshot" (brief: "stamp: records a
+        # snapshot of the working tree as a commit under refs/lab/<run id>")
+        self.assertEqual(json.loads((d / "logs" / "untreated" / "stamp.json").read_text())["snapshot"]["dirty"], ["code.py"])
 
 
 OLD = Path(__file__).with_name("fixtures") / "old"   # records and run folders written by the untouched script
@@ -212,7 +214,8 @@ BIG = 5 * 1024 * 1024 + 1
 
 
 def git(d, *a):
-    return subprocess.run(["git", *a], cwd=d, check=True, capture_output=True, text=True).stdout.strip()
+    env = {**os.environ, "GIT_OPTIONAL_LOCKS": "0"}      # so `git status` here never refreshes the index itself
+    return subprocess.run(["git", *a], cwd=d, env=env, check=True, capture_output=True, text=True).stdout.strip()
 
 
 def full_sha(p):
@@ -348,7 +351,8 @@ class StampV2(unittest.TestCase):
                 "--config", "config.json", "--model", "org/m", "--model-revision", "rev1", "--tokenizer-revision", "tok1",
                 "--seed", "1", "--seed", "2", "--image", "sha256:feed", "--", "python", "train.py", "--model", "b")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(git(d, "status", "--porcelain", "-uall"), status_before)
+        status_after = [l for l in git(d, "status", "--porcelain", "-uall").splitlines() if l != "?? runs/treated/stamp.json"]
+        self.assertEqual(status_after, status_before.splitlines())     # only the stamp itself is new
         self.assertEqual((d / ".git" / "index").read_bytes(), index_before)
         warnings = [l for l in r.stderr.splitlines() if l.strip()]
         self.assertEqual(len(warnings), 1, r.stderr)
