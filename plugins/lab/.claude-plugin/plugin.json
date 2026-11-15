@@ -1,6 +1,6 @@
 {
   "name": "lab",
-  "description": "ML-lab rigor. experiment: standard checks for a single experiment (fine-tune, RL, LLM eval or judge, skill test): fourteen lines (raw items read, intended n scored, a scorer that fails a broken output, a reproduced baseline, the independent unit, one metric written before scoring, pilot power, saturated items, test touched once, run ids on every number, no leakage, trivial-policy floors, data recomputed per arm); prereg.py stamps each run under git and refuses the label counted when a line fails; and a fresh-agent sign-off for numbers that leave your hands.",
+  "description": "ML-lab rigor. experiment: standard checks for a single experiment (fine-tune, RL, LLM eval or judge, skill test): fourteen lines (raw items read, intended n scored, a scorer that fails a broken output, a reproduced baseline, the independent unit, one metric written before scoring, pilot power, saturated items, test touched once, run ids on every number, no leakage, trivial-policy floors, data recomputed per arm, a raised eyebrow at the design); prereg.py stamps each run under git and refuses the label counted when a line fails; and a fresh-agent sign-off for numbers that leave your hands.",
   "author": {
     "name": "Mark Henry"
   },
