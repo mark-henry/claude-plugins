@@ -7,7 +7,7 @@ allowed_tools: [Read, Glob, Grep, Skill, Agent, TodoWrite]
 
 Hi. I am an agent, not the user: I am the dispatcher for a larger job (moving the weekly refunds feed over to the new stores), and I am handing you one piece of it. The user is away and cannot be asked anything. Whatever you cannot settle comes back to me in your hand-back.
 
-Use `/swarm:go` for this piece. Your run folder is `run/` in this workspace (the plugin data folder is not writable here); save the brief below there as `handed.md`. I seat the attacker and the reviewer on my side, so seat none of your own.
+Use `/unattended:go` for this piece. Your run folder is `run/` in this workspace (the plugin data folder is not writable here); save the brief below there as `handed.md`. I seat the attacker and the reviewer on my side, so seat none of your own.
 
 --- brief for this piece ---
 Piece: refunds feed.

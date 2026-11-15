@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-z-brief-alone-stops-twin
 description: The same interview state, but the user said at the start to go ahead once the brief is frozen; the prompt answers the last batch.
 tags: [brief]
-plugins: ["../../plugins/swarm", "../../plugins/check"]
+plugins: ["../../plugins/unattended", "../../plugins/check"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl

@@ -1,6 +1,6 @@
-# Evidence for swarm:loop
+# Evidence for unattended:arbiter
 
-Study findings, incidents, quotes and the numbered source list moved out of the body of `swarm:loop`, verbatim. Each passage sits under a line naming the instruction it backs; bracketed numbers point into the source list. Product and model names are as they stood when the passage was written.
+Study findings, incidents, quotes and the numbered source list moved out of the body of `unattended:arbiter`, verbatim. Each passage sits under a line naming the instruction it backs; bracketed numbers point into the source list. Product and model names are as they stood when the passage was written.
 
 ## Sources
 1. Carlini, Anthropic, Feb 2026: https://www.anthropic.com/engineering/building-c-compiler
@@ -86,7 +86,7 @@ Backs: the pass cap is both a safety limit and cost control; 10–20 passes is a
 
 Backs: run the agent as another user or in a container, out of reach of the supervisor's processes.
 
-> `swarm-loop` is a bash script, so an agent running as the same user can kill it too: in the C compiler run, Claude once ran `pkill -9 bash` by accident and ended the loop [1], and a RepoMirror agent `pkill`ed itself when it realized it was stuck [7].
+> `arbiter-loop` is a bash script, so an agent running as the same user can kill it too: in the C compiler run, Claude once ran `pkill -9 bash` by accident and ended the loop [1], and a RepoMirror agent `pkill`ed itself when it realized it was stuck [7].
 
 Backs: bypass permission prompts only inside a container, a VM or the sandbox runtime.
 

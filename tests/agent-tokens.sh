@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for swarm-tokens. Run: bash plugins/swarm/bin/test_swarm_tokens.sh
+# Tests for agent-tokens. Run: bash plugins/unattended/bin/test_agent_tokens.sh
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
@@ -16,7 +16,7 @@ meta bbb "Attacker" aaa; msg agent-bbb.jsonl m3 small 1 10 100 7
 meta ccc "Helper" bbb; msg agent-ccc.jsonl m4 small 2 0 0 3
 meta zzz "Unrelated"; msg agent-zzz.jsonl m5 big 999 999 999 999
 
-out=$("$here/swarm-tokens" "$d" --agent aaa --json)
+out=$("$here/agent-tokens" "$d" --agent aaa --json)
 j() { python3 -c "import json,sys; d=json.load(sys.stdin); print($1)" <<< "$out"; }
 t "a repeated message id is counted once" "$(j "d['agents']['aaa']['output']")" 50
 t "own tokens exclude children" "$(j "d['agents']['aaa']['input']")" 15
@@ -24,7 +24,7 @@ t "the subtree adds every descendant" "$(j "d['subtree']['output']")" 60
 t "an unrelated agent is left out" "$(j "'zzz' in d['agents']")" False
 t "totals are kept per model" "$(j "d['by_model']['small']['output']")" 10
 t "weighted counts input 1, cache write 1.25, cache read 0.1, output 5" "$(j "d['agents']['bbb']['weighted']")" 58.5
-t "an agent is found by its description" "$("$here/swarm-tokens" "$d" --match attacker --json | python3 -c "import json,sys; print(sorted(json.load(sys.stdin)['agents']))")" "['bbb', 'ccc']"
-t "or by the start of its first prompt" "$("$here/swarm-tokens" "$d" --match "driver of the tidy" --json | python3 -c "import json,sys; print(json.load(sys.stdin)['root'])")" aaa
-t "the table names each agent" "$("$here/swarm-tokens" "$d" --agent aaa | grep -c 'Attacker')" 1
+t "an agent is found by its description" "$("$here/agent-tokens" "$d" --match attacker --json | python3 -c "import json,sys; print(sorted(json.load(sys.stdin)['agents']))")" "['bbb', 'ccc']"
+t "or by the start of its first prompt" "$("$here/agent-tokens" "$d" --match "driver of the tidy" --json | python3 -c "import json,sys; print(json.load(sys.stdin)['root'])")" aaa
+t "the table names each agent" "$("$here/agent-tokens" "$d" --agent aaa | grep -c 'Attacker')" 1
 [ "$fails" = 0 ] && echo "all passed" || { echo "$fails failed"; exit 1; }

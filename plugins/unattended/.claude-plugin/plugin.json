@@ -1,0 +1,9 @@
+{
+  "name": "unattended",
+  "description": "Run work unattended and trust the result. brief: interview the user until they have decided what they want, then freeze it as a written brief an unattended run can build against. go: carry a frozen brief to a checked result inside the approved cap, with proof of done and the user's decisions last. arbiter: keep the judge of done out of the worker's reach, with the arbiter-loop script on PATH.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}

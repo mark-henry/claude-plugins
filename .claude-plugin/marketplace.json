@@ -63,9 +63,9 @@
       "description": "Can this be trusted? attack: a fresh agent that has not seen your reasoning finds what is wrong with a plan, a brief or finished work. One or two blind readers run what can be run and paste the evidence under each finding; you label every finding."
     },
     {
-      "name": "swarm",
-      "source": "./plugins/swarm",
-      "description": "Run large agent jobs with little supervision. brief: interview the user until they have decided what they want, then freeze it as a written brief an unattended run can build against. go: carry a frozen brief to a checked result inside the approved cap, planning each piece around who or what will say it is right, and report with the user's decisions last. loop: an unattended loop gated by a check the agent cannot touch, with the swarm-loop supervisor on PATH."
+      "name": "unattended",
+      "source": "./plugins/unattended",
+      "description": "Run work unattended and trust the result. brief: interview the user until they have decided what they want, then freeze it as a written brief an unattended run can build against. go: carry a frozen brief to a checked result inside the approved cap, with proof of done and the user's decisions last. arbiter: keep the judge of done out of the worker's reach, with the arbiter-loop script on PATH."
     },
     {
       "name": "lab",

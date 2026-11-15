@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-p-waveoff-no-cap
 description: The user waves the interview off a second time with no cap ever typed, after a batch that proposed one; tests whether the interview ends and the frozen brief records no cap rather than the proposed amount.
 tags: [brief, b2, r2]
-plugins: ["../../plugins/swarm", "../../plugins/check"]
+plugins: ["../../plugins/unattended", "../../plugins/check"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl

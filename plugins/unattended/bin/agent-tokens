@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Token use of an agent and everything it spawned, read from the session's transcripts. Works while agents run.
 
-usage: swarm-tokens [<subagents dir>] [--agent <id> | --match <text>] [--json]
+usage: agent-tokens [<subagents dir>] [--agent <id> | --match <text>] [--json]
   <subagents dir>  a session's subagents folder, holding agent-<id>.jsonl and agent-<id>.meta.json.
                    Default: the most recently written one under ~/.claude/projects.
   --agent <id>     report this agent and its descendants.

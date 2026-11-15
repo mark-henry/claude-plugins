@@ -1,5 +1,5 @@
 # Clause list for the go skill's Boundaries and License sections: every testable clause, one row each
-Read from commit b953d5ef9b5676611b8ac8ecebd8842e18e36c74 of `plugins/swarm/skills/go/SKILL.md` (the text between "## Boundaries" and "## The checker decides"); process is plan / attack / report, expected values for a case built on the clause.
+Read from commit b953d5ef9b5676611b8ac8ecebd8842e18e36c74 of `plugins/unattended/skills/go/SKILL.md` (the text between "## Boundaries" and "## The checker decides"); process is plan / attack / report, expected values for a case built on the clause.
 
 ## The user
 

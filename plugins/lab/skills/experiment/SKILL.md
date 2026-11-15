@@ -1,6 +1,6 @@
 ---
 name: experiment
-description: "The one guideline for designing, preregistering, running, reading and signing off a single ML experiment (a fine-tune, an RL or rejection-sampling run, an LLM eval or judge), so that its number means what it will be quoted as meaning. Use for \"/lab:experiment\", \"design this experiment\", \"what do you think of this design?\", \"set up this ablation\", \"what controls do I need?\", \"how many seeds?\", \"is this null real?\", \"prereg\", \"preregister\", before a paid training or eval run, before any run whose number will be compared to a bar, reported or used to choose between arms, and when a surprising number is about to be quoted or built on. Not for deciding what is wanted and the cap (swarm:brief), large or unattended runs (swarm:go), validating an LLM judge (evals:judge), reading a sample of scored items (evals:audit). An eval of a skill or plugin is an experiment too: `claude plugin eval` is the tool that runs its arms, and this skill is still the design."
+description: "The one guideline for designing, preregistering, running, reading and signing off a single ML experiment (a fine-tune, an RL or rejection-sampling run, an LLM eval or judge), so that its number means what it will be quoted as meaning. Use for \"/lab:experiment\", \"design this experiment\", \"what do you think of this design?\", \"set up this ablation\", \"what controls do I need?\", \"how many seeds?\", \"is this null real?\", \"prereg\", \"preregister\", before a paid training or eval run, before any run whose number will be compared to a bar, reported or used to choose between arms, and when a surprising number is about to be quoted or built on. Not for deciding what is wanted and the cap (unattended:brief), large or unattended runs (unattended:go), validating an LLM judge (evals:judge), reading a sample of scored items (evals:audit). An eval of a skill or plugin is an experiment too: `claude plugin eval` is the tool that runs its arms, and this skill is still the design."
 ---
 
 # lab:experiment
@@ -11,16 +11,16 @@ Every experiment gets a plan page and a written prediction; a small one buys few
 
 ## Order of events
 
-One folder per experiment. Inside `swarm:go` this skill designs the experiment piece, and go's attack, pilot ladder and report replace the same steps here; the supervisor's verdict line goes into go's report beside each number quoted. By hand:
+One folder per experiment. Inside `unattended:go` this skill designs the experiment piece, and go's attack, pilot ladder and report replace the same steps here; the supervisor's verdict line goes into go's report beside each number quoted. By hand:
 
-1. **Frame.** `swarm:brief`, unless a brief is frozen: bring back the question, the bar with its denominator, the cap and the search record. If a cheap check settles the question, that check is the experiment.
+1. **Frame.** `unattended:brief`, unless a brief is frozen: bring back the question, the bar with its denominator, the cap and the search record. If a cheap check settles the question, that check is the experiment.
 2. **Read the harness** before designing: scorer or reward code, a few full traces, where seeds enter, each checkpoint's provenance, your earlier runs and why each died. Decide where the plan, prereg record and run records will be pinned: private data kept out of a repository needs its hash log first.
 3. **Design** the plan page (templates.md) from "Start from the sentence" and rules 1–8.
 4. **Attack.** `check:attack` on the plan page, with the scorer or reward code and a few raw untreated traces. Close its findings, say in one line what will run and what it should cost, and run it. Nobody approves the plan.
 5. **Untreated first,** on baseline and dev outputs only: the instrument checks, `evals:judge` for an LLM judge a bar reads, the floor runs, the positive control.
 6. **Predict.** Open and pin the prereg record ("The record and its tool"). Treated smoke and pilot runs come after it and stay exploratory.
 7. **Freeze and launch.** The FREEZE line, then Sign-off at launch. Ask once earlier against a dry run's record, while a *record* block is cheap to fix.
-8. **Counted runs,** arms interleaved in time; `swarm:loop` for unattended work against a machine check.
+8. **Counted runs,** arms interleaved in time; `unattended:arbiter` for unattended work against a machine check.
 9. **Read** in the fixed order (templates.md), with `evals:audit`.
 10. **Quote.** `prereg.py close`; each number in the draft report audited against a tool result from this session; Sign-off at quote, on the sentence as it will be written; `figure:make` draws it.
 11. **Report,** the user's decisions last; then an amendment, a new plan or a stop.
@@ -82,7 +82,7 @@ Train, dev and sealed sets are disjoint in content, and in time where data is or
 
 - Start the exposure ledger (which runs scored which pack) with the first run.
 - Routes a split does not close: generated training data that paraphrases the target; failure reports that echo gold labels to an optimizing agent; the agent's memory, notes and config files; held-out logs the next run can read; a stopping rule that reads oracle labels.
-- Out of reach is built, not instructed (`swarm:loop`). Hiding the scorer stops tampering, not attempts: read traces for them.
+- Out of reach is built, not instructed (`unattended:arbiter`). Hiding the scorer stops tampering, not attempts: read traces for them.
 - A baseline that reproduces the answer verbatim is a leak until audited. Check in code that the held-out step the plan documents actually runs.
 
 ### Rule 6: instrument
@@ -99,7 +99,7 @@ Every scorer or judge that a bar or decision reads has been seen to pass a known
 
 Before the first counted run, a dated, pinned FREEZE line in the plan names the commit, seeds, n, samples per item, kill thresholds, and the item-set, scorer and judge-prompt hashes. Rubric and thresholds were settled on baseline or dev outputs, never a treated arm's. A FREEZE line no counted run has launched under may be replaced by a new dated, pinned FREEZE line, the old one kept beneath it; rule 9 counts from the line the first counted run launched under.
 
-Rungs an experiment adds to `swarm:go`'s pilot ladder before the freeze:
+Rungs an experiment adds to `unattended:go`'s pilot ladder before the freeze:
 
 - **Decode.** One step per arm: read the decoded tokens the model actually receives, and check that sampler and trainer log-probabilities agree.
 - **Census.** Every arm at step 0, twice. A treated arm already ahead means broken data, or a claim that becomes "starts closer".

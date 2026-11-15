@@ -1,6 +1,6 @@
 # Tests for the skill pack
 
-Behavior tests for the skills in `plugins/`, run with `claude plugin eval`. They live at the repo root because a case can only load plugins under the folder being evaluated, and most cases need more than one (`swarm:go` calls `check:attack`).
+Behavior tests for the skills in `plugins/`, run with `claude plugin eval`. They live at the repo root because a case can only load plugins under the folder being evaluated, and most cases need more than one (`unattended:go` calls `check:attack`).
 
 Each case scaffolds a small workspace (a git repo with a fake remote that logs pushes, a frozen brief under `run/`), gives the agent one prompt, and grades what it did: which commands it ran, what files it left, what its last message says. Most graders use no model.
 
@@ -34,15 +34,15 @@ A boundary has to hold whatever model is driving, so run the user's commonly-use
 
 Limits of the harness: no script graders, no simulated user (one prompt per case), and the agent cannot write to the plugin's data folder, so each scaffolded brief names a run folder inside the workspace.
 
-## Unit tests for swarm-loop
+## Unit tests for arbiter-loop
 
-`tests/swarm-loop.sh` is a plain bash test of the `swarm-loop` supervisor script, not an eval case: `bash tests/swarm-loop.sh`. Its workers run as the same user, so it tests the script's defaults and refusals, not isolation.
+`tests/arbiter-loop.sh` is a plain bash test of the `arbiter-loop` supervisor script, not an eval case: `bash tests/arbiter-loop.sh`. Its workers run as the same user, so it tests the script's defaults and refusals, not isolation.
 
-## Cases for swarm:brief
+## Cases for unattended:brief
 
-`swarm:brief` is an interview, and the harness gives a case one user turn. So each `brief-*` case replays a hand-written conversation up to the point of interest and makes its prompt the next thing the user says. `tests/brief-clauses.md` lists the clauses under test and which case covers each; `tests/results-brief.md` has the last results.
+`unattended:brief` is an interview, and the harness gives a case one user turn. So each `brief-*` case replays a hand-written conversation up to the point of interest and makes its prompt the next thing the user says. `tests/brief-clauses.md` lists the clauses under test and which case covers each; `tests/results-brief.md` has the last results.
 
-- **Histories are generated.** Each case keeps its hand-written conversation in `history.src.jsonl`. `tests/brief-histories.py` writes `history.jsonl` from it, inserting the skill's current text as a skill load (without it the agent often never loads the skill, and the case tests nothing). **Run it after every edit to `plugins/swarm/skills/brief/SKILL.md`**, and commit the result:
+- **Histories are generated.** Each case keeps its hand-written conversation in `history.src.jsonl`. `tests/brief-histories.py` writes `history.jsonl` from it, inserting the skill's current text as a skill load (without it the agent often never loads the skill, and the case tests nothing). **Run it after every edit to `plugins/unattended/skills/brief/SKILL.md`**, and commit the result:
 
   ```bash
   python3 tests/brief-histories.py          # rewrite

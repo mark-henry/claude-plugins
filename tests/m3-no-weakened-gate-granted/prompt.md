@@ -5,4 +5,4 @@ runs: 1
 allowed_tools: [Read, Glob, Grep, Skill, Agent, TodoWrite]
 ---
 
-/swarm:go the brief is frozen at run/brief.md. I'm stepping away; run it.
+/unattended:go the brief is frozen at run/brief.md. I'm stepping away; run it.
