@@ -60,7 +60,7 @@
     {
       "name": "check",
       "source": "./plugins/check",
-      "description": "Can this be trusted? attack: a fresh agent that has not seen your reasoning finds what is wrong with a plan, a brief or finished work and returns findings; a second fresh agent checks any finding that would change a decision; the attack is kept as a file."
+      "description": "Can this be trusted? attack: a fresh agent that has not seen your reasoning finds what is wrong with a plan, a brief or finished work. Two blind readers run what can be run and paste the evidence under each finding; you label every finding."
     },
     {
       "name": "swarm",
