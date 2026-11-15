@@ -22,11 +22,11 @@ The stamp snapshots the working tree (untracked files included, `.gitignore` res
 ## Counted run
 
 1. `prereg.py new prereg/<slug>.json`, then fill it in: question, bar, decision, `primary` (metric, comparison, smallest effect as a number, unit), `intended_n`, the arms with each one's `out` folder, `command` and `data` file paths, `varies` (the keys allowed to differ between arms, e.g. `model`, `config.lr`, `code`; an arm's own name and folder never count, but different seeds per arm need `seed` and `seeds`), `pilot.runs`, `scorer`, `floors.runs`. A `bar` starting "none" opens the record exploratory.
-2. Run at least two baseline pilot runs on the same units and list their folders in `pilot.runs`.
+2. Run two baseline pilot runs on the same units, each stamped with its own run id, and list their folders in `pilot.runs`. Counted also needs the scorer of line 3 and a whole-number `intended_n`.
 3. `prereg.py open <record>` hashes the frozen fields and the line-6 fields, and records each data file's sha256 and line count. Commit the record. Missing line-6 fields open it exploratory. A record opened wrongly is left as it is: set its `status` to `abandoned` and start a new one.
 4. Launch each arm: `prereg.py stamp <arm out> --record <record> --arm <arm> --counted --run-id <tracker id> --config <file> --model <id> --model-revision <rev> --data <file> --seed <n> -- <command>`. For an API model give `--model-date`; for a container, `--image <digest>`; with no model, omit `--model`. `--counted` is refused unless line 6 was hashed and line 7 holds; drop it and the run goes ahead exploratory.
 5. `prereg.py check <record>`: lines 2, 3, 7, 8 and 12, and the counted gate. It writes `<record>.check.json`.
-6. `prereg.py parity <record>`: line 13.
+6. `prereg.py parity <record>`: line 13. `quote` refuses a counted record without a passing one.
 7. Each time the test split is scored, once per scoring and not per arm: `prereg.py ledger <record> <run folder>`. Report the count it prints.
 8. `prereg.py close <record>`, then `prereg.py quote <report.md> <record>` before the report leaves your hands.
 
@@ -38,12 +38,12 @@ Optional: list inputs outside the repository (a remote model revision, data on a
 
 1. **Read ten raw items per arm before any aggregate.** The stored input, output and judge output, not a rendered view.
 2. **Scored n equals intended n; failure rates per arm, equal across arms.** `check` refuses otherwise (default threshold 5% and at least 2 items, set in `failure_threshold`). On a refusal, read ten raw items in each arm, failed ones included (line 1), before anything is aggregated or reported.
-3. **The scorer fails a broken output and passes a known-good one.** Declare `scorer.command` (with `{output}`, exit 0 is a pass), `scorer.file`, `scorer.broken` and `scorer.good`. Make the broken one a near miss of the good one, not garbage.
+3. **The scorer fails a broken output and passes a known-good one.** Declare `scorer.command` (with `{output}`, exit 0 is a pass), `scorer.file`, `scorer.broken` and `scorer.good`. Make the broken one a near miss, not garbage.
 4. **The baseline reproduces in this harness.** Rerun it here first; a gap you cannot explain stops the comparison.
 5. **Name the independent unit; intervals resample that unit.** Usually the document, task or user, not the sample. With fewer than about 30 units, report win, loss and tie counts and a permutation test.
 6. **One primary metric, comparison and smallest effect, written before scoring.** `open` hashes them.
 7. **The detectable difference from pilot data is at most that effect, or the run is exploratory.** `check` prints the SE (unit resampling of two baseline runs' paired difference) and 2.8 × SE. Power gates the label, never the run; an exploratory result inside the noise is worded as line 10 says. To lower it, add units of middling difficulty before adding runs per unit.
-8. **Count saturated items; they are not your n.** `check` prints per-item pass rates over the pilot runs and the count at 0 and at 1.
+8. **Count saturated items; they are not your n.** `check` prints the count at 0 and at 1 over the pilot runs.
 9. **Pick on dev, count what was tried, confirm the pick once on test with fresh seeds.** `ledger` counts test scorings; a count above one is reported.
 10. **Inside the noise is "no detectable difference at plus or minus X"; every number carries a run id.** Never "no effect". `quote` refuses a report line with a percentage or `a/b` and no run id.
 11. **Train, dev and test share no unit; an LLM judge or baseline gets one item per call.** A baseline that reproduces the answer verbatim is a leak until audited.
