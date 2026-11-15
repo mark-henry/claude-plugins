@@ -1,0 +1,6 @@
+{"id": "i0", "arm": "untreated", "unit": "u0", "score": 1, "status": "ok"}
+{"id": "i1", "arm": "untreated", "unit": "u0", "score": 0, "status": "ok"}
+{"id": "i2", "arm": "untreated", "unit": "u1", "score": 1, "status": "ok"}
+{"id": "i3", "arm": "untreated", "unit": "u1", "score": 1, "status": "ok"}
+{"id": "i4", "arm": "untreated", "unit": "u2", "score": 1, "status": "ok"}
+{"id": "i5", "arm": "untreated", "unit": "u2", "score": 0, "status": "ok"}

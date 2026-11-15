@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tests for prereg.py. Run: python3 test_prereg.py"""
-import hashlib, json, re, shutil, subprocess, sys, tempfile, unittest
+import hashlib, json, random, re, shutil, statistics, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 PREREG = Path(__file__).with_name("prereg.py")
@@ -202,6 +202,560 @@ class OldRecords(unittest.TestCase):
 
     def test_the_reference_copy_is_the_untouched_script(self):
         self.assertEqual(hashlib.sha256((OLD / "prereg_v1.py").read_bytes()).hexdigest()[:16], "316feab368dad35e")
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Schema 2: the standard checks. Everything below uses invented toy data only.
+
+PILOT = Path(__file__).with_name("fixtures") / "pilot"   # hand-built: 6 items, 3 units, 3 baseline runs
+BIG = 5 * 1024 * 1024 + 1
+
+
+def git(d, *a):
+    return subprocess.run(["git", *a], cwd=d, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def full_sha(p):
+    return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+
+
+def lab_repo():
+    d = Path(tempfile.mkdtemp())
+    git(d, "init", "-q"); git(d, "config", "user.email", "t@example.com"); git(d, "config", "user.name", "t")
+    (d / ".gitignore").write_text("ignored.log\n")
+    (d / "train.py").write_text("lr = 1\n")
+    (d / "score.py").write_text("import sys\nsys.exit(0 if open(sys.argv[1]).read().strip() == 'good' else 1)\n")
+    (d / "lenient.py").write_text("import sys\nsys.exit(0)\n")
+    (d / "good.txt").write_text("good\n"); (d / "broken.txt").write_text("garbage\n")
+    git(d, "add", "."); git(d, "commit", "-qm", "init")
+    return d
+
+
+def write_items(d, out, rows):
+    p = d / out
+    p.mkdir(parents=True, exist_ok=True)
+    with open(p / "items.jsonl", "a") as f:
+        f.writelines(json.dumps(r) + "\n" for r in rows)
+
+
+def rows(arm, scores, statuses=None, unit=lambda k: f"u{k}"):
+    st = statuses or ["ok"] * len(scores)
+    return [{"id": f"i{k}", "arm": arm, "unit": unit(k), "score": None if st[k] != "ok" else s, "status": st[k]}
+            for k, s in enumerate(scores)]
+
+
+def record(d, **over):
+    """A schema-2 record for a two-arm toy. Line-6 fields set, so it opens as a counted record."""
+    rec = {"schema": 2, "question": "Does model b score higher than model a on the toy set?", "bar": "plan.md#BAR_TOY",
+           "decision": "use b if it clears the bar",
+           "primary": {"metric": "mean score", "comparison": "treated minus untreated", "smallest_effect": 0.2, "unit": "item"},
+           "intended_n": 40, "varies": ["model"],
+           "arms": {"untreated": {"out": "runs/untreated", "command": "python train.py --model a"},
+                    "treated": {"out": "runs/treated", "command": "python train.py --model b"}},
+           "pilot": {"runs": ["runs/pilot1", "runs/pilot2"]}, "floors": {"none_reason": ""}, "resample_seed": 7}
+    rec.update(over)
+    (d / "prereg").mkdir(exist_ok=True)
+    (d / "prereg" / "r.json").write_text(json.dumps(rec, indent=2))
+    return "prereg/r.json"
+
+
+def quiet_pilots(d, n=40):
+    """Two baseline pilot runs that disagree on one item of n: a detectable difference far under 0.2."""
+    a = [k % 2 for k in range(n)]
+    b = list(a); b[0] = 1 - b[0]
+    write_items(d, "runs/pilot1", rows("untreated", a)); write_items(d, "runs/pilot2", rows("untreated", b))
+
+
+def noisy_pilots(d, n=10):
+    write_items(d, "runs/pilot1", rows("untreated", [k % 2 for k in range(n)]))
+    write_items(d, "runs/pilot2", rows("untreated", [(k + 1) % 2 for k in range(n)]))
+
+
+def counted_toy(d, floor=0.0, n=40, **over):
+    """Record opened, quiet pilots, both arms stamped counted, items written with a constant floor."""
+    rp = record(d, intended_n=n, **over)
+    quiet_pilots(d, n)
+    assert run(d, "open", rp).returncode == 0
+    for arm, model in (("untreated", "a"), ("treated", "b")):
+        r = run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--counted", "--run-id", f"toy-{arm}",
+                "--", "python", "train.py", "--model", model)
+        assert r.returncode == 0, r.stdout + r.stderr
+    write_items(d, "runs/untreated", rows("untreated", [k % 2 for k in range(n)]))
+    write_items(d, "runs/treated", rows("treated", [1 if k % 4 else 0 for k in range(n)]))
+    if floor is not None:
+        write_items(d, "runs/untreated", rows("floor:constant", [floor] * n))
+    return rp
+
+
+def ref_line7(run1, run2, seed, resamples=2000):
+    """Independent reference: SE of the mean paired difference, resampling units with replacement."""
+    load_rows = lambda p: {r["id"]: r for r in map(json.loads, Path(p).read_text().splitlines()) if r["status"] == "ok"}
+    a, b = load_rows(run1), load_rows(run2)
+    by_unit = {}
+    for i in sorted(set(a) & set(b)):
+        by_unit.setdefault(a[i]["unit"], []).append(a[i]["score"] - b[i]["score"])
+    units = sorted(by_unit)
+    rng = random.Random(seed)
+    means = []
+    for _ in range(resamples):
+        ds = [x for u in [rng.choice(units) for _ in units] for x in by_unit[u]]
+        means.append(sum(ds) / len(ds))
+    se = statistics.stdev(means)
+    return se, 2.8 * se
+
+
+class NewRecord(unittest.TestCase):
+    def test_new_writes_a_schema_2_record_with_the_line_6_fields(self):
+        d = lab_repo()
+        self.assertEqual(run(d, "new", "prereg/t.json").returncode, 0)
+        rec = json.loads((d / "prereg" / "t.json").read_text())
+        self.assertEqual(rec["schema"], 2)
+        self.assertEqual(set(rec["primary"]) >= {"metric", "comparison", "smallest_effect", "unit"}, True)
+        self.assertIn("resample_seed", rec)
+
+    def test_open_hashes_the_line_6_fields_and_opens_exploratory_without_them(self):
+        d = lab_repo()
+        rp = record(d)
+        r = run(d, "open", rp)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = json.loads((d / rp).read_text())
+        self.assertEqual(rec["status"], "open")
+        self.assertRegex(rec["opened"]["line6_sha256"], r"^[0-9a-f]{16}$")
+        d2 = lab_repo()
+        rp2 = record(d2, primary={"metric": "mean score", "comparison": "treated minus untreated", "unit": "item"})
+        r = run(d2, "open", rp2)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("line 6", r.stdout)
+        self.assertEqual(json.loads((d2 / rp2).read_text())["status"], "exploratory")
+
+
+class StampV2(unittest.TestCase):
+    def test_stamp_records_every_field_of_a_known_repository_state(self):
+        d = lab_repo()
+        (d / "data.jsonl").write_text('{"x": 1}\n{"x": 2}\n{"x": 3}\n')
+        (d / "config.json").write_text(json.dumps({"lr": 0.1, "batch": 8}))
+        (d / "lab-inputs.md").write_text("- remote model org/m at rev1\n")
+        rp = record(d, arms={"untreated": {"out": "runs/untreated", "command": "python train.py --model a", "data": [{"path": "data.jsonl"}]},
+                             "treated": {"out": "runs/treated", "command": "python train.py --model b", "data": [{"path": "data.jsonl"}]}})
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        (d / "train.py").write_text("lr = 2\n")             # tracked, modified
+        (d / "new.py").write_text("print('new')\n")         # untracked: inside the snapshot
+        (d / "ignored.log").write_text("noise\n")           # ignored: outside the snapshot
+        (d / "big.bin").write_bytes(b"\0" * BIG)            # over 5 MB: listed by sha256, not stored
+        index_before = (d / ".git" / "index").read_bytes()
+        status_before = git(d, "status", "--porcelain", "-uall")
+        r = run(d, "stamp", "runs/treated", "--record", rp, "--arm", "treated", "--run-id", "mlflow-abc123",
+                "--config", "config.json", "--model", "org/m", "--model-revision", "rev1", "--tokenizer-revision", "tok1",
+                "--seed", "1", "--seed", "2", "--image", "sha256:feed", "--", "python", "train.py", "--model", "b")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(git(d, "status", "--porcelain", "-uall"), status_before)
+        self.assertEqual((d / ".git" / "index").read_bytes(), index_before)
+        warnings = [l for l in r.stderr.splitlines() if l.strip()]
+        self.assertEqual(len(warnings), 1, r.stderr)
+        self.assertIn("uncommitted", warnings[0])
+        s = json.loads((d / "runs" / "treated" / "stamp.json").read_text())
+        rec = json.loads((d / rp).read_text())
+        self.assertEqual(s["schema"], 2)
+        self.assertEqual(s["run_id"], "mlflow-abc123")
+        self.assertEqual(s["tracker_run_id"], "mlflow-abc123")
+        self.assertEqual(s["argv"], ["python", "train.py", "--model", "b"])
+        self.assertEqual(s["arm"], "treated")
+        self.assertEqual(s["label"], "exploratory")
+        self.assertRegex(s["utc"], r"^\d{8}T\d{4}Z$")
+        self.assertTrue(s["host"])
+        self.assertEqual(s["record"], {"path": rp, "sha256": full_sha(d / rp), "frozen_sha256": rec["opened"]["frozen_sha256"],
+                                       "line6_sha256": rec["opened"]["line6_sha256"]})
+        self.assertEqual(s["config"], {"path": "config.json", "sha256": full_sha(d / "config.json"), "values": {"lr": 0.1, "batch": 8}})
+        self.assertEqual(s["model"], {"id": "org/m", "revision": "rev1", "tokenizer_revision": "tok1", "date": "n/a"})
+        self.assertEqual(s["data"], [{"path": "data.jsonl", "sha256": full_sha(d / "data.jsonl"), "lines": 3, "bytes": len((d / "data.jsonl").read_bytes())}])
+        self.assertEqual(s["seeds"], ["1", "2"])
+        self.assertEqual(s["packages"], {"image": "sha256:feed"})
+        self.assertEqual(s["lab_inputs_sha256"], full_sha(d / "lab-inputs.md"))
+        snap = s["snapshot"]
+        self.assertEqual(snap["ref"], "refs/lab/mlflow-abc123")
+        self.assertEqual(git(d, "rev-parse", "refs/lab/mlflow-abc123"), snap["commit"])
+        self.assertEqual(snap["head"], git(d, "rev-parse", "HEAD"))
+        self.assertEqual(snap["dirty"], ["train.py"])
+        self.assertIn("new.py", snap["untracked"])
+        files = git(d, "ls-tree", "-r", "--name-only", snap["commit"]).splitlines()
+        self.assertIn("new.py", files)
+        self.assertIn("lab-inputs.md", files)
+        self.assertNotIn("ignored.log", files)
+        self.assertNotIn("big.bin", files)
+        self.assertEqual(git(d, "show", f"{snap['commit']}:train.py"), "lr = 2")
+        self.assertEqual(snap["large_files"], [{"path": "big.bin", "sha256": full_sha(d / "big.bin"), "bytes": BIG}])
+
+    def test_fields_that_do_not_apply_are_written_na(self):
+        d = lab_repo()
+        r = run(d, "stamp", "runs/toy", "--", "python", "toy.py")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stderr.strip(), "")                     # clean tree: no warning
+        s = json.loads((d / "runs" / "toy" / "stamp.json").read_text())
+        for k in ("record", "config", "data", "seeds", "lab_inputs_sha256", "tracker_run_id", "arm"):
+            self.assertEqual(s[k], "n/a", k)
+        self.assertEqual(s["model"], {"id": "n/a", "revision": "n/a", "tokenizer_revision": "n/a", "date": "n/a"})
+        self.assertEqual(s["label"], "exploratory")
+        self.assertEqual(git(d, "rev-parse", s["snapshot"]["ref"]), s["snapshot"]["commit"])
+
+    def test_a_second_stamp_is_refused_and_the_first_kept(self):
+        d = lab_repo()
+        self.assertEqual(run(d, "stamp", "runs/a", "--run-id", "r1", "--", "python", "train.py").returncode, 0)
+        first = (d / "runs" / "a" / "stamp.json").read_text()
+        r = run(d, "stamp", "runs/a", "--run-id", "r2", "--", "python", "train.py", "--other")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("stamp.json exists", r.stderr)
+        self.assertEqual((d / "runs" / "a" / "stamp.json").read_text(), first)
+        r = run(d, "stamp", "runs/b", "--run-id", "r1", "--", "python", "train.py")   # same run id: the ref exists
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("refs/lab/r1", r.stderr)
+
+    def test_line_13_stamp_refuses_data_that_differs_from_the_record(self):
+        d = lab_repo()
+        (d / "data.jsonl").write_text('{"x": 1}\n{"x": 2}\n')
+        arms = {a: {"out": f"runs/{a}", "command": f"python train.py --model {m}", "data": [{"path": "data.jsonl"}]}
+                for a, m in (("untreated", "a"), ("treated", "b"))}
+        rp = record(d, arms=arms)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        self.assertEqual(run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--", "x").returncode, 0)
+        (d / "data.jsonl").write_text('{"x": 1}\n{"x": 2}\n{"x": 3}\n')
+        r = run(d, "stamp", "runs/treated", "--record", rp, "--arm", "treated", "--", "x")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 13", r.stderr)
+        self.assertIn("data.jsonl", r.stderr)
+
+
+class CountedGate(unittest.TestCase):
+    def test_stamp_refuses_counted_without_hashed_line_6_fields(self):
+        d = lab_repo()
+        rp = record(d, primary={"metric": "mean score", "comparison": "treated minus untreated", "unit": "item"})
+        quiet_pilots(d)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        r = run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--counted", "--", "x")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 6", r.stderr)
+        self.assertIn("exploratory", r.stderr)
+        r = run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--", "x")   # may go ahead as exploratory
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_stamp_refuses_counted_when_line_7_fails(self):
+        d = lab_repo()
+        rp = record(d, intended_n=10)
+        noisy_pilots(d)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        r = run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--counted", "--", "x")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 7", r.stderr)
+
+    def test_counted_toy_earns_the_label(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("label: counted", r.stdout)
+
+    def test_check_refuses_counted_when_a_stamp_lacks_the_record_hash(self):
+        d = lab_repo()
+        rp = record(d)
+        quiet_pilots(d)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        self.assertEqual(run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--counted", "--", "x").returncode, 0)
+        self.assertEqual(run(d, "stamp", "runs/treated", "--", "x").returncode, 0)    # stamped with no record
+        write_items(d, "runs/untreated", rows("untreated", [k % 2 for k in range(40)]) + rows("floor:constant", [0] * 40))
+        write_items(d, "runs/treated", rows("treated", [1] * 40))
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("counted", r.stderr)
+        self.assertIn("line 6", r.stderr)
+        self.assertNotIn("label: counted", r.stdout)
+
+    def test_check_refuses_counted_when_the_record_changed_after_the_stamps(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        rec = json.loads((d / rp).read_text()); rec["primary"]["smallest_effect"] = 0.01; (d / rp).write_text(json.dumps(rec))
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("changed", r.stderr)
+
+    def test_line_12_refuses_counted_with_no_floor_and_no_reason(self):
+        d = lab_repo()
+        rp = counted_toy(d, floor=None)
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 12", r.stderr)
+        d2 = lab_repo()
+        rp2 = counted_toy(d2, floor=None, floors={"none_reason": "no trivial policy can emit this output format"})
+        r = run(d2, "check", rp2)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("label: counted", r.stdout)
+
+    def test_line_12_refuses_counted_when_a_floor_reaches_the_best_arm(self):
+        d = lab_repo()
+        rp = counted_toy(d, floor=1.0)
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 12", r.stderr)
+        self.assertIn("floor:constant", r.stderr)
+
+    def test_line_12_prints_each_floor_beside_each_arm(self):
+        d = lab_repo()
+        rp = counted_toy(d, floor=0.25)
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        line = next(l for l in r.stdout.splitlines() if l.startswith("line 12"))
+        self.assertIn("floor:constant 0.250", line)
+        self.assertIn("untreated 0.500", line)
+        self.assertIn("treated 0.750", line)
+
+
+class Line2(unittest.TestCase):
+    def toy(self, untreated, treated, **over):
+        d = lab_repo()
+        rp = record(d, intended_n=10, floors={"none_reason": "toy"}, pilot={"runs": []}, **over)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        for arm in ("untreated", "treated"):
+            self.assertEqual(run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--", "x").returncode, 0)
+        write_items(d, "runs/untreated", untreated); write_items(d, "runs/treated", treated)
+        return run(d, "check", rp)
+
+    def test_accepts_full_n_and_no_failures(self):
+        r = self.toy(rows("untreated", [1] * 10), rows("treated", [0] * 10))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("label: exploratory", r.stdout)
+
+    def test_refuses_when_scored_n_differs_from_intended_n(self):
+        r = self.toy(rows("untreated", [1] * 10), rows("treated", [0] * 9))
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 2", r.stderr)
+        self.assertIn("treated", r.stderr)
+
+    def test_refuses_a_failure_share_over_the_threshold(self):
+        st = ["ok"] * 7 + ["parse_failure"] * 3
+        r = self.toy(rows("untreated", [1] * 10), rows("treated", [0] * 10, st))
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 2", r.stderr)
+        self.assertIn("parse_failure", r.stdout + r.stderr)
+
+    def test_one_failure_is_under_the_two_item_minimum(self):
+        st = ["ok"] * 9 + ["error"]
+        r = self.toy(rows("untreated", [1] * 10), rows("treated", [0] * 10, st))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_refuses_failure_rates_that_differ_between_arms(self):
+        st = ["ok"] * 7 + ["truncated"] * 3
+        r = self.toy(rows("untreated", [1] * 10), rows("treated", [0] * 10, st),
+                     failure_threshold={"share": 0.5, "min_items": 2, "difference": 0.1})
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 2", r.stderr)
+        self.assertIn("differ", r.stderr)
+
+    def test_refuses_a_malformed_items_row(self):
+        bad = rows("treated", [0] * 10); bad[3]["status"] = "fine"
+        r = self.toy(rows("untreated", [1] * 10), bad)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("items.jsonl", r.stderr)
+
+
+class Line3(unittest.TestCase):
+    def toy(self, scorer):
+        d = lab_repo()
+        rp = record(d, intended_n=10, floors={"none_reason": "toy"}, pilot={"runs": []},
+                    scorer={"command": f"python3 {scorer} {{output}}", "file": scorer, "broken": "broken.txt", "good": "good.txt"})
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        for arm in ("untreated", "treated"):
+            self.assertEqual(run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--", "x").returncode, 0)
+            write_items(d, f"runs/{arm}", rows(arm, [1] * 10))
+        return d, rp, run(d, "check", rp)
+
+    def test_accepts_a_scorer_that_fails_broken_and_passes_good_and_records_its_hash(self):
+        d, rp, r = self.toy("score.py")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("line 3", r.stdout)
+        res = json.loads((d / "prereg" / "r.check.json").read_text())
+        self.assertEqual(res["line3"]["scorer_sha256"], full_sha(d / "score.py"))
+
+    def test_refuses_a_scorer_that_passes_the_broken_output(self):
+        d, rp, r = self.toy("lenient.py")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 3", r.stderr)
+        self.assertIn("broken", r.stderr)
+
+
+class Lines7And8(unittest.TestCase):
+    def pilot_toy(self, runs):
+        d = lab_repo()
+        for k, p in enumerate(runs):
+            shutil.copytree(p, d / "runs" / f"pilot{k + 1}")
+        rp = record(d, intended_n=6, floors={"none_reason": "toy"}, resample_seed=11,
+                    pilot={"runs": [f"runs/pilot{k + 1}" for k in range(len(runs))]})
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        for arm in ("untreated", "treated"):
+            self.assertEqual(run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--", "x").returncode, 0)
+            write_items(d, f"runs/{arm}", rows(arm, [1, 0, 1, 0, 1, 0]))
+        return d, run(d, "check", rp)
+
+    def test_line_7_prints_the_se_and_detectable_difference_of_the_fixture(self):
+        d, r = self.pilot_toy([PILOT / "run1", PILOT / "run2", PILOT / "run3"])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        se, dd = ref_line7(PILOT / "run1" / "items.jsonl", PILOT / "run2" / "items.jsonl", 11)
+        self.assertGreater(se, 0)
+        self.assertIn(f"line 7: SE {se:.4f}, detectable difference {dd:.4f} (smallest effect 0.2)", r.stdout)
+
+    def test_line_7_is_zero_when_the_pilot_runs_agree(self):
+        d, r = self.pilot_toy([PILOT / "run1", PILOT / "run1"])
+        self.assertIn("line 7: SE 0.0000, detectable difference 0.0000", r.stdout)
+
+    def test_line_8_prints_per_item_pass_rates_and_the_counts_at_0_and_1(self):
+        d, r = self.pilot_toy([PILOT / "run1", PILOT / "run2", PILOT / "run3"])
+        out = r.stdout.splitlines()
+        for item, rate in (("i0", "3/3"), ("i1", "0/3"), ("i2", "2/3"), ("i3", "1/3"), ("i4", "3/3"), ("i5", "0/3")):
+            self.assertIn(f"  {item} {rate}", out)
+        self.assertIn("line 8: 6 items over 3 baseline pilot runs; 2 at 0, 2 at 1, 2 in between", out)
+
+
+class ArmComparison(unittest.TestCase):
+    def two_arms(self, varies=("model",), config=({"lr": 0.1}, {"lr": 0.1}), between=None, data=None):
+        d = lab_repo()
+        arms = {a: {"out": f"runs/{a}", "command": f"python train.py --model {m}"} for a, m in (("untreated", "a"), ("treated", "b"))}
+        if data:
+            for (a, spec), text in zip(arms.items(), data):
+                (d / f"{a}.jsonl").write_text(text)
+                spec["data"] = [{"path": f"{a}.jsonl"}]
+        rp = record(d, varies=list(varies), arms=arms)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        (d / "train.py").write_text("lr = 3\n")      # the same uncommitted change under both arms
+        for arm, cfg in zip(("untreated", "treated"), config):
+            (d / f"{arm}.config.json").write_text(json.dumps(cfg))
+        for arm, model in (("untreated", "a"), ("treated", "b")):
+            r = run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--config", f"{arm}.config.json",
+                    "--", "python", "train.py", "--model", model)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            if between and arm == "untreated":
+                between(d)
+        return d, run(d, "parity", rp)
+
+    def test_accepts_arms_that_differ_only_in_declared_keys_on_a_dirty_tree(self):
+        d, r = self.two_arms()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("parity: PASS", r.stdout)
+
+    def test_refuses_an_undeclared_configuration_difference(self):
+        d, r = self.two_arms(config=({"lr": 0.1}, {"lr": 0.2}))
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("config.lr", r.stdout)
+        d, r = self.two_arms(varies=("model", "config.lr"), config=({"lr": 0.1}, {"lr": 0.2}))
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_refuses_code_that_changed_between_the_arms_snapshots(self):
+        d, r = self.two_arms(between=lambda d: (d / "train.py").write_text("lr = 4\n"))
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("train.py", r.stdout)
+
+    def test_line_13_refuses_undeclared_data_differences(self):
+        d, r = self.two_arms(data=('{"x": 1}\n', '{"x": 1}\n{"x": 2}\n'))
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("line 13", r.stdout)
+        d, r = self.two_arms(varies=("model", "data"), data=('{"x": 1}\n', '{"x": 1}\n{"x": 2}\n'))
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_refuses_an_arm_with_no_stamp(self):
+        d, r = self.two_arms()
+        (d / "runs" / "treated" / "stamp.json").unlink()
+        r = run(d, "parity", "prereg/r.json")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("stamp", r.stdout)
+
+
+class Ledger(unittest.TestCase):
+    def test_each_test_scoring_adds_exactly_one_line_and_never_rewrites(self):
+        d = lab_repo()
+        rp = record(d)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        (d / "cfg.json").write_text('{"temperature": 0}')
+        self.assertEqual(run(d, "stamp", "runs/test1", "--run-id", "test-run-1", "--config", "cfg.json", "--", "x").returncode, 0)
+        self.assertEqual(run(d, "stamp", "runs/test2", "--run-id", "test-run-2", "--config", "cfg.json", "--", "x").returncode, 0)
+        lp = d / "prereg" / "r.ledger.jsonl"
+        r = run(d, "ledger", rp, "runs/test1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        first = lp.read_text()
+        self.assertEqual(len(first.splitlines()), 1)
+        row = json.loads(first)
+        self.assertEqual((row["run_id"], row["config_sha256"]), ("test-run-1", full_sha(d / "cfg.json")))
+        self.assertRegex(row["utc"], r"^\d{8}T\d{4}Z$")
+        self.assertIn("scored 1 time", r.stdout)
+        r = run(d, "ledger", rp, "runs/test2")
+        self.assertTrue(lp.read_text().startswith(first))
+        self.assertEqual(len(lp.read_text().splitlines()), 2)
+        self.assertIn("scored 2 times", r.stdout)
+
+
+class Quote(unittest.TestCase):
+    def test_refuses_a_number_with_no_run_id_and_prints_the_line(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        (d / "report.md").write_text("# Toy\n\nTreated 30/40 vs untreated 20/40 (toy-treated, toy-untreated).\n"
+                                     "That is a gain of 25%.\nNo numbers on this line.\n")
+        r = run(d, "quote", "report.md", rp)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("That is a gain of 25%.", r.stderr)
+        self.assertIn("line 10", r.stderr)
+        self.assertNotIn("30/40", r.stderr)
+
+    def test_accepts_numbers_that_carry_a_run_id_from_the_record_or_the_ledger(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        self.assertEqual(run(d, "stamp", "runs/test1", "--run-id", "test-run-9", "--", "x").returncode, 0)
+        self.assertEqual(run(d, "ledger", rp, "runs/test1").returncode, 0)
+        (d / "report.md").write_text("Treated 30/40 (toy-treated); a gain of 25% (toy-untreated).\nOn test, 71% (test-run-9).\n"
+                                     "Dated 2026/11/15, no rate here.\n")
+        r = run(d, "quote", "report.md", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+
+class Induct(unittest.TestCase):
+    def test_induct_never_refuses_never_edits_and_marks_what_cannot_be_shown(self):
+        d = old_copy()
+        for name in OLD_RECORDS:
+            before = (d / "prereg" / f"{name}.json").read_bytes()
+            r = run(d, "induct", f"prereg/{name}.json")
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertEqual((d / "prereg" / f"{name}.json").read_bytes(), before)
+            res = json.loads((d / "prereg" / f"{name}.induct.json").read_text())
+            self.assertEqual(res["written_before_scoring"], "not established")
+            self.assertEqual(res["pilot_power"], "not established")
+            self.assertEqual(res["hash_intact"], name != "draft" or "not established")
+        self.assertEqual(json.loads((d / "prereg" / "closed.induct.json").read_text())["hash_intact"], True)
+
+    def test_induct_reports_a_broken_hash_and_items_it_finds_without_refusing(self):
+        d = old_copy()
+        rp = d / "prereg" / "closed.json"
+        rec = json.loads(rp.read_text()); rec["question"] = "edited later"; rp.write_text(json.dumps(rec, indent=2))
+        write_items(d, "logs/closed/untreated", rows("untreated", [1, 0, 1, 1], ["ok", "ok", "ok", "error"]))
+        r = run(d, "induct", "prereg/closed.json")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        res = json.loads((d / "prereg" / "closed.induct.json").read_text())
+        self.assertEqual(res["hash_intact"], False)
+        self.assertEqual(res["arms"]["untreated"]["n"], 4)
+        self.assertEqual(res["arms"]["untreated"]["failures"], {"error": 1})
+        self.assertEqual(res["arms"]["treated"], "not established (no items.jsonl)")
+        self.assertEqual(res["scorer"], "not established (no scorer declared)")
+
+
+class Exploratory(unittest.TestCase):
+    def test_a_one_arm_toy_needs_only_stamp_and_check(self):
+        d = lab_repo()
+        self.assertEqual(run(d, "stamp", "runs/toy", "--", "python", "toy.py").returncode, 0)
+        write_items(d, "runs/toy", rows("toy", [1, 0, 1, 1, 0]))
+        r = run(d, "check", "runs/toy")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("label: exploratory", r.stdout)
+        self.assertIn("toy 0.600", r.stdout)
+
+    def test_check_refuses_an_unstamped_run_folder(self):
+        d = lab_repo()
+        write_items(d, "runs/toy", rows("toy", [1, 0]))
+        r = run(d, "check", "runs/toy")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("stamp", r.stderr)
 
 
 if __name__ == "__main__":
