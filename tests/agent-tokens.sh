@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Tests for agent-tokens. Run: bash plugins/unattended/bin/test_agent_tokens.sh
+# Tests for agent-tokens. Run: bash tests/agent-tokens.sh
 set -uo pipefail
-here=$(cd "$(dirname "$0")" && pwd)
+here=$(cd "$(dirname "$0")/../plugins/unattended/bin" && pwd)
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 fails=0
 t() { if [ "$2" = "$3" ]; then echo "ok    $1"; else echo "FAIL  $1: wanted [$3], got [$2]"; fails=$((fails + 1)); fi; }
