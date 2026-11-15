@@ -190,6 +190,14 @@ def run_provenance(out):
     launch = load(out / "launch.json") if (out / "launch.json").exists() else {}
     git = launch.get("git") or (load(out / "git.json") if (out / "git.json").exists() else
                                 (load(out / "stamp.json") if (out / "stamp.json").exists() else {}))
+    if not git.get("commit") and (out / "stamp.json").exists():
+        # a schema-2 stamp keeps the commit it ran on in snapshot.head (HEAD at launch, as git.json's commit was) and
+        # its uncommitted tracked files in snapshot.dirty; its command line is at the top level
+        st = load(out / "stamp.json")
+        snap = st.get("snapshot") if isinstance(st.get("snapshot"), dict) else {}
+        head = snap.get("head")
+        git = {**git, "commit": head if head and head != NA else None, "dirty": snap.get("dirty") or [],
+               "argv": git.get("argv") or st.get("argv")}
     files = {f.name: sha(f) for f in sorted(out.glob("*.jsonl")) if f.name in ("real.jsonl", "zero.jsonl", "instances.jsonl")}
     mtime = (out / "launch.json").stat().st_mtime if (out / "launch.json").exists() else None
     args = launch.get("args") or args_from_argv([a for a in git.get("argv") or [] if a != "--"])
@@ -317,6 +325,7 @@ ITEM_STATUSES = ("ok", "error", "empty", "truncated", "parse_failure")
 LARGE_BYTES = 5 * 1024 * 1024      # a file over this is listed in the snapshot by sha256, not stored
 RESAMPLES = 2000
 DETECT_Z = 2.8                     # two-sided alpha 0.05, power 0.8
+LINE8_SHOWN = 10                   # per-item pass rates printed; check.json holds them all
 LINE6 = ("metric", "comparison", "smallest_effect", "unit")
 NA = "n/a"
 
@@ -443,9 +452,42 @@ def fmt(x):
     return "-" if x is None else f"{x:.3f}"
 
 
+def pilot_folders(rec, root):
+    """The record's pilot run folders, each once: a folder named twice (however spelled) is one run."""
+    out, seen = [], set()
+    for run in (rec.get("pilot") or {}).get("runs") or []:
+        key = (root / run).resolve()
+        if key not in seen:
+            seen.add(key)
+            out.append(run)
+    return out
+
+
 def pilot_rows(rec, root, probs):
     return [[r for r in read_items(root / run, probs) if not str(r["arm"]).startswith("floor:")]
-            for run in (rec.get("pilot") or {}).get("runs") or []]
+            for run in pilot_folders(rec, root)]
+
+
+def pilot_gate(rec, root):
+    """Counted needs two distinct baseline pilot runs, each stamped, with different run ids."""
+    named = (rec.get("pilot") or {}).get("runs") or []
+    folders = pilot_folders(rec, root)
+    probs = []
+    if len(folders) < len(named):
+        probs.append(f"line 7: pilot.runs names the same folder more than once ({', '.join(named)}); a folder is one pilot run")
+    ids = {}
+    for f in folders:
+        st = load_stamp(root / f)
+        if st is None:
+            probs.append(f"line 7: pilot run {f} has no stamp.json; stamp each pilot run at launch")
+        else:
+            ids.setdefault(st.get("run_id"), []).append(f)
+    for rid, fs in ids.items():
+        if len(fs) > 1:
+            probs.append(f"line 7: pilot runs {', '.join(fs)} share run id {rid}; two pilot runs are two launches")
+    if len(ids) < 2:
+        probs.append(f"line 7: counted needs two distinct stamped baseline pilot runs with different run ids; found {len(ids)}")
+    return probs
 
 
 def line7(rec, runs):
@@ -494,7 +536,8 @@ def line8(rec, runs):
                 order.append(r["id"]); tally[r["id"]] = [0, 0]
             tally[r["id"]][0] += r["score"] >= pass_at
             tally[r["id"]][1] += 1
-    lines = [f"  {i} {tally[i][0]}/{tally[i][1]}" for i in order]
+    saturated = lambda i: tally[i][0] in (0, tally[i][1])
+    lines = [f"  {i} {tally[i][0]}/{tally[i][1]}" for i in sorted(order, key=lambda i: not saturated(i))]
     at0 = sum(1 for i in order if tally[i][0] == 0)
     at1 = sum(1 for i in order if tally[i][0] == tally[i][1])
     summary = (f"line 8: {len(order)} items over {len(runs)} baseline pilot runs; {at0} at 0, {at1} at 1, "
@@ -547,9 +590,20 @@ def line12(by_arm, arms, rec):
     return floors, means
 
 
-def counted_problems(rec, stamps, l7, floors, means, arms):
-    """The counted gate: every arm stamped against this record's line-6 hash, line 7 holds, a floor sits under the best arm."""
+def real_n(v):
+    return isinstance(v, int) and not isinstance(v, bool) and v > 0
+
+
+def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran):
+    """The counted gate: a real intended n, a scorer whose line-3 check ran, every arm stamped against this record's
+    line-6 hash, two distinct stamped pilot runs and line 7 holds, a floor sits under the best arm. A refusal by any
+    line `check` runs also denies the label; the caller adds those."""
     probs = []
+    if not real_n(rec.get("intended_n")):
+        probs.append(f"line 2: counted needs a whole number intended_n; the record has {rec.get('intended_n', 'none')!r}")
+    if not line3_ran:
+        probs.append("line 3: counted needs a declared scorer (scorer.command, file, broken, good) whose check passes; none is declared")
+    probs += pilot_gate(rec, root)
     l6 = line6_part(rec)
     if rec.get("status") == "exploratory" or not l6 or (rec.get("opened") or {}).get("line6_sha256") != l6:
         probs.append("line 6: the record opened exploratory or without hashed line-6 fields (metric, comparison, smallest effect, unit)")
@@ -830,21 +884,30 @@ def check_record(path):
     l7 = line7(rec, runs)
     result["line7"] = l7
     print(line7_text(l7, rec))
+    out = Path(path).with_suffix(".check.json")
     if runs:
         res8, lines, summary = line8(rec, runs)
         result["line8"] = res8
-        print(f"line 8: per-item pass rates over {len(runs)} baseline pilot runs (pass at {(rec.get('pilot') or {}).get('pass_at', 0.5)}):")
-        print("\n".join(lines))
+        print(f"line 8: per-item pass rates over {len(runs)} baseline pilot runs (pass at {(rec.get('pilot') or {}).get('pass_at', 0.5)}),"
+              f" saturated items first, at most {LINE8_SHOWN}:")
+        print("\n".join(lines[:LINE8_SHOWN]))
+        if len(lines) > LINE8_SHOWN:
+            print(f"  ... {len(lines) - LINE8_SHOWN} more")
         print(summary)
+        print(f"line 8: every item's pass rate is in {out} under line8.rates")
     floors, means = line12(by_arm, arms, rec)
     result["line12"] = {"floors": floors, "means": means}
     label = "exploratory"
     if any(st.get("label") == "counted" for st in stamps.values()):
-        cp = counted_problems(rec, {a: stamps.get(a, {}) for a in arms}, l7, floors, means, arms)
+        line3_ran = isinstance(result["line3"], dict) and "scorer_sha256" in result["line3"]
+        cp = counted_problems(rec, {a: stamps.get(a, {}) for a in arms}, l7, floors, means, arms, root, line3_ran)
+        earlier = len(probs)
         probs += [f"{p} (counted refused; the run stands as exploratory)" for p in cp]
-        label = "counted" if not cp else "exploratory"
+        label = "counted" if not probs else "exploratory"
+        if label != "counted":
+            print(f"counted refused: {len(cp)} counted-gate requirement(s) unmet and {earlier} other refusal(s); each is listed on stderr")
     result["label"], result["refusals"] = label, probs
-    Path(path).with_suffix(".check.json").write_text(json.dumps(result, indent=2) + "\n")
+    out.write_text(json.dumps(result, indent=2) + "\n")
     print(f"label: {label}")
     finish(probs)
 
@@ -944,7 +1007,36 @@ def parity_v2(a, rec):
     for p in problems:
         print(f"  FAIL  {p}")
     print("parity: " + ("PASS" if not problems else f"FAIL ({len(problems)})"))
+    parity_path(a.path).write_text(json.dumps({
+        "utc": now(), "pass": not problems, "problems": problems,
+        "record_frozen_sha256": (rec.get("opened") or {}).get("frozen_sha256", NA),
+        "run_ids": {arm: st.get("run_id") for arm, st in stamps.items()}}, indent=2) + "\n")
     sys.exit(1 if problems else 0)
+
+
+def parity_path(path):
+    return Path(path).with_suffix(".parity.json")
+
+
+def parity_gate(path, rec, root):
+    """A record that `check` labeled counted is quoted only with a passing parity result for the arms as stamped now."""
+    cp = Path(path).with_suffix(".check.json")
+    try:
+        counted = cp.is_file() and load(cp).get("label") == "counted"
+    except ValueError:
+        counted = False
+    if not counted:
+        return None
+    pp = parity_path(path)
+    res = load(pp) if pp.is_file() else None
+    now_ids = {arm: (load_stamp(root / spec["out"]) or {}).get("run_id") for arm, spec in rec["arms"].items()}
+    if res is None:
+        return f"line 13: {path} is labeled counted but has no parity result on file; run `prereg.py parity {path}`"
+    if not res.get("pass"):
+        return f"line 13: {path} is labeled counted but its parity failed ({pp}); the arms differ beyond `varies`"
+    if res.get("run_ids") != now_ids or res.get("record_frozen_sha256") != (rec.get("opened") or {}).get("frozen_sha256", NA):
+        return f"line 13: {pp} was written for other stamps or another version of the record; rerun `prereg.py parity {path}`"
+    return None
 
 
 def cmd_parity(a):
@@ -1000,14 +1092,25 @@ def cmd_ledger(a):
 NUMBER = re.compile(r"\d[\d.,]*\s?%|(?<![\w/.])\d+/\d+(?![\w/])")
 
 
+def id_pattern(ids):
+    """Run ids as whole tokens: not inside a longer word, hyphenated name or dotted name (run-1 is not in run-12,
+    run-1.5 or my-run-1). A sentence's closing period or a comma after an id is fine."""
+    alts = "|".join(re.escape(i) for i in sorted(ids, key=len, reverse=True))
+    return re.compile(rf"(?<![\w-])(?<!\w\.)(?:{alts})(?![\w-])(?!\.\w)") if ids else None
+
+
 def cmd_quote(a):
-    ids = set()
+    ids, gate = set(), []
     for src in a.sources:
         p = Path(src)
         if p.is_dir():
             ids |= stamp_ids(p)
             continue
         rec, root = load(p), rec_root(p)
+        if rec.get("schema") == 2:
+            g = parity_gate(src, rec, root)
+            if g:
+                gate.append(g)
         for spec in (rec.get("arms") or {}).values():
             ids |= stamp_ids(root / spec["out"])
         for f in list((rec.get("pilot") or {}).get("runs") or []) + list((rec.get("floors") or {}).get("runs") or []):
@@ -1015,13 +1118,17 @@ def cmd_quote(a):
         lp = ledger_path(p)
         if lp.is_file():
             ids |= {json.loads(l).get("run_id") for l in lp.read_text().splitlines() if l.strip()}
-    ids = {i for i in ids if i and i != NA}
-    bad = [(k, l) for k, l in enumerate(Path(a.report).read_text().splitlines(), 1) if NUMBER.search(l) and not any(i in l for i in ids)]
+    ids = {str(i) for i in ids if i and i != NA}
+    pat = id_pattern(ids)
+    bad = [(k, l) for k, l in enumerate(Path(a.report).read_text().splitlines(), 1)
+           if NUMBER.search(l) and not (pat and pat.search(l))]
     for k, l in bad:
         print(f"refused: line 10: {a.report}:{k} quotes a number with no run id: {l.strip()}", file=sys.stderr)
+    for g in gate:
+        print(f"refused: {g}", file=sys.stderr)
     if not bad:
         print(f"quote: every rate and fraction in {a.report} carries a run id ({len(ids)} known)")
-    sys.exit(1 if bad else 0)
+    sys.exit(1 if bad or gate else 0)
 
 
 def cmd_induct(a):
