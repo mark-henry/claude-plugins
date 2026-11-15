@@ -614,11 +614,17 @@ def cmd_open(a):
     for arm, spec in rec["arms"].items():
         if spec.get("data"):
             spec["data"] = check_data(spec["data"], root, arm)
-    exploratory = rec.get("status") == "exploratory" or str(rec.get("bar", "")).startswith("none")
     missing = line6_missing(rec)
-    if missing and not exploratory:
-        print(f"line 6: primary.{', primary.'.join(missing)} not set; opened exploratory: these runs cannot be counted")
-        exploratory = True
+    causes = []
+    if rec.get("status") == "exploratory":
+        causes.append("status is \"exploratory\"")
+    if str(rec.get("bar", "")).startswith("none"):
+        causes.append(f"bar is {rec['bar']!r}")
+    if missing:
+        causes.append(f"line 6: primary.{', primary.'.join(missing)} not set")
+    exploratory = bool(causes)
+    if causes:
+        print(f"{'; '.join(causes)}; opened exploratory: these runs cannot be counted")
     state, diff = git_state(Path(a.path).parent)
     if diff:
         dp = Path(a.path).with_suffix(".diff")
@@ -723,7 +729,12 @@ def cmd_stamp(a):
         l7 = line7(rec, pilot_rows(rec, rec_root(a.record), probs))
         if not line7_holds(l7, rec):
             die(line7_text(l7, rec) + "; stamp without --counted to run exploratory")
-    data += [{"path": d, **data_facts(d)} for d in a.data or []]
+    # each file once: a --data file the record already lists (or one given twice) is not added again
+    seen = {(rec_root(a.record) / e["path"]).resolve() for e in data}
+    for d in a.data or []:
+        if Path(d).resolve() not in seen:
+            seen.add(Path(d).resolve())
+            data.append({"path": d, **data_facts(d)})
     run_id = a.run_id or f"{out.name}-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     config = NA
     if a.config:
@@ -858,6 +869,25 @@ def features(st):
     return f
 
 
+def own_marks(f, arm, out, root):
+    """Features with the arm's own name and its own out folder (or a path under it) replaced by marks, so two arms that
+    differ there by construction compare equal. Another arm's name or folder is left as written."""
+    outs = {os.path.normpath(out), str((root / out).resolve())}
+    def mark(v):
+        if isinstance(v, list):
+            return [mark(x) for x in v]
+        if not isinstance(v, str) or not v:
+            return v
+        if v == arm:
+            return "<arm>"
+        p = str(Path(v).resolve()) if os.path.isabs(v) else os.path.normpath(v)
+        for o in outs:
+            if p == o or p.startswith(o + os.sep):
+                return "<out>" + p[len(o):]
+        return v
+    return {k: mark(v) for k, v in f.items()}
+
+
 def parity_v2(a, rec):
     root = rec_root(a.path)
     varies = set(rec.get("varies", [])) | IGNORED_ARGS
@@ -887,8 +917,10 @@ def parity_v2(a, rec):
     for other in names[1:]:
         ref = names[0]
         f0, f1 = features(stamps[ref]), features(stamps[other])
+        m0 = own_marks(f0, ref, rec["arms"][ref]["out"], root)
+        m1 = own_marks(f1, other, rec["arms"][other]["out"], root)
         for key in sorted(set(f0) | set(f1)):
-            if not allowed(key) and plain(f0.get(key)) != plain(f1.get(key)):
+            if not allowed(key) and plain(m0.get(key)) != plain(m1.get(key)):
                 problems.append(f"line 13: {key}: {ref}={f0.get(key)!r} {other}={f1.get(key)!r} (not in varies)")
         s0, s1 = stamps[ref].get("snapshot"), stamps[other].get("snapshot")
         if not isinstance(s0, dict) or not isinstance(s1, dict):

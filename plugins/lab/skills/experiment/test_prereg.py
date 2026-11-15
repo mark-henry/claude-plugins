@@ -331,6 +331,20 @@ class NewRecord(unittest.TestCase):
         self.assertIn("line 6", r.stdout)
         self.assertEqual(json.loads((d2 / rp2).read_text())["status"], "exploratory")
 
+    def test_open_names_the_field_that_made_the_record_exploratory(self):
+        d = lab_repo()
+        rp = record(d, bar="none, exploratory")
+        r = run(d, "open", rp)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads((d / rp).read_text())["status"], "exploratory")
+        cause = [l for l in r.stdout.splitlines() if "bar" in l and "none, exploratory" in l]
+        self.assertEqual(len(cause), 1, r.stdout)
+        d2 = lab_repo()
+        rp2 = record(d2, primary={"metric": "mean score", "comparison": "treated minus untreated", "unit": "item"})
+        r = run(d2, "open", rp2)
+        cause = [l for l in r.stdout.splitlines() if "smallest_effect" in l]
+        self.assertEqual(len(cause), 1, r.stdout)
+
 
 class StampV2(unittest.TestCase):
     def test_stamp_records_every_field_of_a_known_repository_state(self):
@@ -426,6 +440,21 @@ class StampV2(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("line 13", r.stderr)
         self.assertIn("data.jsonl", r.stderr)
+
+
+    def test_a_data_file_given_to_stamp_and_listed_in_the_record_is_recorded_once(self):
+        d = lab_repo()
+        (d / "data.jsonl").write_text('{"x": 1}\n')
+        (d / "extra.jsonl").write_text('{"y": 1}\n')
+        arms = {a: {"out": f"runs/{a}", "command": f"python train.py --model {m}", "data": ["data.jsonl"]}
+                for a, m in (("untreated", "a"), ("treated", "b"))}
+        rp = record(d, arms=arms)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        r = run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--data", "data.jsonl",
+                "--data", "./data.jsonl", "--data", "extra.jsonl", "--data", "extra.jsonl", "--", "x")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads((d / "runs" / "untreated" / "stamp.json").read_text())["data"]
+        self.assertEqual([e["path"] for e in data], ["data.jsonl", "extra.jsonl"])
 
 
 class CountedGate(unittest.TestCase):
@@ -660,6 +689,34 @@ class ArmComparison(unittest.TestCase):
         self.assertIn("line 13", r.stdout)
         d, r = self.two_arms(varies=("model", "data"), data=('{"x": 1}\n', '{"x": 1}\n{"x": 2}\n'))
         self.assertEqual(r.returncode, 0, r.stdout)
+
+    def own_label_toy(self, extra):
+        """Both arms launched with their own label and out folder as values; extra(arm) appends further args."""
+        d = lab_repo()
+        rp = record(d)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        for arm, model in (("untreated", "a"), ("treated", "b")):
+            r = run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--", "python", "train.py", "--model", model,
+                    "--arm", arm, "--out", f"runs/{arm}", "--save-dir", f"./runs/{arm}/", "--log", f"runs/{arm}/log.txt",
+                    f"runs/{arm}", *extra(arm))
+            self.assertEqual(r.returncode, 0, r.stderr)
+        return run(d, "parity", rp)
+
+    def test_the_arms_own_label_and_out_folder_are_never_a_difference(self):
+        r = self.own_label_toy(lambda arm: [])
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("parity: PASS", r.stdout)
+
+    def test_other_differences_are_still_refused_beside_the_arms_own_label(self):
+        r = self.own_label_toy(lambda arm: ["--lr", "1" if arm == "untreated" else "2"])
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("lr", r.stdout)
+        fails = [l for l in r.stdout.splitlines() if l.strip().startswith("FAIL")]
+        self.assertEqual(len(fails), 1, r.stdout)
+        # an arm writing into the other arm's folder is a difference, not its own folder
+        r = self.own_label_toy(lambda arm: ["--save-to", "runs/treated" if arm == "untreated" else "runs/untreated"])
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("save_to", r.stdout)
 
     def test_refuses_an_arm_with_no_stamp(self):
         d, r = self.two_arms()
