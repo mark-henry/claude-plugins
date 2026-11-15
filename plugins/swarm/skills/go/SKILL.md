@@ -1,6 +1,6 @@
 ---
 name: go
-description: "Carry a frozen brief to a finished, checked result with nobody watching: large, long or many-agent work, run inside the approved cap without stopping to ask. The front door for \"do this, at scale, without me\". Use for \"/swarm:go\", \"run the brief\", \"do this without me\", \"run this overnight\", \"run it while I'm away\", \"fan this out\", \"swarm this\", \"throw agents at it\", \"spend tokens on this\", \"plan this for agents\", \"how should I parallelize this\", and any multi-hour, multi-agent or unattended job. Not for deciding what is wanted or setting the cap (swarm:brief, loaded first when no brief is frozen), one loop against one machine check (swarm:loop), designing a single experiment (lab:experiment), choosing among options (decide:vote), improving one proposal (decide:improve),."
+description: "Carry a frozen brief to a finished, checked result with nobody watching: large, long or many-agent work, run inside the approved cap without stopping to ask. The front door for \"do this, at scale, without me\". Use for \"/swarm:go\", \"run the brief\", \"do this without me\", \"run this overnight\", \"run it while I'm away\", \"fan this out\", \"swarm this\", \"throw agents at it\", \"spend tokens on this\", \"plan this for agents\", \"how should I parallelize this\", and any multi-hour, multi-agent or unattended job. Not for deciding what is wanted or setting the cap (swarm:brief, loaded first when no brief is frozen), one loop against one machine check (swarm:loop), designing a single experiment (lab:experiment)."
 ---
 
 # Go
@@ -37,11 +37,10 @@ What varies between jobs is the checker: it sets the pattern, the width, the sto
 | **Machine check**: tests, types, a sealed eval | `swarm:loop`, one owner per file or failing test | pass; round limit; no progress | you ran it on the integrated state |
 | **Validated judge** (`evals:judge`) | bulk calls, one item each | last item; pilot yield under its bar | `evals:audit` read a sample; errored items counted |
 | **Cheap selector**: a test that tells a hit from noise | best-of-N on a narrow slice | a hit; N (all failed: narrow the slice or move up a model, never raise N) | the hit reproduces for you |
-| **Exact agreement** of independent answers | an odd number of fresh contexts, tallied in code (`decide:vote`) | vote decided; sample limit | a split is reported as a split |
 | **Spot-checkable summary**: each claim with its source | research fan-out | work list covered; a round with nothing new | `check:claims` opened the sources |
 | **Only the user** | one agent readies the question | at once: it waits, the rest runs | their word, on return |
 
-Take the highest row that fits. A piece is the smallest thing its checker could reject alone; one needing two kinds of checker is two pieces. A checker is accepted by someone other than its builder; an experiment's design goes to `lab:experiment`, and a choice among candidates to `decide:*`.
+Take the highest row that fits. A piece is the smallest thing its checker could reject alone; one needing two kinds of checker is two pieces. A checker is accepted by someone other than its builder; an experiment's design goes to `lab:experiment`.
 
 ## The attack decides whether the plan may spend
 

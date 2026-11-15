@@ -1,6 +1,6 @@
 ---
 name: draftoff
-description: "Write a long or high-stakes document (a skill, a plan, a spec, a report) by draft-off: several fresh drafts on different organizing ideas, grafted into one, then picked blind against a plain draft. Use for \"/decide:draftoff\", \"draft-off\", \"draft it three ways\", \"get three drafts and merge\", \"write this skill properly\", or any document whose structure is itself an open question. Not for a short document or one with a single sensible structure (just write it), not for improving a draft that exists (decide:improve), not for code or designs that must be built and measured (decide:bakeoff), and not for finding what is wrong with a finished draft (check:attack)."
+description: "Write a long or high-stakes document (a skill, a plan, a spec, a report) by draft-off: several fresh drafts on different organizing ideas, grafted into one, then picked blind against a plain draft. Use for \"/decide:draftoff\", \"draft-off\", \"draft it three ways\", \"get three drafts and merge\", \"write this skill properly\", or any document whose structure is itself an open question. Not for a short document or one with a single sensible structure (just write it), not for improving a draft that exists, not for code or designs that must be built and measured, and not for finding what is wrong with a finished draft (check:attack)."
 ---
 
 # Draft-off

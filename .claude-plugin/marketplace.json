@@ -55,7 +55,7 @@
     {
       "name": "decide",
       "source": "./plugins/decide",
-      "description": "Reach a decision with fresh agents, or with the user. vote: two blind voters on different models pick among given options, with heavier tiebreakers only when they disagree. improve: a chain of challengers, each asking \"is there a better way to do this?\" and keeping or improving a proposal. bakeoff: unanchored brainstorm, distinct solution families, prototype, red-team, repair, blind judge. draftoff: three drafts of a document on different organizing ideas, grafted, then picked blind against a plain default draft. reframe: before spending, look for what makes the problem unnecessary or smaller. docket: present the user one decision at a time, each with the context needed to decide."
+      "description": "Reach a decision with fresh agents, or with the user. draftoff: three drafts of a document on different organizing ideas, grafted, then picked blind against a plain default draft. docket: present the user one decision at a time, each with the context needed to decide."
     },
     {
       "name": "check",
