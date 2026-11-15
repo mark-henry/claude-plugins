@@ -9,13 +9,9 @@ An LLM judge is a classifier that imitates one expert. It is only as trustworthy
 
 ## The procedure: Hamel's skills
 
-Follow Hamel Husain's `evals-skills` plugin (MIT, https://github.com/hamelsmu/evals-skills). If it isn't installed: `/plugin marketplace add hamelsmu/evals-skills`, then `/plugin install evals-skills@hamelsmu-evals-skills`.
+The procedure is Hamel Husain's `evals-skills` plugin (MIT, https://github.com/hamelsmu/evals-skills); if it isn't installed: `/plugin marketplace add hamelsmu/evals-skills`, then `/plugin install evals-skills@hamelsmu-evals-skills`. Load and follow three of its skills in order: `error-analysis`, `write-judge-prompt`, `validate-evaluator`. This skill adds only the rules below.
 
-1. `error-analysis`: open and axial coding of ~100 traces, stopping when the last 20 add no new failure type; fix what can be fixed before building any evaluator.
-2. `write-judge-prompt`: one binary judge per failure mode, critique before verdict, few-shot examples from the train split including a borderline case.
-3. `validate-evaluator`: train/dev/test split, iterate on dev to TPR and TNR > 90% (80% minimum), run test exactly once, correct the observed pass rate for judge error (Rogan-Gladen) with a bootstrap interval.
-
-Also there: `generate-synthetic-data`, `build-review-interface`, `evaluate-rag`, and `eval-audit` (audits a whole eval *pipeline*; to audit a set of *scores* item by item, use `evals:spot-check`).
+This is the second stage of his critique shadowing. The first, the expert ruling on cases while the component itself gets fixed, is `evals:tune-prompt` at small scale; the prompt edited here is the judge's. His `eval-audit` audits a whole eval pipeline; to read a sample of scores item by item, use `evals:spot-check`.
 
 ## House rules on top
 
