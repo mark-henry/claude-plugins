@@ -1,6 +1,6 @@
 {
   "name": "check",
-  "description": "Can this be trusted? attack: a fresh agent that has not seen your reasoning finds what is wrong with a plan, a brief or finished work and returns findings; a second fresh agent checks any finding that would change a decision; the attack is kept as a file. claims: fresh agents verify what a report, draft or hand-back asserts before it travels: that \"done\" is true of the artifact, that each cited source says what it is cited for, that a synthesis covers its sources.",
+  "description": "Can this be trusted? attack: a fresh agent that has not seen your reasoning finds what is wrong with a plan, a brief or finished work and returns findings; a second fresh agent checks any finding that would change a decision; the attack is kept as a file.",
   "author": {
     "name": "Mark Henry"
   },

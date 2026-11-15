@@ -37,7 +37,7 @@ What varies between jobs is the checker: it sets the pattern, the width, the sto
 | **Machine check**: tests, types, a sealed eval | `swarm:loop`, one owner per file or failing test | pass; round limit; no progress | you ran it on the integrated state |
 | **Validated judge** (`evals:judge`) | bulk calls, one item each | last item; pilot yield under its bar | `evals:audit` read a sample; errored items counted |
 | **Cheap selector**: a test that tells a hit from noise | best-of-N on a narrow slice | a hit; N (all failed: narrow the slice or move up a model, never raise N) | the hit reproduces for you |
-| **Spot-checkable summary**: each claim with its source | research fan-out | work list covered; a round with nothing new | `check:claims` opened the sources |
+| **Spot-checkable summary**: each claim with its source | research fan-out | work list covered; a round with nothing new | each claim opened at its source |
 | **Only the user** | one agent readies the question | at once: it waits, the rest runs | their word, on return |
 
 Take the highest row that fits. A piece is the smallest thing its checker could reject alone; one needing two kinds of checker is two pieces. A checker is accepted by someone other than its builder; an experiment's design goes to `lab:experiment`.
@@ -60,7 +60,7 @@ Launch a wave only if measured spend, plus the wave's top estimate, plus the sha
 
 ## Your check decides accepted
 
-Each worker gets a brief by path and hands back a status and a path ([templates.md](templates.md)). A piece is accepted by its row's check, run by you on the integrated state and keeping the check's own exit status (a pipe into `tail` or `tee` reports the pipe's), never by the worker's word. Judges, voters and attackers get the evidence and the standard, never your favorite: a workflow relays the message that triggered it to every agent, and a forked subagent inherits your conversation, so seat them as fresh agents given only files, or launch their workflow from a turn no user message triggered: schedule a one-shot timer for one minute from now, and launch in the turn it starts. Run `check:claims` over hand-backs the report relies on, and `check:attack` over the integrated result.
+Each worker gets a brief by path and hands back a status and a path ([templates.md](templates.md)). A piece is accepted by its row's check, run by you on the integrated state and keeping the check's own exit status (a pipe into `tail` or `tee` reports the pipe's), never by the worker's word. Judges, voters and attackers get the evidence and the standard, never your favorite: a workflow relays the message that triggered it to every agent, and a forked subagent inherits your conversation, so seat them as fresh agents given only files, or launch their workflow from a turn no user message triggered: schedule a one-shot timer for one minute from now, and launch in the turn it starts. A hand-back the report relies on is a claim: audit it against a tool result from this session. Run `check:attack` over the integrated result.
 
 ## The report decides done
 

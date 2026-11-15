@@ -1,6 +1,6 @@
 ---
 name: attack
-description: "Send a fresh agent that has not seen your reasoning to find what is wrong with a plan, a brief or a piece of finished work before anyone relies on it or spends on it. It returns findings and changes nothing. Use for \"/check:attack\", \"attack this\", \"have agents attack the plan before we spend\", \"red-team it\", \"pre-mortem\", \"find what's wrong with this\", \"get a fresh review of this\", \"subject it to <model> review\", before any plan spends, and after a task or a rewrite, before the work is merged, reported or built on. Not for verifying what a report asserts (that \"done\" and \"passing\" are true, that a cited source says what it is cited for, that a rewrite or synthesis kept everything): use check:claims. Not for getting a better version back: use decide:improve. Not for a property a script or test can check: run that."
+description: "Send a fresh agent that has not seen your reasoning to find what is wrong with a plan, a brief or a piece of finished work before anyone relies on it or spends on it. It returns findings and changes nothing. Use for \"/check:attack\", \"attack this\", \"have agents attack the plan before we spend\", \"red-team it\", \"pre-mortem\", \"find what's wrong with this\", \"get a fresh review of this\", \"subject it to <model> review\", before any plan spends, and after a task or a rewrite, before the work is merged, reported or built on. Not for a property a script or test can check: run that."
 ---
 
 # Attack before you rely on it

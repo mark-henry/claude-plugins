@@ -22,7 +22,7 @@ One folder per experiment. Inside `swarm:go` this skill designs the experiment p
 7. **Freeze and launch.** The FREEZE line, then Sign-off at launch. Ask once earlier against a dry run's record, while a *record* block is cheap to fix.
 8. **Counted runs,** arms interleaved in time; `swarm:loop` for unattended work against a machine check.
 9. **Read** in the fixed order (templates.md), with `evals:audit`.
-10. **Quote.** `prereg.py close`; `check:claims` on the draft report; Sign-off at quote, on the sentence as it will be written; `figure:make` draws it.
+10. **Quote.** `prereg.py close`; each number in the draft report audited against a tool result from this session; Sign-off at quote, on the sentence as it will be written; `figure:make` draws it.
 11. **Report,** the user's decisions last; then an amendment, a new plan or a stop.
 
 ## Start from the sentence

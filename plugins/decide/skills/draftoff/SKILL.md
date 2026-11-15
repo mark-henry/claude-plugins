@@ -37,7 +37,7 @@ Before any attack or polish, two fresh judges each rank three texts, ideal first
 
 ## 5. Then check it
 
-Run `check:attack` on the winner once, against the brief. If it condenses sources, run `check:claims` for coverage. Fixes after an attack add words: count them, and say when the text has passed its limit.
+Run `check:attack` on the winner once, against the brief. If it condenses sources, check its coverage against them, each claim opened at its source. Fixes after an attack add words: count them, and say when the text has passed its limit.
 
 ## The record
 
