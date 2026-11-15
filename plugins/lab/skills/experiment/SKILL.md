@@ -22,11 +22,11 @@ The stamp snapshots the working tree (untracked files included, `.gitignore` res
 ## Counted run
 
 1. `prereg.py new prereg/<slug>.json`, then fill it in: question, bar, decision, `primary` (metric, comparison, smallest effect as a number, unit), `intended_n`, the arms with each one's `out` folder, `command` and `data` file paths, `varies` (the keys allowed to differ between arms, e.g. `model`, `config.lr`, `code`; an arm's own name and folder never count, but different seeds per arm need `seed` and `seeds`), `pilot.runs`, `scorer`, `floors.runs`. A `bar` starting "none" opens the record exploratory.
-2. Run two baseline pilot runs on the same units, each stamped with its own run id, and list their folders in `pilot.runs`. Counted also needs the scorer of line 3 and a whole-number `intended_n`.
+2. Run two baseline pilot runs on the same units, each stamped with its own run id, and list their folders in `pilot.runs`. Counted also needs line 3's scorer and a whole-number `intended_n`.
 3. `prereg.py open <record>` hashes the frozen fields and the line-6 fields, and records each data file's sha256 and line count. Commit the record. Missing line-6 fields open it exploratory. A record opened wrongly is left as it is: set its `status` to `abandoned` and start a new one.
 4. Launch each arm: `prereg.py stamp <arm out> --record <record> --arm <arm> --counted --run-id <tracker id> --config <file> --model <id> --model-revision <rev> --data <file> --seed <n> -- <command>`. For an API model give `--model-date`; for a container, `--image <digest>`; with no model, omit `--model`. `--counted` is refused unless line 6 was hashed and line 7 holds; drop it and the run goes ahead exploratory.
 5. `prereg.py check <record>`: lines 2, 3, 7, 8 and 12, and the counted gate. It writes `<record>.check.json`.
-6. `prereg.py parity <record>`: line 13. `quote` refuses a counted record without a passing one.
+6. `prereg.py parity <record>`: line 13. `quote` refuses a counted record without a pass.
 7. Each time the test split is scored, once per scoring and not per arm: `prereg.py ledger <record> <run folder>`. Report the count it prints.
 8. `prereg.py close <record>`, then `prereg.py quote <report.md> <record>` before the report leaves your hands.
 
