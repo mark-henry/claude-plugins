@@ -53,7 +53,10 @@ TEMPLATE = {
 
 
 def sh(*cmd, cwd=None):
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    try:
+        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    except OSError:      # git not installed, or cwd missing: the same as a failed call
+        return None
     return r.stdout.strip() if r.returncode == 0 else None
 
 
@@ -363,7 +366,13 @@ def data_facts(path):
 def check_data(entries, root, arm):
     """Line 13: recompute each declared data file; refuse a mismatch with what the record holds. Returns filled entries."""
     out = []
+    if not isinstance(entries, (list, type(None))):
+        die(f"line 13: arm {arm}: data must be a list of file paths or {{\"path\": ...}} objects")
     for e in entries or []:
+        if isinstance(e, str):      # a bare path is the same as {"path": path}
+            e = {"path": e}
+        if not isinstance(e, dict) or not isinstance(e.get("path"), str):
+            die(f"line 13: arm {arm}: data entry {e!r} is neither a file path nor an object with a \"path\"")
         p = root / e["path"]
         if not p.is_file():
             die(f"line 13: arm {arm}: data file {e['path']} is missing")
@@ -651,11 +660,18 @@ def snapshot(root, out, run_id):
                 skip.append(f)
     with tempfile.TemporaryDirectory() as td:
         env = {**os.environ, "GIT_INDEX_FILE": os.path.join(td, "index")}
-        g = lambda *c: subprocess.run(["git", *c], cwd=root, env=env, capture_output=True, text=True, check=True).stdout.strip()
+        g = lambda *c, extra_env=None, **kw: subprocess.run(["git", *c], cwd=root, env={**env, **(extra_env or {})},
+                                                             capture_output=True, text=True, check=True, **kw).stdout.strip()
         if head:
             g("read-tree", head)
-        excl = [f":(top,exclude){x}" for x in skip + ([out_rel] if out_rel else [])]
-        g("add", "-A", "--", ":/", *excl)
+        # Name each file to add rather than excluding paths: git refuses (exit 1) any pathspec, exclude ones included,
+        # that touches an ignored path on disk, as when the run folder sits under an ignored, existing runs/.
+        keep = lambda f: f and f not in skip and not (out_rel and (f == out_rel or f.startswith(out_rel + "/")))
+        names = sorted({f for f in (g("ls-files", "-z").split("\0") + g("ls-files", "-z", "-o", "--exclude-standard").split("\0"))
+                        if keep(f)})
+        if names:      # an empty pathspec list would mean "add everything"
+            g("add", "-A", "--pathspec-from-file=-", "--pathspec-file-nul", input="\0".join(names),
+              extra_env={"GIT_LITERAL_PATHSPECS": "1"})
         tree = g("write-tree")
         env.update(GIT_AUTHOR_NAME="prereg.py stamp", GIT_AUTHOR_EMAIL="lab@localhost",
                    GIT_COMMITTER_NAME="prereg.py stamp", GIT_COMMITTER_EMAIL="lab@localhost")
@@ -1050,8 +1066,13 @@ def main(argv=None):
         argv, launch = argv[:k], argv[k + 1:]
     a = ap.parse_args(argv)
     a.argv = launch
-    {"new": cmd_new, "open": cmd_open, "stamp": cmd_stamp, "parity": cmd_parity, "close": cmd_close, "ls": cmd_ls,
-     "check": cmd_check, "ledger": cmd_ledger, "quote": cmd_quote, "induct": cmd_induct}[a.cmd](a)
+    try:
+        {"new": cmd_new, "open": cmd_open, "stamp": cmd_stamp, "parity": cmd_parity, "close": cmd_close, "ls": cmd_ls,
+         "check": cmd_check, "ledger": cmd_ledger, "quote": cmd_quote, "induct": cmd_induct}[a.cmd](a)
+    except subprocess.CalledProcessError as e:      # an unexpected git failure: one line with git's own message
+        cmd = e.cmd if isinstance(e.cmd, (list, tuple)) else [str(e.cmd)]
+        msg = [l.strip() for l in (e.stderr or e.stdout or "").splitlines() if l.strip() and not l.startswith("hint:")]
+        die(f"{' '.join(map(str, cmd[:2]))} failed (exit {e.returncode}): {'; '.join(msg) or 'no message'}")
 
 
 if __name__ == "__main__":

@@ -762,5 +762,83 @@ class Exploratory(unittest.TestCase):
         self.assertIn("stamp", r.stderr)
 
 
+def ignore(d, *patterns):
+    """Add .gitignore patterns and commit them, as a project that keeps its runs out of git would."""
+    with open(d / ".gitignore", "a") as f:
+        f.writelines(p + "\n" for p in patterns)
+    git(d, "add", ".gitignore"); git(d, "commit", "-qm", "ignore runs")
+
+
+class IgnoredRunFolders(unittest.TestCase):
+    """Run folders under an ignored path that already exists (`runs/` in .gitignore, an earlier run in it)."""
+
+    def assertClean(self, r):
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_a_second_stamp_into_an_ignored_existing_parent(self):
+        d = lab_repo(); ignore(d, "runs/")
+        self.assertClean(run(d, "stamp", "runs/try1", "--", "python", "toy.py"))
+        (d / "train.py").write_text("lr = 2\n")
+        r = run(d, "stamp", "runs/try2", "--", "python", "toy.py")
+        self.assertClean(r)
+        snap = json.loads((d / "runs" / "try2" / "stamp.json").read_text())["snapshot"]
+        self.assertEqual(git(d, "show", f"{snap['commit']}:train.py"), "lr = 2")
+        self.assertEqual(git(d, "ls-tree", "-r", "--name-only", snap["commit"]).count("runs/"), 0)
+
+    def test_a_second_stamp_with_a_record_into_an_ignored_existing_parent(self):
+        d = lab_repo(); ignore(d, "runs/")
+        rp = record(d)
+        self.assertClean(run(d, "open", rp))
+        for arm in ("untreated", "treated"):
+            self.assertClean(run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--", "python", "train.py"))
+
+    def test_counted_path_with_ignored_arm_folders_and_side_files(self):
+        # the pilots already sit under the ignored runs/ before the first stamp; the record's side files are ignored too
+        d = lab_repo(); ignore(d, "runs/", "prereg/*.check.json", "prereg/*.ledger.jsonl")
+        rp = record(d, intended_n=40)
+        quiet_pilots(d, 40)
+        self.assertClean(run(d, "open", rp))
+        for arm, model in (("untreated", "a"), ("treated", "b")):
+            self.assertClean(run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--counted",
+                                 "--run-id", f"toy-{arm}", "--", "python", "train.py", "--model", model))
+        write_items(d, "runs/untreated", rows("untreated", [k % 2 for k in range(40)]))
+        write_items(d, "runs/treated", rows("treated", [1 if k % 4 else 0 for k in range(40)]))
+        write_items(d, "runs/untreated", rows("floor:constant", [0.0] * 40))
+        r = run(d, "check", rp)
+        self.assertClean(r)
+        self.assertIn("label: counted", r.stdout)
+        r = run(d, "parity", rp)
+        self.assertClean(r)
+        self.assertIn("parity: PASS", r.stdout)
+        self.assertClean(run(d, "stamp", "runs/test1", "--run-id", "test-run-1", "--", "x"))
+        self.assertClean(run(d, "ledger", rp, "runs/test1"))
+
+    def test_a_data_entry_may_be_a_bare_path_and_a_bad_one_is_refused(self):
+        d = lab_repo(); ignore(d, "runs/")
+        (d / "items.jsonl").write_text('{"x": 1}\n')
+        arms = {a: {"out": f"runs/{a}", "command": f"python train.py --model {m}", "data": ["items.jsonl"]}
+                for a, m in (("untreated", "a"), ("treated", "b"))}
+        rp = record(d, arms=arms)
+        self.assertClean(run(d, "open", rp))
+        self.assertEqual(json.loads((d / rp).read_text())["arms"]["treated"]["data"][0]["lines"], 1)
+        self.assertClean(run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--", "x"))
+        arms["treated"]["data"] = [7]
+        rp = record(d, arms=arms)
+        r = run(d, "open", rp)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertIn("data entry 7", r.stderr)
+
+    def test_an_unexpected_git_error_is_a_one_line_refusal(self):
+        d = lab_repo()
+        (d / ".git" / "refs" / "lab").write_text("not a directory\n")      # update-ref cannot create refs/lab/<id>
+        r = run(d, "stamp", "runs/try1", "--run-id", "x1", "--", "x")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(len(r.stderr.strip().splitlines()), 1, r.stderr)
+        self.assertRegex(r.stderr, r"^refused: git ")
+
+
 if __name__ == "__main__":
     unittest.main()
