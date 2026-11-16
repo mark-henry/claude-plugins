@@ -13,6 +13,7 @@ has() { grep -qF -- "$2" "$1" && echo yes || echo no; }
 w=$tmp/w s=$tmp/s
 # The fake worker: pass k writes line k of $tmp/seq to `score`, rewrites a tracked file, adds an untracked file,
 # and rewrites an ignored one. With FORGE=k it also forges the pass count on pass k (the existing tamper check).
+# With a timestamp in $tmp/pin it sets score's mtime to it after writing (a same-size rewrite git sees only by content).
 # It saves its stdin as stdin-k and what it found on disk as saw-k (a.txt / score / ig.log / new-* files).
 # A score line "a b" makes the check report a the first time it sees that pass's files and b on a rerun.
 cat > "$tmp/worker.sh" <<EOF
@@ -23,6 +24,7 @@ sed -n "\${n}p" "$tmp/seq" > score
 echo "pass \$n" > a.txt
 echo "pass \$n" > "new-\$n.txt"
 echo "pass \$n" > ig.log
+[ -s "$tmp/pin" ] && touch -t "\$(cat "$tmp/pin")" score
 [ "\$n" = "\$(cat "$tmp/forge")" ] && echo 0 > "$s/passes"
 exit 0
 EOF
@@ -40,7 +42,7 @@ g() { git -C "$w" "$@"; }
 fresh() {
   local kind=$1; shift
   rm -rf "$w" "$s"; mkdir -p "$w"; echo go > "$tmp/prompt.md"
-  printf '%s\n' "$@" > "$tmp/seq"; echo 0 > "$tmp/n"; echo 0 > "$tmp/forge"; : > "$tmp/checks"; rm -f "$tmp"/stdin-* "$tmp"/saw-*
+  printf '%s\n' "$@" > "$tmp/seq"; echo 0 > "$tmp/n"; echo 0 > "$tmp/forge"; : > "$tmp/pin"; : > "$tmp/checks"; rm -f "$tmp"/stdin-* "$tmp"/saw-*
   echo 0 > "$w/score"; echo base > "$w/a.txt"; echo base > "$w/staged.txt"; echo base > "$w/ig.log"
   if [ "$kind" = git ]; then
     echo '*.log' > "$w/.gitignore"
@@ -82,6 +84,19 @@ t "hits the cap (exit 2)" "$code" 2
 t "the existing cap line is unchanged" "$(has "$tmp/out" 'hit max passes (3), best 5')" yes
 t "the best pass's files are restored" "$(cat "$w/a.txt") $(cat "$w/score")" "pass 2 5"
 t "the final state is saved under refs/arbiter/final" "$(g show refs/arbiter/final:score 2>/dev/null)" 2
+t "the user's index, HEAD and branch are unchanged" "$(user_state)" "$before"
+
+echo "-- a same-size rewrite whose stat matches the user's racily clean index entry is still snapshotted"
+# Deterministic stand-in for a rewrite in the same second as the index entry: score keeps size and mtime (ctime is
+# not trusted), and the index is as new as the entry, so git itself compares content. A copy of the index that took
+# the current time as its mtime would skip that comparison and snapshot the old score.
+fresh git 3 5 2
+g config core.trustctime false; touch -t 202001010000 "$w/score"; g add score; touch -t 202001010000 "$w/.git/index"
+echo 202001010000 > "$tmp/pin"; before=$(user_state)
+run STALL=100 "$loop" "$w" 3
+t "hits the cap (exit 2)" "$code" 2
+t "each pass's snapshot holds its score" "$(g show refs/arbiter/pass-1:score 2>/dev/null) $(g show refs/arbiter/pass-2:score 2>/dev/null) $(g show refs/arbiter/pass-3:score 2>/dev/null)" "3 5 2"
+t "the best pass's files are restored" "$(cat "$w/a.txt") $(cat "$w/score")" "pass 2 5"
 t "the user's index, HEAD and branch are unchanged" "$(user_state)" "$before"
 
 echo "-- a passing exit"
