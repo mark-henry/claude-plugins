@@ -34,7 +34,8 @@
 # The check runs once before pass 1: if it already passes, no worker runs.
 # Ratchet: when <loop-dir> is in a git work tree, each pass's files there (tracked and untracked, .gitignore
 # respected) are snapshotted under refs/arbiter/pass-N, the count in its commit message; the index, HEAD and
-# branches are never touched. A pass counting strictly below the best pass so far gets the check run once more
+# branches are never touched. The starting state is snapshotted too (refs/arbiter/baseline-N, N the passes
+# already used) and is the first best. A pass counting strictly below the best state so far gets the check run once more
 # on the same files: if the rerun is still below, the pass is rejected (its ref keeps its files) and the files
 # are reset to the best pass before the next worker starts; if not, the pass is kept with the rerun's count and
 # the log says the check disagreed with itself. Without git a rejected pass is not reset. Each worker's stdin
@@ -110,23 +111,23 @@ restore() { # restore <tree now on disk> <ref>: <loop-dir>'s files to that snaps
   GIT_INDEX_FILE=$t/index g read-tree "$1" && GIT_INDEX_FILE=$t/index g restore -q --source="$2" --worktree -- . || rc=1
   rm -rf "$t"; return "$rc"
 }
-bestpass= bestcount=-1 bestflag= lastcount=
+bestpass= bestcount=-1 bestflag= bestref= bestlabel= lastcount=
 pending= lastfate= lastres= lastref= lastreset= # a rejected pass's tree awaiting reset; the last pass, for the status line
 say() { echo "$1" | tee -a "$log"; }
 ratchet() { # at a stall or max-passes exit: report the best pass, and restore it if it beat the final state
   [ -n "$bestpass" ] || return 0
   if [ -z "$repo" ]; then
-    say "ratchet: best count $bestcount (pass $bestpass); not a git repository, so nothing was restored"
+    say "ratchet: best count $bestcount ($bestlabel); not a git repository, so nothing was restored"
   elif [ "$bestcount" -le "$lastcount" ]; then
-    say "ratchet: best count $bestcount (pass $bestpass, refs/arbiter/pass-$bestpass) is the final state's; nothing was restored"
+    say "ratchet: best count $bestcount ($bestlabel, $bestref) is the final state's; nothing was restored"
   elif ! tree=$(snaptree) || ! snapref "$tree" refs/arbiter/final "arbiter-loop final: $lastcount passing"; then
-    say "ratchet: best count $bestcount (pass $bestpass, refs/arbiter/pass-$bestpass); the final state could not be saved, so nothing was restored"
-  elif restore refs/arbiter/final "refs/arbiter/pass-$bestpass"; then
-    say "ratchet: best count $bestcount (pass $bestpass) beat the final $lastcount: final state saved as refs/arbiter/final, files restored to refs/arbiter/pass-$bestpass"
+    say "ratchet: best count $bestcount ($bestlabel, $bestref); the final state could not be saved, so nothing was restored"
+  elif restore refs/arbiter/final "$bestref"; then
+    say "ratchet: best count $bestcount ($bestlabel) beat the final $lastcount: final state saved as refs/arbiter/final, files restored to $bestref"
   else
-    say "ratchet: best count $bestcount (pass $bestpass): final state saved as refs/arbiter/final, but restoring refs/arbiter/pass-$bestpass failed"
+    say "ratchet: best count $bestcount ($bestlabel): final state saved as refs/arbiter/final, but restoring $bestref failed"
   fi
-  if [ -n "$bestflag" ]; then say "ratchet: warning: best pass $bestpass was flagged by the tamper check: $bestflag"; fi
+  if [ -n "$bestflag" ]; then say "ratchet: warning: the best state ($bestlabel) was flagged by the tamper check: $bestflag"; fi
 }
 
 if [ -f "$state/prompt.md" ] && ! cmp -s "$prompt" "$state/prompt.md"; then
@@ -173,23 +174,33 @@ check "$state/logs/baseline-$used.log"
 best=$res
 flat=0
 echo "baseline: $res passing (check exit $rc)" >> "$log"
+# The starting state is the first best: a pass that counts below it is rejected like any other.
+btree=
+if [ -n "$repo" ]; then
+  if ! btree=$(snaptree) || ! snapref "$btree" "refs/arbiter/baseline-$used" "arbiter-loop baseline before pass $((used + 1)): $res passing"; then
+    btree=; echo "baseline: snapshot failed" >> "$log"
+  fi
+fi
+if [ -n "$btree" ] || [ -z "$repo" ]; then
+  bestpass=baseline; bestcount=$res; bestref=refs/arbiter/baseline-$used; bestlabel="the baseline"; lastcount=$res
+fi
 
 for ((i = used + 1; i <= cap; i++)); do
   [ -f "$state/STOP" ] && stop 4 "STOP file found before pass $i"
   echo "pass $i start $(date -u +%FT%TZ)" >> "$log"
   used=$i; echo "$used" > "$state/passes" # counted when it starts: a pass killed midway was still spent
   if [ -n "$pending" ]; then # the last pass was rejected: back to the best pass's files before this worker
-    if restore "$pending" "refs/arbiter/pass-$bestpass"; then
-      echo "pass $((i - 1)): files reset to refs/arbiter/pass-$bestpass before pass $i" >> "$log"; lastcount=$bestcount
+    if restore "$pending" "$bestref"; then
+      echo "pass $((i - 1)): files reset to $bestref before pass $i" >> "$log"; lastcount=$bestcount
     else
-      echo "pass $((i - 1)): resetting the files to refs/arbiter/pass-$bestpass failed" >> "$log"; lastreset=failed
+      echo "pass $((i - 1)): resetting the files to $bestref failed" >> "$log"; lastreset=failed
     fi
     pending=
   fi
   # The status line: what the supervisor decided, and nothing of the work itself.
   status="Status from the supervisor: pass $i of $cap."
   if [ -n "$lastfate" ]; then
-    [ -z "$bestpass" ] || status="$status Best count so far $bestcount (pass $bestpass)."
+    [ -z "$bestpass" ] || status="$status Best count so far $bestcount ($bestlabel)."
     if [ "$lastfate" = kept ]; then status="$status The last pass was kept (count $lastres)."
     elif [ -n "$lastref" ]; then
       status="$status The last pass was rejected (count $lastres); its tree is readable at $lastref; do not restore from it."
@@ -214,7 +225,7 @@ for ((i = used + 1; i <= cap; i++)); do
   # Only a count strictly below the best pass's earns a rerun; `done` is never rejected.
   if [ "$res" != done ] && [ -n "$bestpass" ] && [ "$res" -lt "$bestcount" ]; then
     first=$res
-    echo "pass $i: $res is below the best count $bestcount (pass $bestpass); running the check again on the same files" >> "$log"
+    echo "pass $i: $res is below the best count $bestcount ($bestlabel); running the check again on the same files" >> "$log"
     check "$state/logs/check-$i-rerun.log"
     shown=${res:-no count}
     if [ -z "$res" ]; then
@@ -238,14 +249,14 @@ for ((i = used + 1; i <= cap; i++)); do
   lastcount=$res lastfate=$fate lastres=$res lastref= lastreset=
   if [ "$fate" = rejected ]; then
     if [ -z "$repo" ]; then
-      echo "pass $i: rejected ($res, below the best $bestcount of pass $bestpass); not a git repository, so nothing was reset" >> "$log"
+      echo "pass $i: rejected ($res, below the best $bestcount of $bestlabel); not a git repository, so nothing was reset" >> "$log"
     elif [ -z "$tree" ]; then
-      echo "pass $i: rejected ($res, below the best $bestcount of pass $bestpass); its snapshot failed, so nothing was reset" >> "$log"
+      echo "pass $i: rejected ($res, below the best $bestcount of $bestlabel); its snapshot failed, so nothing was reset" >> "$log"
     else
       pending=$tree lastref=refs/arbiter/pass-$i
-      echo "pass $i: rejected ($res, below the best $bestcount of pass $bestpass); its files stay at $lastref and are reset to refs/arbiter/pass-$bestpass before the next pass" >> "$log"
+      echo "pass $i: rejected ($res, below the best $bestcount of $bestlabel); its files stay at $lastref and are reset to $bestref before the next pass" >> "$log"
     fi
-  elif { [ -n "$tree" ] || [ -z "$repo" ]; } && [ "$res" -gt "$bestcount" ]; then bestpass=$i bestcount=$res bestflag=$flag; fi
+  elif { [ -n "$tree" ] || [ -z "$repo" ]; } && [ "$res" -gt "$bestcount" ]; then bestpass=$i bestcount=$res bestflag=$flag bestref=refs/arbiter/pass-$i bestlabel="pass $i"; fi
   if [ "$res" -gt "$best" ]; then best=$res; flat=0; else flat=$((flat + 1)); fi
   [ "$flat" -ge "$stall" ] && stop 3 "stalled: $stall passes without a new best ($best)"
 done

@@ -186,4 +186,18 @@ t "the log says nothing was reset" "$(grep -c 'pass 3: .*nothing was reset' "$s/
 t "status after a kept pass" "$(cat "$tmp/stdin-2")" "go${nl}${nl}Status from the supervisor: pass 2 of 4. Best count so far 3 (pass 1). The last pass was kept (count 3)."
 t "status after a rejected pass gives counts only" "$(cat "$tmp/stdin-4")" "go${nl}${nl}Status from the supervisor: pass 4 of 4. Best count so far 5 (pass 2). The last pass was rejected (count 2)."
 
+echo "-- a pass below the starting state is rejected and reset to it"
+fresh git 2 1; echo 4 > "$w/score"
+run STALL=2 "$loop" "$w" 9
+t "stalls (exit 3)" "$code" 3
+t "the starting state is snapshotted with its count" "$(g log -1 --format=%s refs/arbiter/baseline-0 2>/dev/null | grep -c '4 passing')" 1
+t "the check ran twice on the first pass" "$(checks 1)" 2
+t "the log says pass 1 was rejected against the baseline" "$(grep -c 'pass 1: rejected (2, below the best 4 of the baseline)' "$s/loop.log")" 1
+t "the second worker found the starting files" "$(cat "$tmp/saw-2")" "base / 4 / pass 1 / "
+t "the second worker is told the baseline is the best" "$(grep -c 'Best count so far 4 (the baseline). The last pass was rejected (count 2)' "$tmp/stdin-2")" 1
+t "the starting score is on disk at exit" "$(cat "$w/score")" 4
+t "the starting tracked file is on disk at exit" "$(cat "$w/a.txt")" base
+t "no pass's untracked file is left" "$(ls "$w"/new-*.txt 2>/dev/null | wc -l | tr -d ' ')" 0
+t "the user's branch, HEAD, index and refs are untouched" "$(user_state)" "$before"
+
 [ "$fails" = 0 ] && echo "all passed" || { echo "$fails failed"; exit 1; }
