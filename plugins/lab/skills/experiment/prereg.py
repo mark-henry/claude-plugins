@@ -87,7 +87,8 @@ def sha(path):
 FROZEN = ("question", "bar", "decision", "varies", "watched", "arms", "metrics", "predictions", "mechanism", "surprises")
 
 
-FROZEN2 = FROZEN + ("schema", "primary", "intended_n", "failure_threshold", "pilot", "scorer", "floors", "resample_seed")
+FROZEN2 = FROZEN + ("schema", "primary", "intended_n", "failure_threshold", "pilot", "scorer", "floors", "resample_seed",
+                    "units_differ_reason")
 
 
 def frozen_part(rec):
@@ -490,16 +491,30 @@ def pilot_gate(rec, root):
     return probs
 
 
-def line7(rec, runs):
-    """SE of the mean paired difference between the first two baseline pilot runs, resampling units. None if < 2 runs."""
+def declared_deterministic(rec):
+    """pilot.deterministic: the reason the harness gives the same score on a rerun, or None when not declared."""
+    v = (rec.get("pilot") or {}).get("deterministic")
+    return v.strip() if isinstance(v, str) and v.strip() else None
+
+
+def few(xs, k=3):
+    return ", ".join(map(str, sorted(xs, key=str)[:k])) + (" ..." if len(xs) > k else "")
+
+
+def line7(rec, runs, arm_units=None, first_arm=None):
+    """SE of the mean paired difference between the first two baseline pilot runs, resampling units. None if < 2 runs.
+    Its "problems" make it degenerate: identical scores on every shared item (a copied file, unless pilot.deterministic
+    is declared), fewer than two units, or pilots that do not cover the first arm's units (arm_units, at check) or
+    intended_n items (at stamp, before any arm has items)."""
     if len(runs) < 2:
         return None
     a = {r["id"]: r for r in runs[0] if r["status"] == "ok"}
     b = {r["id"]: r for r in runs[1] if r["status"] == "ok"}
     by_unit = {}
-    for i in sorted(set(a) & set(b)):
+    shared = sorted(set(a) & set(b), key=str)
+    for i in shared:
         by_unit.setdefault(a[i]["unit"], []).append(a[i]["score"] - b[i]["score"])
-    units = sorted(by_unit)
+    units = sorted(by_unit, key=str)
     if not units:
         return None
     rng = random.Random(rec.get("resample_seed", 0))
@@ -508,21 +523,48 @@ def line7(rec, runs):
         ds = [x for u in [rng.choice(units) for _ in units] for x in by_unit[u]]
         means.append(sum(ds) / len(ds))
     se = statistics.stdev(means)
-    return {"se": se, "detectable": DETECT_Z * se, "units": len(units), "pairs": sum(map(len, by_unit.values()))}
+    det, probs = declared_deterministic(rec), []
+    differ = sum(1 for i in shared if a[i]["score"] != b[i]["score"])
+    if det and differ:
+        probs.append(f"pilot.deterministic is declared, but the two pilot runs differ on {differ} items")
+    elif not det and not differ:
+        probs.append("the two pilot runs give identical scores on every shared item: a copied run is not a second run "
+                     "(if the harness is deterministic, declare pilot.deterministic with the reason)")
+    if len(units) < 2:
+        probs.append(f"the pilot runs share ok items in {len(units)} unit; the SE needs at least two")
+    for k, rows in enumerate(runs[:2], 1):
+        if arm_units is not None:
+            pu = {str(r["unit"]) for r in rows}
+            if pu != arm_units:
+                probs.append(f"pilot run {k} covers {len(pu)} units, arm {first_arm} {len(arm_units)}; the pilots cover "
+                             f"the arms' units (missing: {few(arm_units - pu) or 'none'}; extra: {few(pu - arm_units) or 'none'})")
+        elif real_n(rec.get("intended_n")) and len({r["id"] for r in rows}) < rec["intended_n"]:
+            probs.append(f"pilot run {k} covers {len({r['id'] for r in rows})} items, fewer than intended_n "
+                         f"{rec['intended_n']}; the pilots score the items the counted arms will")
+    return {"se": se, "detectable": DETECT_Z * se, "units": len(units), "pairs": sum(map(len, by_unit.values())),
+            "differing_items": differ, "deterministic": det, "problems": probs}
 
 
 def line7_text(l7, rec):
     eff = (rec.get("primary") or {}).get("smallest_effect")
     if l7 is None:
         return "line 7: fewer than two baseline pilot runs with shared ok items: no detectable difference; the run is exploratory"
+    head = (f"line 7: SE {l7['se']:.4f}, detectable difference {l7['detectable']:.4f} (smallest effect {eff}) "
+            f"over {l7['units']} units: ")
+    if l7.get("problems"):
+        return head + "does not hold: " + "; ".join(l7["problems"]) + "; the run is exploratory"
+    if l7.get("deterministic"):
+        return head + (f"holds by declaration: pilot.deterministic ({l7['deterministic']}); the reruns agree on every "
+                       f"item, so no run-to-run noise was measured and the detectable difference is zero by that declaration")
     holds = isinstance(eff, (int, float)) and l7["detectable"] <= eff
-    return (f"line 7: SE {l7['se']:.4f}, detectable difference {l7['detectable']:.4f} (smallest effect {eff}) "
-            f"over {l7['units']} units: {'holds' if holds else 'does not hold; the run is exploratory'}")
+    return head + ("holds" if holds else "does not hold; the run is exploratory")
 
 
 def line7_holds(l7, rec):
     eff = (rec.get("primary") or {}).get("smallest_effect")
-    return l7 is not None and isinstance(eff, (int, float)) and l7["detectable"] <= eff
+    if l7 is None or l7.get("problems"):
+        return False
+    return bool(l7.get("deterministic")) or (isinstance(eff, (int, float)) and l7["detectable"] <= eff)
 
 
 def line8(rec, runs):
@@ -594,11 +636,35 @@ def real_n(v):
     return isinstance(v, int) and not isinstance(v, bool) and v > 0
 
 
-def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran):
+def coverage_problems(rec, by_arm, arms, floors):
+    """Every arm (floors included) scores the same set of unit ids, and of item ids where the record's unit is the
+    item, unless the record declares units_differ_reason. Duplicate ids within an arm are line 2's own refusal."""
+    reason = rec.get("units_differ_reason")
+    if isinstance(reason, str) and reason.strip():
+        return []
+    unit = str((rec.get("primary") or {}).get("unit", "")).strip().lower()
+    fields = [("unit", "unit ids")] + ([("id", "item ids")] if unit in ("item", "items", "id") else [])
+    probs, names = [], list(arms) + list(floors)
+    for field, label in fields:
+        s0 = {str(r[field]) for r in by_arm.get(names[0], [])}
+        for other in names[1:]:
+            s1 = {str(r[field]) for r in by_arm.get(other, [])}
+            if s0 != s1:
+                probs.append(f"line 2: arms {names[0]} and {other} score different {label} (only in {names[0]}: "
+                             f"{few(s0 - s1) or 'none'}; only in {other}: {few(s1 - s0) or 'none'}); every arm scores the "
+                             f"same set, or the record declares units_differ_reason")
+    return probs
+
+
+def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran, by_arm=None):
     """The counted gate: a real intended n, a scorer whose line-3 check ran, every arm stamped against this record's
     line-6 hash, two distinct stamped pilot runs and line 7 holds, a floor sits under the best arm. A refusal by any
     line `check` runs also denies the label; the caller adds those."""
     probs = []
+    if len(arms) < 2:
+        probs.append(f"counted needs at least two arms to compare; the record has {len(arms)} ({', '.join(arms)}); "
+                     f"a single arm against the bar is exploratory")
+    probs += coverage_problems(rec, by_arm or {}, arms, floors)
     if not real_n(rec.get("intended_n")):
         probs.append(f"line 2: counted needs a whole number intended_n; the record has {rec.get('intended_n', 'none')!r}")
     if not line3_ran:
@@ -612,8 +678,12 @@ def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran):
         if st.get("label") != "counted" or not isinstance(r, dict) or r.get("line6_sha256") != l6:
             probs.append(f"line 6: counted needs every arm stamped --counted against this record's line-6 hash; {arm}'s stamp is not")
     if not line7_holds(l7, rec):
-        probs.append("line 7: " + ("no detectable difference from two baseline pilot runs" if l7 is None else
-                     f"detectable difference {l7['detectable']:.4f} exceeds the smallest effect {rec['primary']['smallest_effect']}"))
+        if l7 is None:
+            probs.append("line 7: no detectable difference from two baseline pilot runs")
+        elif l7.get("problems"):
+            probs += [f"line 7: {p}" for p in l7["problems"]]
+        else:
+            probs.append(f"line 7: detectable difference {l7['detectable']:.4f} exceeds the smallest effect {rec['primary']['smallest_effect']}")
     if not floors and not (rec.get("floors") or {}).get("none_reason"):
         probs.append("line 12: no floor:<name> arm in items.jsonl and no floors.none_reason in the record")
     hib = (rec.get("primary") or {}).get("higher_is_better", True)
@@ -779,6 +849,11 @@ def cmd_stamp(a):
         if rec.get("status") == "exploratory" or not l6 or rec["opened"].get("line6_sha256") != l6:
             die("line 6: the record opened without hashed line-6 fields (metric, comparison, smallest effect, unit); "
                 "stamp without --counted to run exploratory")
+        if (out / "items.jsonl").is_file() and (out / "items.jsonl").stat().st_size:
+            die(f"{out / 'items.jsonl'} already holds scored items: a counted stamp comes before scoring. "
+                f"Stamp a new, empty run folder")
+        if len(rec.get("arms") or {}) < 2:
+            die("counted needs at least two arms to compare; this record has one. Stamp without --counted to run exploratory")
         probs = []
         l7 = line7(rec, pilot_rows(rec, rec_root(a.record), probs))
         if not line7_holds(l7, rec):
@@ -852,6 +927,7 @@ def check_record(path):
     if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
         die(f"{path} changed after open; restore it or write a new record")
     root = rec_root(path)
+    inputs = judged_inputs(rec, root)
     probs, stamps, by_arm = [], {}, {}
     arms = list(rec["arms"])
     folders = [(arm, spec["out"]) for arm, spec in rec["arms"].items()] + [(None, f) for f in (rec.get("floors") or {}).get("runs") or []]
@@ -881,7 +957,7 @@ def check_record(path):
         result["line3"] = "not declared"
         print("line 3: no scorer declared in the record; not checked")
     runs = pilot_rows(rec, root, probs)
-    l7 = line7(rec, runs)
+    l7 = line7(rec, runs, {str(r["unit"]) for r in by_arm.get(arms[0], [])} if arms else set(), arms[0] if arms else None)
     result["line7"] = l7
     print(line7_text(l7, rec))
     out = Path(path).with_suffix(".check.json")
@@ -900,15 +976,20 @@ def check_record(path):
     label = "exploratory"
     if any(st.get("label") == "counted" for st in stamps.values()):
         line3_ran = isinstance(result["line3"], dict) and "scorer_sha256" in result["line3"]
-        cp = counted_problems(rec, {a: stamps.get(a, {}) for a in arms}, l7, floors, means, arms, root, line3_ran)
+        cp = counted_problems(rec, {a: stamps.get(a, {}) for a in arms}, l7, floors, means, arms, root, line3_ran, by_arm)
         earlier = len(probs)
         probs += [f"{p} (counted refused; the run stands as exploratory)" for p in cp]
         label = "counted" if not probs else "exploratory"
         if label != "counted":
             print(f"counted refused: {len(cp)} counted-gate requirement(s) unmet and {earlier} other refusal(s); each is listed on stderr")
-    result["label"], result["refusals"] = label, probs
+    pending = None
+    if label == "counted":
+        pending = parity_problem(path, rec, root, inputs)
+        if pending:
+            label = PENDING
+    result["label"], result["refusals"], result["inputs"] = label, probs, inputs
     out.write_text(json.dumps(result, indent=2) + "\n")
-    print(f"label: {label}")
+    print(f"label: {label}" + (f" ({pending})" if pending else ""))
     finish(probs)
 
 
@@ -953,6 +1034,7 @@ def own_marks(f, arm, out, root):
 
 def parity_v2(a, rec):
     root = rec_root(a.path)
+    inputs = judged_inputs(rec, root)
     varies = set(rec.get("varies", [])) | IGNORED_ARGS
     allowed = lambda k: k in varies or any(k.startswith(v + ".") for v in varies)
     stamps, problems, notes = {}, [], []
@@ -1010,7 +1092,15 @@ def parity_v2(a, rec):
     parity_path(a.path).write_text(json.dumps({
         "utc": now(), "pass": not problems, "problems": problems,
         "record_frozen_sha256": (rec.get("opened") or {}).get("frozen_sha256", NA),
-        "run_ids": {arm: st.get("run_id") for arm, st in stamps.items()}}, indent=2) + "\n")
+        "run_ids": {arm: st.get("run_id") for arm, st in stamps.items()}, "inputs": inputs}, indent=2) + "\n")
+    cp = Path(a.path).with_suffix(".check.json")
+    check = read_json(cp)
+    if check and str(check.get("label", "")).startswith("counted") and not changed_inputs(check.get("inputs"), inputs):
+        new = PENDING if problems else "counted"
+        if check["label"] != new:
+            check["label"] = new
+            cp.write_text(json.dumps(check, indent=2) + "\n")
+            print(f"check label now: {new} ({cp})")
     sys.exit(1 if problems else 0)
 
 
@@ -1018,25 +1108,83 @@ def parity_path(path):
     return Path(path).with_suffix(".parity.json")
 
 
-def parity_gate(path, rec, root):
-    """A record that `check` labeled counted is quoted only with a passing parity result for the arms as stamped now."""
-    cp = Path(path).with_suffix(".check.json")
+PENDING = "counted, pending parity"
+CLOSE_FIELDS = ("observed", "closed", "status")      # what `close` writes into the record after check and parity
+
+
+def judged_inputs(rec, root):
+    """sha256 of what check and parity judge: the record (less what close writes) and, for every arm, pilot and floor
+    run folder, its items.jsonl and stamp.json ("absent" when missing). Stored in check.json and parity.json; quote and
+    close recompute it. A plain hash: it catches stale or copied results, not a forger who recomputes it."""
+    out = {"record": hashlib.sha256(json.dumps({k: v for k, v in rec.items() if k not in CLOSE_FIELDS},
+                                               sort_keys=True).encode()).hexdigest()}
+    folders = [spec["out"] for spec in (rec.get("arms") or {}).values()] + \
+        list((rec.get("pilot") or {}).get("runs") or []) + list((rec.get("floors") or {}).get("runs") or [])
+    for f in folders:
+        for name in ("items.jsonl", "stamp.json"):
+            p = root / f / name
+            out[f"{os.path.normpath(f)}/{name}"] = full_sha(p) if p.is_file() else "absent"
+    return out
+
+
+def changed_inputs(old, new):
+    """Keys whose hash differs; every key when old holds no hashes (an older or hand-made file)."""
+    if not isinstance(old, dict):
+        return sorted(new) or ["(no input hashes)"]
+    return sorted(k for k in set(old) | set(new) if old.get(k) != new.get(k))
+
+
+def stale_why(res, diff):
+    return ("it holds no input hashes (an older prereg.py or a hand-made file), so nothing shows the files are unchanged"
+            if not isinstance(res.get("inputs"), dict) else f"{few(diff, 4)} changed")
+
+
+def read_json(p):
     try:
-        counted = cp.is_file() and load(cp).get("label") == "counted"
+        return load(p) if Path(p).is_file() else None
     except ValueError:
-        counted = False
-    if not counted:
         return None
+
+
+def parity_problem(path, rec, root, inputs):
+    """None when a passing parity result is on file for the arms, record and files as they are now; else why not."""
     pp = parity_path(path)
-    res = load(pp) if pp.is_file() else None
+    res = read_json(pp)
     now_ids = {arm: (load_stamp(root / spec["out"]) or {}).get("run_id") for arm, spec in rec["arms"].items()}
     if res is None:
-        return f"line 13: {path} is labeled counted but has no parity result on file; run `prereg.py parity {path}`"
+        return f"line 13: no parity result on file for {path}; run `prereg.py parity {path}`"
     if not res.get("pass"):
-        return f"line 13: {path} is labeled counted but its parity failed ({pp}); the arms differ beyond `varies`"
+        return f"line 13: the parity result for {path} failed ({pp}); the arms differ beyond `varies`"
     if res.get("run_ids") != now_ids or res.get("record_frozen_sha256") != (rec.get("opened") or {}).get("frozen_sha256", NA):
         return f"line 13: {pp} was written for other stamps or another version of the record; rerun `prereg.py parity {path}`"
+    diff = changed_inputs(res.get("inputs"), inputs)
+    if diff:
+        return f"line 13: {pp} is stale: {stale_why(res, diff)} since parity ran; rerun `prereg.py parity {path}`"
     return None
+
+
+def result_gate(path, rec, root):
+    """A record with an arm stamped counted (or a check that labeled it counted) is quoted or closed only while
+    check.json and, if it says counted, a passing parity.json are on file and hash the files as they are now."""
+    cp = Path(path).with_suffix(".check.json")
+    check = read_json(cp)
+    claimed = any((load_stamp(root / spec["out"]) or {}).get("label") == "counted" for spec in rec["arms"].values())
+    if not claimed and not (check and str(check.get("label", "")).startswith("counted")):
+        return []
+    inputs = judged_inputs(rec, root)
+    if check is None:
+        return [f"line 13: {path} has arms stamped counted but no check result on file ({cp}); "
+                f"run `prereg.py check {path}`, then `prereg.py parity {path}`"]
+    probs = []
+    diff = changed_inputs(check.get("inputs"), inputs)
+    if diff:
+        probs.append(f"{cp} is stale: {stale_why(check, diff)} since check ran; rerun `prereg.py check {path}` "
+                     f"and `prereg.py parity {path}`")
+    if str(check.get("label", "")).startswith("counted"):
+        p = parity_problem(path, rec, root, inputs)
+        if p:
+            probs.append(p)
+    return probs
 
 
 def cmd_parity(a):
@@ -1053,6 +1201,9 @@ def cmd_close(a):
     if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
         die("a frozen field changed after open; restore it or write a new record")
     root, probs, observed = rec_root(a.path), [], {}
+    gate = result_gate(a.path, rec, root)
+    if gate:
+        finish(gate)
     for arm, spec in rec["arms"].items():
         rows = [r for r in read_items(root / spec["out"], probs) if r["arm"] == arm]
         observed[arm] = {"n": len(rows), "mean": mean_ok(rows)}
@@ -1108,9 +1259,7 @@ def cmd_quote(a):
             continue
         rec, root = load(p), rec_root(p)
         if rec.get("schema") == 2:
-            g = parity_gate(src, rec, root)
-            if g:
-                gate.append(g)
+            gate += result_gate(src, rec, root)
         for spec in (rec.get("arms") or {}).values():
             ids |= stamp_ids(root / spec["out"])
         for f in list((rec.get("pilot") or {}).get("runs") or []) + list((rec.get("floors") or {}).get("runs") or []):

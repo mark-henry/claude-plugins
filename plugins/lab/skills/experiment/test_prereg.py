@@ -262,10 +262,13 @@ def record(d, **over):
     return "prereg/r.json"
 
 
-def quiet_pilots(d, n=40):
-    """Two stamped baseline pilot runs that disagree on one item of n: a detectable difference far under 0.2."""
+def quiet_pilots(d, n=40, identical=False):
+    """Two stamped baseline pilot runs that disagree on one item of n: a detectable difference far under 0.2.
+    identical: they agree on every item, as a deterministic harness's would."""
     a = [k % 2 for k in range(n)]
-    b = list(a); b[0] = 1 - b[0]
+    b = list(a)
+    if not identical:
+        b[0] = 1 - b[0]
     for k in (1, 2):
         r = run(d, "stamp", f"runs/pilot{k}", "--run-id", f"toy-pilot{k}", "--", "python", "train.py", "--model", "a")
         assert r.returncode == 0, r.stdout + r.stderr
@@ -280,12 +283,12 @@ def noisy_pilots(d, n=10):
     write_items(d, "runs/pilot2", rows("untreated", [(k + 1) % 2 for k in range(n)]))
 
 
-def counted_toy(d, floor=0.0, n=40, **over):
+def counted_toy(d, floor=0.0, n=40, identical_pilots=False, **over):
     """Record opened with a scorer, stamped quiet pilots, both arms stamped counted, items written with a constant floor."""
     over.setdefault("intended_n", n)
     over.setdefault("scorer", SCORER)
     rp = record(d, **over)
-    quiet_pilots(d, n)
+    quiet_pilots(d, n, identical=identical_pilots)
     assert run(d, "open", rp).returncode == 0
     for arm, model in (("untreated", "a"), ("treated", "b")):
         r = run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--counted", "--run-id", f"toy-{arm}",
@@ -780,6 +783,9 @@ class Quote(unittest.TestCase):
     def test_accepts_numbers_that_carry_a_run_id_from_the_record_or_the_ledger(self):
         d = lab_repo()
         rp = counted_toy(d)
+        # a counted-stamped record is quoted only with a current check and parity on file (check.json can't be skipped)
+        self.assertEqual(run(d, "check", rp).returncode, 0)
+        self.assertEqual(run(d, "parity", rp).returncode, 0)
         self.assertEqual(run(d, "stamp", "runs/test1", "--run-id", "test-run-9", "--", "x").returncode, 0)
         self.assertEqual(run(d, "ledger", rp, "runs/test1").returncode, 0)
         (d / "report.md").write_text("Treated 30/40 (toy-treated); a gain of 25% (toy-untreated).\nOn test, 71% (test-run-9).\n"
@@ -1039,6 +1045,216 @@ class IgnoredRunFolders(unittest.TestCase):
         self.assertNotIn("Traceback", r.stderr)
         self.assertEqual(len(r.stderr.strip().splitlines()), 1, r.stderr)
         self.assertRegex(r.stderr, r"^refused: git ")
+
+
+def rewrite_items(d, out, rows_):
+    p = d / out / "items.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in rows_))
+
+
+def read_rows(d, out):
+    return [json.loads(l) for l in (d / out / "items.jsonl").read_text().splitlines() if l.strip()]
+
+
+class JudgeRound5(unittest.TestCase):
+    """Defects an independent judge found by running the tool, and checks that had no test."""
+
+    assertNotCounted = CountedNeedsEveryLine.assertNotCounted
+
+    def report(self, d, text="Treated 30/40 (toy-treated).\n"):
+        (d / "report.md").write_text(text)
+
+    def counted_and_quotable(self, **over):
+        d = lab_repo()
+        rp = counted_toy(d, **over)
+        self.assertEqual(run(d, "check", rp).returncode, 0)
+        self.assertEqual(run(d, "parity", rp).returncode, 0)
+        self.report(d)
+        r = run(d, "quote", "report.md", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return d, rp
+
+    # 1. arms scoring different items with the same n
+    def test_arms_scoring_different_items_with_the_same_n_are_not_counted(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        shifted = [{**r, "id": f"i{k + 1}", "unit": f"u{k + 1}"} for k, r in enumerate(read_rows(d, "runs/treated"))]
+        rewrite_items(d, "runs/treated", shifted)       # still 40 rows: i1..i40 against untreated's i0..i39
+        r = run(d, "check", rp)
+        self.assertNotCounted(d, r, "line 2")
+        self.assertRegex(r.stderr, r"\b(i0|u0|i40|u40)\b")
+
+    def test_different_items_per_arm_are_counted_when_the_record_declares_them(self):
+        d = lab_repo()
+        rp = counted_toy(d, units_differ_reason="treated is scored on a rotated copy of the toy set")
+        shifted = [{**r, "id": f"i{k + 1}", "unit": f"u{k + 1}"} for k, r in enumerate(read_rows(d, "runs/treated"))]
+        rewrite_items(d, "runs/treated", shifted)
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("label: counted", r.stdout)
+
+    # 2. stale results
+    def test_quote_and_close_refuse_after_an_arm_items_file_is_cut(self):
+        d, rp = self.counted_and_quotable()
+        p = d / "runs" / "treated" / "items.jsonl"
+        p.write_text("".join(p.read_text().splitlines(keepends=True)[:-3]))
+        r = run(d, "quote", "report.md", rp)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("runs/treated/items.jsonl", r.stderr)
+        r = run(d, "close", rp)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("runs/treated/items.jsonl", r.stderr)
+        self.assertNotIn("closed", json.loads((d / rp).read_text()))
+
+    def test_quote_refuses_a_hand_made_parity_file_without_the_real_hashes(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        self.assertEqual(run(d, "check", rp).returncode, 0)
+        rec = json.loads((d / rp).read_text())
+        (d / "prereg" / "r.parity.json").write_text(json.dumps({
+            "utc": "20261115T0000Z", "pass": True, "problems": [],
+            "record_frozen_sha256": rec["opened"]["frozen_sha256"],
+            "run_ids": {"untreated": "toy-untreated", "treated": "toy-treated"}}))
+        self.report(d)
+        r = run(d, "quote", "report.md", rp)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("parity", r.stderr)
+
+    def test_quote_and_close_refuse_a_counted_stamped_record_with_no_check_on_file(self):
+        d, rp = self.counted_and_quotable()
+        (d / "prereg" / "r.check.json").unlink()
+        r = run(d, "quote", "report.md", rp)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("check", r.stderr)
+        self.assertEqual(run(d, "close", rp).returncode, 1)
+
+    # 3. degenerate line 7
+    def test_copied_pilot_items_do_not_make_line_7_hold(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        shutil.copy(d / "runs" / "pilot1" / "items.jsonl", d / "runs" / "pilot2" / "items.jsonl")
+        r = run(d, "check", rp)
+        self.assertNotCounted(d, r, "line 7", "identical")
+        self.assertIn("does not hold", next(l for l in r.stdout.splitlines() if l.startswith("line 7")))
+        d2 = lab_repo()
+        rp2 = record(d2, intended_n=40, scorer=SCORER)
+        quiet_pilots(d2, 40, identical=True)
+        self.assertEqual(run(d2, "open", rp2).returncode, 0)
+        r = run(d2, "stamp", "runs/untreated", "--record", rp2, "--arm", "untreated", "--counted", "--", "x")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("identical", r.stderr)
+
+    def test_one_item_pilots_do_not_make_line_7_hold(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        for k in (1, 2):
+            rewrite_items(d, f"runs/pilot{k}", rows("untreated", [k - 1]))      # i0 only, scores 0 and 1
+        self.assertNotCounted(d, run(d, "check", rp), "line 7", "pilot")
+        d2 = lab_repo()
+        rp2 = record(d2, intended_n=40, scorer=SCORER)
+        for k in (1, 2):
+            self.assertEqual(run(d2, "stamp", f"runs/pilot{k}", "--run-id", f"p{k}", "--", "x").returncode, 0)
+        write_items(d2, "runs/pilot1", rows("untreated", [0])); write_items(d2, "runs/pilot2", rows("untreated", [0.01]))
+        self.assertEqual(run(d2, "open", rp2).returncode, 0)
+        r = run(d2, "stamp", "runs/untreated", "--record", rp2, "--arm", "untreated", "--counted", "--", "x")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("line 7", r.stderr)
+
+    def test_a_declared_deterministic_harness_reports_a_zero_detectable_difference_by_declaration(self):
+        d = lab_repo()
+        rp = counted_toy(d, identical_pilots=True,
+                         pilot={"runs": ["runs/pilot1", "runs/pilot2"], "deterministic": "toy harness: no sampling, no seed"})
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("label: counted", r.stdout)
+        line = next(l for l in r.stdout.splitlines() if l.startswith("line 7"))
+        self.assertIn("deterministic", line)
+        self.assertIn("holds", line)
+
+    # 4. a single arm; a counted stamp after scoring
+    def test_a_single_arm_record_is_not_counted(self):
+        d = lab_repo()
+        rp = record(d, intended_n=40, scorer=SCORER,
+                    arms={"untreated": {"out": "runs/untreated", "command": "python train.py --model a"}})
+        quiet_pilots(d, 40)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        r = run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--counted", "--", "x")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("two arms", r.stderr)
+        self.assertEqual(run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--", "x").returncode, 0)
+        sp = d / "runs" / "untreated" / "stamp.json"
+        st = json.loads(sp.read_text()); st["label"] = "counted"; sp.write_text(json.dumps(st))   # check's own gate
+        write_items(d, "runs/untreated", rows("untreated", [k % 2 for k in range(40)]) + rows("floor:constant", [0] * 40))
+        self.assertNotCounted(d, run(d, "check", rp), "two arms")
+
+    def test_a_counted_stamp_into_a_folder_with_scored_items_is_refused(self):
+        d = lab_repo()
+        rp = record(d, intended_n=40, scorer=SCORER)
+        quiet_pilots(d, 40)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        write_items(d, "runs/untreated", rows("untreated", [k % 2 for k in range(40)]))
+        r = run(d, "stamp", "runs/untreated", "--record", rp, "--arm", "untreated", "--counted", "--", "x")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("items.jsonl", r.stderr)
+        self.assertFalse((d / "runs" / "untreated" / "stamp.json").exists())
+
+    # 5. counted pending parity
+    def test_check_says_pending_parity_until_a_current_parity_passes(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("label: counted, pending parity", r.stdout)
+        self.assertEqual(json.loads((d / "prereg" / "r.check.json").read_text())["label"], "counted, pending parity")
+        self.assertEqual(run(d, "parity", rp).returncode, 0)
+        self.assertEqual(json.loads((d / "prereg" / "r.check.json").read_text())["label"], "counted")
+        r = run(d, "check", rp)
+        self.assertIn("label: counted", r.stdout)
+        self.assertNotIn("pending", r.stdout)
+
+    # 7. checks that had no test
+    def test_line_3_refuses_a_scorer_that_fails_the_known_good_output(self):
+        d = lab_repo()
+        (d / "strict.py").write_text("import sys\nsys.exit(1)\n")
+        rp = record(d, intended_n=10, floors={"none_reason": "toy"}, pilot={"runs": []},
+                    scorer={"command": "python3 strict.py {output}", "file": "strict.py", "broken": "broken.txt", "good": "good.txt"})
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        for arm in ("untreated", "treated"):
+            self.assertEqual(run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--", "x").returncode, 0)
+            write_items(d, f"runs/{arm}", rows(arm, [1] * 10))
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("line 3", r.stderr)
+        self.assertIn("known-good", r.stderr)
+
+    def test_line_2_refuses_a_duplicate_id_at_the_intended_n(self):
+        d = lab_repo()
+        rp = record(d, intended_n=10, floors={"none_reason": "toy"}, pilot={"runs": []})
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        for arm in ("untreated", "treated"):
+            self.assertEqual(run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--", "x").returncode, 0)
+        dup = rows("treated", [0] * 10); dup[9] = {**dup[0]}
+        write_items(d, "runs/untreated", rows("untreated", [1] * 10)); write_items(d, "runs/treated", dup)
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("duplicate", r.stderr)
+        self.assertIn("i0", r.stderr)
+
+    def test_check_refuses_counted_when_line_7_fails_after_the_stamps(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        rewrite_items(d, "runs/pilot2", rows("untreated", [(k + 1) % 2 for k in range(40)]))   # now every item disagrees
+        self.assertNotCounted(d, run(d, "check", rp), "line 7", "exceeds")
+
+    def test_quote_refuses_a_parity_result_for_other_run_ids_or_another_record_version(self):
+        for field, value in (("run_ids", {"untreated": "toy-untreated", "treated": "someone-else"}),
+                             ("record_frozen_sha256", "0" * 16)):
+            d, rp = self.counted_and_quotable()
+            pp = d / "prereg" / "r.parity.json"
+            res = json.loads(pp.read_text()); res[field] = value; pp.write_text(json.dumps(res))
+            r = run(d, "quote", "report.md", rp)
+            self.assertEqual(r.returncode, 1, (field, r.stdout + r.stderr))
+            self.assertIn("parity", r.stderr)
 
 
 if __name__ == "__main__":
