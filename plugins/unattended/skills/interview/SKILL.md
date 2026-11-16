@@ -33,7 +33,7 @@ A permission is secured when the harness no longer prompts for it, not when the 
 
 ## Attack, then freeze
 
-Write the draft as `brief.md` in the run folder, `${CLAUDE_PLUGIN_DATA}/runs/<date>-<slug>/` unless the user keeps runs elsewhere, and cite it by absolute path: other agents cannot expand the variable. Beside it keep `rulings.md`: every user sentence that caps, grants or decides, verbatim and dated.
+Write the draft as `brief.md` in the run folder, `${CLAUDE_PLUGIN_DATA}/runs/<date>-<slug>/` unless the user keeps runs elsewhere, and cite it by absolute path: other agents cannot expand the variable. Beside it keep `rulings.md`: every user sentence that caps, grants or decides, verbatim and dated, appended as it comes and never rewritten or re-dated.
 
 With the cap asked for, run `check:attack` on the draft, with the five tests as its standard (if it is not installed, send the fresh agents yourself); it keeps `brief.attack.md`. One seat attacks the bar. One is the builder of test 3: it plans from the draft alone and returns its questions and every command, path and permission its plan would hit. Before the freeze, everything they leave open goes to the user in one more batch: questions with your proposed answers where a wrong guess changes what gets built or the user's word is needed, the rest as recommendations they can accept in a word. Anything that turns up after that is another batch, not an assumption.
 

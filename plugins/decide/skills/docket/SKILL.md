@@ -66,10 +66,21 @@ By judgment, not arrival order. Present only items in final, decidable form, and
 
 ## Recording rulings
 
-Record each ruling before acting on it, in one append-only rulings file that anyone doing the work reads: the user's exact words, the date, what was asked, what it covers, what was rejected and why. A wrong entry stays; a new one supersedes it.
+Record each ruling before acting on it, as one JSON line appended (`>>`, never a rewrite) to `${CLAUDE_PLUGIN_DATA}/rulings-<session id>.jsonl` (the id is `$CLAUDE_CODE_SESSION_ID`), which anyone doing the work reads. Every row has the same fields:
+
+- `time`: UTC, when recorded
+- `item`: its title, one line
+- `asked`: what was put to the user, your recommendation included
+- `words`: the user's exact words; empty when silence settled it
+- `ruling`: `accepted`, `rejected`, `changed`, `deferred` or `silence`
+- `covers`: exactly what it approves
+- `rejected`: the options turned down, and why
+- `mine`: details you added to carry it out
+- `supersedes`: the `time` of the row this replaces, or empty
+
+A wrong row stays, and a new row supersedes it; no row is ever edited or re-dated.
 
 - Record at the user's strength: "might" and "I'll keep it in mind" are not decisions. A deferral records what would reopen it.
-- Details you add to carry a ruling out are marked as yours, apart from their words.
 - A decision counts as the user's only if an alternative or tradeoff was in view; bare assent to a passing mention is recorded as that. A settled decision is not asked again; it yields to evidence that it cannot work, never to a preference for something else.
 - When two rulings conflict, quote both with dates and check what each covers before saying the later wins; offer a split if they address different situations.
 - A class of decision the user handed you is decided and reported, citing their words and date, never stretched to a neighboring class.
