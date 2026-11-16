@@ -20,6 +20,19 @@
 #   only an account with no headroom gets 0, because weight 0 takes it out of the pool the proxy fails
 #   over to: e.g. a session whose account has hit the Fable cap (7d_oi) could not move anywhere else
 #
+# Fable reserve (protected account): the account's last FABLE_RESERVE% of its weekly Fable cap (7d_oi)
+#   is a last resort too. While its Fable left is at or under that and another Claude account can still
+#   serve Fable (not Fable-blocked, more than 1% Fable and some general quota left), --rebalance adds
+#   FABLE_PATTERN to the protected credential's excluded_models, so the proxy routes no Fable there and
+#   fails Fable sessions over to the others. The exclusion is lifted when no other account can serve
+#   Fable (the last resort) or when the protected account's Fable window resets. Its other excluded
+#   models are left alone. The 1% margin lifts it a little before the others hit the cap, because the
+#   rebalance runs only every 15 minutes. With no Fable reading yet (after a proxy restart) nothing is
+#   excluded until one arrives. Excluding Fable drops the credential's Fable reading, and the hold stops
+#   it serving the Fable requests that would renew it, so --rebalance saves the Fable reset time in
+#   $QUOTA_STATE_DIR/fable-holds.json and keeps a held credential held, with no reading, until then.
+#   The auth-files listing does not show excluded_models; each credential's auth file is read for it.
+#
 # Pace note, printed under the report only when it applies: every account at or ahead of pace (slack
 # rounds to 0 or below), with a request that the agent say so in its first reply of the session.
 #
@@ -39,14 +52,18 @@ set -euo pipefail
 : "${QUOTA_MANAGEMENT_KEY_FILE:=~/.cli-proxy-api/management-key}"
 : "${QUOTA_PROTECTED_EMAIL:=}"                           # main account that must not run out; empty = none
 : "${QUOTA_RESERVE:=10}"                                 # % of its weekly quota kept for the web app; a last resort
+: "${QUOTA_FABLE_RESERVE:=10}"                           # % of its weekly Fable cap kept back the same way; 0 = off
+: "${QUOTA_FABLE_PATTERN:=claude-fable-*}"               # excluded_models entry that holds Fable back
+: "${QUOTA_STATE_DIR:=~/.cache/quota}"                   # remembers when a held Fable reserve resets
 : "${QUOTA_FLOOR:=1}"                                    # minimum weight for an account with headroom: in the pool, ~no new sessions
 : "${QUOTA_FLOOR_UNREAD:=10}"                            # weight for an account with no reading, so it serves a request soon and can be read
 : "${QUOTA_LOG:=~/Library/Logs/quota-rebalance.log}"
 : "${QUOTA_SESSION_AUTH_DIR:=~/.cache/claude-mitm/session-auth}"  # written by claude-mitm's addon
 [[ -f ~/.config/quota.env ]] && source ~/.config/quota.env
 API=$QUOTA_PROXY_URL/v0/management
+FABLE_RESERVE=$QUOTA_FABLE_RESERVE FABLE_PATTERN=$QUOTA_FABLE_PATTERN
 PROTECTED_EMAIL=$QUOTA_PROTECTED_EMAIL RESERVE=$QUOTA_RESERVE FLOOR=$QUOTA_FLOOR FLOOR_UNREAD=$QUOTA_FLOOR_UNREAD
-SESSION_AUTH_DIR=${QUOTA_SESSION_AUTH_DIR/#\~/$HOME}
+SESSION_AUTH_DIR=${QUOTA_SESSION_AUTH_DIR/#\~/$HOME} STATE_DIR=${QUOTA_STATE_DIR/#\~/$HOME}
 LOG=${QUOTA_LOG/#\~/$HOME} KEY_FILE=${QUOTA_MANAGEMENT_KEY_FILE/#\~/$HOME}
 export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
 
@@ -100,9 +117,22 @@ if [[ -d $SESSION_AUTH_DIR ]]; then
     session_auth=$(<"$SESSION_AUTH_DIR/$CLAUDE_CODE_SESSION_ID")
 fi
 
+# The listing does not show excluded_models, so read each Claude credential's own auth file for it.
+# {"<name>": [excluded models]}; a credential whose file can't be read falls back to the listing.
+excl_files=$(jq -r '.files[] | select(.provider == "claude" and .path != null) | [.name, .path] | @tsv' <<<"$json" |
+  while IFS=$'\t' read -r n p; do
+    [[ -r $p ]] && jq -c --arg n "$n" '{($n): (.excluded_models // [] | if type == "array" then . else [] end)}' "$p" 2>/dev/null
+  done | jq -sc 'add // {}')
+# Excluding Fable drops the credential's Fable reading, and it serves no Fable to renew it, so the
+# Fable reset time seen when the hold was set is kept here: {"<name>": reset epoch}.
+holds_file=$STATE_DIR/fable-holds.json
+holds=$(jq -c 'if type == "object" then . else {} end' "$holds_file" 2>/dev/null || echo '{}')
+
 # Emits tab-separated rows: "L<TAB>report line", "P<TAB>account at or ahead of pace" and
 # "W<TAB>name<TAB>email<TAB>old<TAB>new<TAB>why"
 rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg mine "$session_auth" \
+  --argjson freserve "$FABLE_RESERVE" --arg fpat "$FABLE_PATTERN" \
+  --argjson exclf "$excl_files" --argjson holds "$holds" \
   --argjson reserve "$RESERVE" --argjson floor "$FLOOR" --argjson floor_unread "$FLOOR_UNREAD" '
   def week: 604800;
   def epoch: (.[0:19] + "Z" | fromdateiso8601) -
@@ -127,6 +157,7 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
              | select((.signals // {})["Anthropic-Ratelimit-Unified-7d_oi-Utilization"] != null))
        | max_by(.observed_at | epoch) | .signals) as $fs
     | {name, provider, auth_index, email: (.email // "?"), weight, sig: $o.signals, fsig: $fs,
+       excluded: ($exclf[.name] // .excluded_models // [] | if type == "array" then . else [] end),
        seen: ($o.observed_at // null | if . then epoch else null end)}
     | if .sig == null then .
       elif .provider == "claude" then
@@ -150,7 +181,21 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
     # and general quota above what the account must keep back (for the protected account, its reserve).
     | .fok = (.provider == "claude" and (.fblocked | not)
               and (.left == null or .left > (if .email == $prot then $reserve else 0 end)))
-  ] as $creds
+  ] as $creds0
+  # Fable reserve: hold back the last $freserve% of the protected Fable cap while another account can serve Fable.
+  | ($creds0 | map(select(.provider == "claude" and .email != $prot and (.fblocked | not)
+                          and (.fleft == null or .fleft > 1) and (.left == null or .left > 0)))
+     | length > 0) as $fable_elsewhere
+  | ($creds0 | map(
+      # Held with no fresh reading (the exclusion hid it): keep holding until the saved Fable reset.
+      .held = (.excluded | index($fpat) != null)
+      | .fsaved = ($holds[.name] // null)
+      | .fguard = (.provider == "claude" and .email == $prot and $freserve > 0 and $fable_elsewhere
+                   and (if .fleft != null then (.fpassed | not) and .fleft <= $freserve
+                        else .held and .fsaved != null and .fsaved > $now end))
+      | .fhold_until = (if .fguard then (if .fleft != null then .freset else .fsaved end) else null end)
+      | .fexcl = ((.excluded - [$fpat]) + (if .fguard then [$fpat] else [] end))
+    )) as $creds
   | ($creds | map(select(.fblocked))) as $fblocked
   | ($creds | map(select(.fok))) as $fok
 
@@ -169,6 +214,7 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
          end)
       + (if .fblocked then "; Fable blocked, back in \(until(.freset))"
          elif .fleft != null then "; Fable \(.fleft | pct) left" else "" end)
+      + (if .excluded | index($fpat) then " (Fable reserve held: last resort only)" else "" end)
       + (if $mine != "" and .auth_index == $mine then "  ← this session" else "" end)),
 
   # Accounts at or ahead of pace
@@ -203,7 +249,14 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
    | .why = (if .nodata then "no reading" elif .behind and .head > 0 then "ahead of pace"
              else "\(.head | round)pts/\(.hrs | round)h" end)
    | "W\t\(.name)\t\(.email)\t\(.weight // 1)\t\(.new)\t\(.why)"
-  )
+  ),
+
+  # Fable reserve changes: "X<TAB>name<TAB>email<TAB>new excluded_models JSON<TAB>held|released"
+  ($creds[] | select(.provider == "claude" and (.fexcl | sort) != (.excluded | sort))
+   | "X\t\(.name)\t\(.email)\t\(.fexcl | tojson)\t\(if .fguard then "held" else "released" end)"),
+
+  # Fable reserve state to keep: "H<TAB>{name: reset}" for every held credential
+  "H\t\([$creds[] | select(.fguard and .fhold_until != null) | {(.name): .fhold_until}] | add // {} | tojson)"
 ' <<<"$json")
 
 echo "Quota (weekly % left vs even-spend target, slack):"
@@ -228,6 +281,24 @@ while IFS=$'\t' read -r _ name email old new why; do
     changes+=("${email%@*} ${old}→${new} FAILED")
   fi
 done < <(grep '^W' <<<"$rows" || true)
+
+while IFS=$'\t' read -r _ name email excl what; do
+  label="${email%@*} Fable reserve $what"
+  if ((dry)); then changes+=("$label"); continue; fi
+  if curl -sf -m 4 -X PATCH -H "Authorization: Bearer $key" -H 'Content-Type: application/json' \
+       -d "$(jq -nc --arg n "$name" --argjson x "$excl" '{name: $n, excluded_models: $x}')" "$API/auth-files/fields" >/dev/null; then
+    changes+=("$label")
+  else
+    changes+=("$label FAILED")
+  fi
+done < <(grep '^X' <<<"$rows" || true)
+
+if ! ((dry)); then
+  new_holds=$(grep '^H' <<<"$rows" | cut -f2- || true)
+  if [[ -n $new_holds && $new_holds != "$holds" ]]; then
+    mkdir -p "$STATE_DIR" && printf '%s\n' "$new_holds" >"$holds_file.tmp" && mv "$holds_file.tmp" "$holds_file"
+  fi
+fi
 
 if ((${#changes[@]})); then
   msg="$( ((dry)) && echo "would rebalance" || echo rebalanced): $(IFS=';'; echo "${changes[*]}" | sed 's/;/; /g')"

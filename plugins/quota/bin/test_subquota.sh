@@ -27,6 +27,7 @@ proposed() { # proposed <cred json>...  -> the "would rebalance" line, or "weigh
   HOME="$tmp/home" QUOTA_PROXY_URL="http://127.0.0.1:$port" QUOTA_MANAGEMENT_KEY_FILE="$tmp/key" \
     QUOTA_PROTECTED_EMAIL=main@example.invalid QUOTA_LOG="$tmp/log" "$here/subquota" --dry-run 2>&1 | tail -n 1
 }
+nt() { if [[ $2 != *"$3"* ]]; then echo "ok    $1"; else echo "FAIL  $1: unwanted \"$3\" in: $2"; fails=$((fails + 1)); fi; }
 t() { if [[ $2 == *"$3"* ]]; then echo "ok    $1"; else echo "FAIL  $1: wanted \"$3\" in: $2"; fails=$((fails + 1)); fi; }
 
 # Both accounts on pace: weights follow the burn rate each can afford (unchanged behavior).
@@ -68,5 +69,40 @@ t "report: a blocked account says when Fable comes back" "$out" "Fable blocked, 
 t "report: says where Fable falls back to" "$out" "Fable blocked on side; its sessions fall back to main"
 out=$(report "$(cred side 100 0.86 18 1.0 rejected)" "$(cred main 0 0.59 70 1.0 rejected)")
 t "report: says when Fable is blocked everywhere" "$out" "Fable blocked on every account"
+
+# Fable reserve: the protected account's last 10% of its Fable cap is a last resort too. Held by
+# excluding Fable on that credential while another account can serve Fable; released otherwise.
+held() { jq -c '.excluded_models = ["claude-fable-*"]' <<<"$1"; }
+out=$(proposed "$(cred side 50 0.40 84 0.30)" "$(cred main 50 0.40 84 0.95)")
+t "Fable reserve: held when the protected account is inside its last 10% of Fable" "$out" "main Fable reserve held"
+out=$(report "$(cred side 50 0.40 84 0.30)" "$(held "$(cred main 50 0.40 84 0.95)")")
+t "report: says the Fable reserve is held" "$out" "Fable reserve held: last resort only"
+out=$(proposed "$(cred side 50 0.40 84 0.30)" "$(held "$(cred main 50 0.40 84 0.95)")")
+nt "Fable reserve: already held, nothing to change" "$out" "Fable reserve"
+out=$(proposed "$(cred side 50 0.40 84 1.0 rejected)" "$(held "$(cred main 50 0.40 84 0.95)")")
+t "Fable reserve: released as the last resort when the other account is Fable-blocked" "$out" "main Fable reserve released"
+out=$(proposed "$(cred side 50 0.40 84 0.995)" "$(cred main 50 0.40 84 0.95)")
+nt "Fable reserve: not held when the other account is within 1% of its Fable cap" "$out" "Fable reserve"
+out=$(proposed "$(cred side 50 0.40 84 0.30)" "$(cred main 50 0.40 84 0.50)")
+nt "Fable reserve: not held above the last 10%" "$out" "Fable reserve"
+out=$(proposed "$(cred side 50 0.40 84 0.30)" "$(jq -c '.excluded_models = ["claude-fable-*", "claude-haiku-*"]' <<<"$(cred main 50 0.40 84 0.50)")")
+t "Fable reserve: released above the last 10%" "$out" "main Fable reserve released"
+out=$(proposed "$(cred side 50 0.40 84 0.30)" "$(cred main 50 0.40 84)")
+nt "Fable reserve: nothing held without a Fable reading" "$out" "Fable reserve"
+
+# Holding Fable drops the credential's Fable reading (and it serves no Fable to renew it), so the hold
+# runs on the reset time saved when it was set, instead of flapping open on "no reading".
+saved() { mkdir -p "$tmp/home/.cache/quota"; echo "{\"main.json\": $((now + $1 * 3600))}" > "$tmp/home/.cache/quota/fable-holds.json"; }
+saved 20
+out=$(proposed "$(cred side 50 0.40 84 0.30)" "$(held "$(cred main 50 0.40 84)")")
+nt "Fable reserve: held with no reading keeps holding until the saved reset" "$out" "Fable reserve"
+out=$(proposed "$(cred side 50 0.40 84 1.0 rejected)" "$(held "$(cred main 50 0.40 84)")")
+t "Fable reserve: held with no reading still released as the last resort" "$out" "main Fable reserve released"
+saved -1
+out=$(proposed "$(cred side 50 0.40 84 0.30)" "$(held "$(cred main 50 0.40 84)")")
+t "Fable reserve: released once the saved reset has passed" "$out" "main Fable reserve released"
+rm -f "$tmp/home/.cache/quota/fable-holds.json"
+out=$(proposed "$(cred side 50 0.40 84 0.30)" "$(held "$(cred main 50 0.40 84)")")
+t "Fable reserve: released with no reading and no saved reset" "$out" "main Fable reserve released"
 
 [ "$fails" = 0 ] && echo "all passed" || { echo "$fails failed"; exit 1; }
