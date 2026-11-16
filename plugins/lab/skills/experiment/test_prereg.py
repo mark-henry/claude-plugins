@@ -251,7 +251,8 @@ def record(d, **over):
     """A schema-2 record for a two-arm toy. Line-6 fields set, so it opens as a counted record."""
     rec = {"schema": 2, "question": "Does model b score higher than model a on the toy set?", "bar": "plan.md#BAR_TOY",
            "decision": "use b if it clears the bar",
-           "primary": {"metric": "mean score", "comparison": "treated minus untreated", "smallest_effect": 0.2, "unit": "item"},
+           "primary": {"metric": "mean score", "comparison": "treated minus untreated", "smallest_effect": 0.2, "unit": "item",
+                       "range": [0, 1]},
            "intended_n": 40, "varies": ["model"],
            "arms": {"untreated": {"out": "runs/untreated", "command": "python train.py --model a"},
                     "treated": {"out": "runs/treated", "command": "python train.py --model b"}},
@@ -1320,7 +1321,8 @@ class JudgeRound6(unittest.TestCase):
 
     def test_a_non_finite_arm_mean_is_not_counted(self):
         d = lab_repo()
-        rp = counted_toy(d)
+        rp = counted_toy(d, primary={"metric": "mean score", "comparison": "treated minus untreated",
+                                     "smallest_effect": 0.2, "unit": "item", "range": [0, 1e308]})
         rs = read_rows(d, "runs/treated")
         for r_ in rs:
             r_["score"] = 1e308                                     # each finite; their sum overflows
@@ -1467,6 +1469,172 @@ class JudgeRound6(unittest.TestCase):
         self.assertIn("data.jsonl", r.stdout)
         (d / "report.md").write_text("Treated 30/40 (toy-treated).\n")
         self.assertEqual(run(d, "quote", "report.md", rp).returncode, 1)
+
+
+class JudgeRound7(unittest.TestCase):
+    """Defects the fourth independent judge found by running the tool, and checks that had no test."""
+
+    assertNotCounted = CountedNeedsEveryLine.assertNotCounted
+
+    def quotable(self, **over):
+        return JudgeRound6.quotable(self, **over)
+
+    def refused(self, r, *named):
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        for n in named:
+            self.assertIn(n, r.stdout + r.stderr)
+
+    # 1. runs reused under a new record
+    def test_runs_stamped_under_another_record_are_not_counted_under_a_new_one(self):
+        for new_question in (None, "Does model b score higher than model a? (reworded)"):
+            d, rp = self.quotable()
+            rec = json.loads((d / rp).read_text())
+            old = dict(rec, status="abandoned")
+            (d / rp).write_text(json.dumps(old, indent=2))
+            rec.pop("opened"); rec["status"] = "draft"
+            if new_question:
+                rec["question"] = new_question
+            (d / "prereg" / "r2.json").write_text(json.dumps(rec, indent=2))
+            self.assertEqual(run(d, "open", "prereg/r2.json").returncode, 0)
+            r = run(d, "check", "prereg/r2.json")
+            self.refused(r, "prereg/r.json", "stamp and run the arms again under this record")
+            self.assertNotIn("label: counted", r.stdout)
+            self.assertEqual(json.loads((d / "prereg" / "r2.check.json").read_text())["label"], "exploratory")
+            run(d, "parity", "prereg/r2.json")
+            (d / "report.md").write_text("Counted: treated 30/40 (toy-treated).\n")
+            self.assertEqual(run(d, "quote", "report.md", "prereg/r2.json").returncode, 1)
+
+    # 2. the scorer that scored, not the one at check time
+    def test_a_scorer_changed_after_the_stamps_is_not_counted(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        (d / "score.py").write_text((d / "score.py").read_text() + "# fixed after scoring\n")
+        r = run(d, "check", rp)
+        self.assertNotCounted(d, r, "line 3", "score.py")
+        self.assertIn("stamp", r.stderr)
+        self.assertIn("score", r.stderr)
+
+    def test_a_line_3_refusal_says_to_stamp_and_score_again_after_the_fix(self):
+        d = lab_repo()
+        rp = counted_toy(d, scorer={**SCORER, "command": "python3 lenient.py {output}", "file": "lenient.py"})
+        r = run(d, "check", rp)
+        msg = next(l for l in r.stderr.splitlines() if "broken output" in l)
+        self.assertIn("line 3", msg)
+        self.assertIn("stamp", msg)
+        self.assertIn("score", msg.split("stamp", 1)[1])
+        self.assertIn("again", msg)
+
+    def test_quote_and_close_refuse_after_the_scorer_file_changes(self):
+        d, rp = self.quotable()
+        (d / "score.py").write_text((d / "score.py").read_text() + "# edited\n")
+        r = run(d, "quote", "report.md", rp)
+        self.refused(r, "score.py")
+        self.refused(run(d, "close", rp), "score.py")
+
+    # 3. scores outside the declared range
+    def test_new_writes_primary_range(self):
+        d = lab_repo()
+        self.assertEqual(run(d, "new", "prereg/t.json").returncode, 0)
+        self.assertIn("range", json.loads((d / "prereg" / "t.json").read_text())["primary"])
+
+    def test_scores_outside_primary_range_are_failed_items(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        rs = read_rows(d, "runs/treated")
+        for r_ in rs:
+            r_["score"] = r_["score"] * 100 + 2                     # percent, not a share
+        rewrite_items(d, "runs/treated", rs)
+        r = run(d, "check", rp)
+        self.assertNotCounted(d, r, "line 2", "out_of_range 40")
+        line12 = next(l for l in r.stdout.splitlines() if l.startswith("line 12"))
+        self.assertIn("treated -", line12)
+
+    def test_counted_needs_primary_range(self):
+        d = lab_repo()
+        rp = counted_toy(d, primary={"metric": "mean score", "comparison": "treated minus untreated",
+                                     "smallest_effect": 0.2, "unit": "item"})
+        r = run(d, "check", rp)
+        self.assertNotCounted(d, r, "primary.range", "declare it")
+
+    # 4. a floor whose items all failed
+    def test_a_floor_with_no_scored_item_does_not_satisfy_line_12(self):
+        d = lab_repo()
+        rp = counted_toy(d, floor=None)
+        write_items(d, "runs/untreated", rows("floor:constant", [0] * 40, statuses=["error"] * 40))
+        r = run(d, "check", rp)
+        self.assertNotCounted(d, r, "line 12", "floor:constant", "scored item")
+
+    # 5. quote and close read check's verdict, counted or not
+    def exploratory_arms(self, d, items):
+        rp = record(d, scorer=SCORER, floors={"none_reason": ""}, pilot={"runs": []})
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        for arm, model in (("untreated", "a"), ("treated", "b")):
+            self.assertEqual(run(d, "stamp", f"runs/{arm}", "--record", rp, "--arm", arm, "--run-id", f"x-{arm}",
+                                 "--", "python", "train.py", "--model", model).returncode, 0)
+            write_items(d, f"runs/{arm}", items(arm))
+        (d / "report.md").write_text("Exploratory: treated 30/40 (x-treated).\n")
+        return rp
+
+    def test_quote_and_close_refuse_an_exploratory_record_whose_check_refused_a_line(self):
+        d = lab_repo()
+        rp = self.exploratory_arms(d, lambda arm: rows(arm, [1] * (40 if arm == "treated" else 39)))
+        self.assertEqual(run(d, "check", rp).returncode, 1)
+        self.refused(run(d, "quote", "report.md", rp), "line 2")
+        self.refused(run(d, "close", rp), "line 2")
+        self.assertNotIn("closed", json.loads((d / rp).read_text()))
+
+    def test_quote_and_close_refuse_an_exploratory_record_with_no_check_on_file(self):
+        d = lab_repo()
+        rp = self.exploratory_arms(d, lambda arm: rows(arm, [1] * 40))
+        self.refused(run(d, "quote", "report.md", rp), "check")
+        self.refused(run(d, "close", rp), "check")
+
+    def test_an_exploratory_record_with_only_the_counted_gate_unmet_is_quoted_and_closed(self):
+        d = lab_repo()
+        rp = self.exploratory_arms(d, lambda arm: rows(arm, [k % 2 for k in range(40)]))
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("label: exploratory", r.stdout)
+        r = run(d, "quote", "report.md", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        r = run(d, "close", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("closed", json.loads((d / rp).read_text()))
+
+    # 6. a declared deterministic harness
+    def test_a_deterministic_declaration_is_named_in_a_warning_and_the_label(self):
+        d = lab_repo()
+        rp = det_toy(d, ("3", "3"), ("3", "3"))
+        self.assertEqual(run(d, "parity", rp).returncode, 0)
+        r = run(d, "check", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(any(l.startswith("warning:") and "line 7" in l and "pilot.deterministic" in l
+                            for l in r.stdout.splitlines()), r.stdout)
+        self.assertIn("label: counted (deterministic harness declared)", r.stdout.splitlines())
+        (d / "report.md").write_text("Counted: treated 30/40 (toy-treated).\n")
+        r = run(d, "quote", "report.md", rp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    # 7. checks that had no test
+    def test_pilots_that_cover_half_the_first_arms_units_are_not_counted(self):
+        d = lab_repo()
+        rp = counted_toy(d)
+        for k in (1, 2):
+            rewrite_items(d, f"runs/pilot{k}", read_rows(d, f"runs/pilot{k}")[:20])
+        self.assertNotCounted(d, run(d, "check", rp), "line 7", "covers")
+
+    def test_quote_and_close_refuse_a_counted_check_once_the_record_is_abandoned(self):
+        d, rp = self.quotable()
+        rec = json.loads((d / rp).read_text()); rec["status"] = "abandoned"; (d / rp).write_text(json.dumps(rec))
+        self.refused(run(d, "quote", "report.md", rp), "abandoned")
+        self.refused(run(d, "close", rp), "abandoned")
+
+    # 8. two run folders at once
+    def test_two_pilot_folders_checked_together_are_told_to_be_checked_one_at_a_time(self):
+        d = lab_repo()
+        quiet_pilots(d)
+        r = run(d, "check", "runs/pilot1", "runs/pilot2")
+        self.refused(r, "duplicate", "check each run folder on its own")
 
 
 if __name__ == "__main__":

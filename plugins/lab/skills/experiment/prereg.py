@@ -18,7 +18,8 @@ by close, ls and parity, and hashed exactly as before. The skill's SKILL.md says
 
 A run folder holds stamp.json (written by `stamp` at launch) and items.jsonl (written by the harness): one JSON
 object per line with id, arm, unit, score (number or null) and status (ok, error, empty, truncated, parse_failure).
-Arms named floor:<name> are trivial policies scored on the same items (line 12).
+Arms named floor:<name> are trivial policies scored on the same items (line 12). A score outside the record's
+primary.range [lo, hi], or not finite, is a failed item (out_of_range, non_finite_score).
 """
 from __future__ import annotations
 
@@ -37,6 +38,7 @@ TEMPLATE = {
                 "comparison": "... line 6: which arm minus which",
                 "smallest_effect": "... line 6: a number, the smallest difference that would change the decision",
                 "unit": "... line 5: the independent unit (document, task, user), as written in items.jsonl",
+                "range": "... line 2: [lo, hi], the scores the metric can take; a score outside is a failed item",
                 "higher_is_better": True},
     "intended_n": "... line 2: items per arm",
     "failure_threshold": {"share": 0.05, "min_items": 2, "difference": 0.05},
@@ -324,6 +326,8 @@ def cmd_ls(a):
 
 ITEM_STATUSES = ("ok", "error", "empty", "truncated", "parse_failure")
 NON_FINITE = "non_finite_score"      # given by read_items to an ok row whose score is NaN or infinite
+OUT_OF_RANGE = "out_of_range"        # given by read_items to an ok row whose score is outside primary.range
+DET_LABEL = " (deterministic harness declared)"      # appended to a counted label that rests on pilot.deterministic
 LARGE_BYTES = 5 * 1024 * 1024      # a file over this is listed in the snapshot by sha256, not stored
 RESAMPLES = 2000
 DETECT_Z = 2.8                     # two-sided alpha 0.05, power 0.8
@@ -400,6 +404,18 @@ def scorer_declared(rec):
     return isinstance(sc, dict) and not any(placeholder(sc.get(k)) for k in ("command", "file", "broken", "good"))
 
 
+RESCORE = ("; fix the scorer, then stamp the arms again in new run folders and score them again with the fixed "
+           "scorer: scores from the old one are not evidence")
+
+
+def scorer_sha(rec, root):
+    """sha256 of the declared scorer file as it is now; None when no scorer is declared or the file is missing."""
+    if not scorer_declared(rec):
+        return None
+    p = root / rec["scorer"]["file"]
+    return full_sha(p) if p.is_file() else None
+
+
 def run_scorer(sc, root):
     """Line 3: the scorer must fail the broken output and pass the known-good one. Returns (result, problems)."""
     probs, res = [], {}
@@ -415,13 +431,23 @@ def run_scorer(sc, root):
     res["scorer_sha256"] = full_sha(root / sc["file"])
     res["broken_passed"], res["good_passed"] = passes(sc["broken"]), passes(sc["good"])
     if res["broken_passed"]:
-        probs.append(f"line 3: the scorer passed the broken output {sc['broken']}; it cannot tell a broken output from a good one")
+        probs.append(f"line 3: the scorer passed the broken output {sc['broken']}; it cannot tell a broken output from a good one"
+                     f"{RESCORE}")
     if not res["good_passed"]:
-        probs.append(f"line 3: the scorer failed the known-good output {sc['good']}")
+        probs.append(f"line 3: the scorer failed the known-good output {sc['good']}{RESCORE}")
     return res, probs
 
 
-def read_items(folder, probs):
+def score_range(rec):
+    """primary.range as (lo, hi) when it is two finite numbers with lo <= hi; else None (absent or malformed)."""
+    v = ((rec or {}).get("primary") or {}).get("range")
+    if (isinstance(v, list) and len(v) == 2 and all(isinstance(x, (int, float)) and not isinstance(x, bool)
+                                                     and math.isfinite(x) for x in v) and v[0] <= v[1]):
+        return v[0], v[1]
+    return None
+
+
+def read_items(folder, probs, rng=None):
     p = Path(folder) / "items.jsonl"
     if not p.is_file():
         probs.append(f"{p}: missing; the harness writes one row per item (id, arm, unit, score, status)")
@@ -443,6 +469,8 @@ def read_items(folder, probs):
             probs.append(f"line 2: {p}:{k} has status ok but score {r['score']!r}; an ok row carries a number"); continue
         if r["status"] == "ok" and not math.isfinite(r["score"]):
             r = {**r, "status": NON_FINITE}      # NaN or infinite: a failed item, counted in line 2, never in a mean
+        elif r["status"] == "ok" and rng and not rng[0] <= r["score"] <= rng[1]:
+            r = {**r, "status": OUT_OF_RANGE}    # outside primary.range: a failed item, as a non-finite score is
         out.append(r)
     return out
 
@@ -472,7 +500,7 @@ def pilot_folders(rec, root):
 
 
 def pilot_rows(rec, root, probs):
-    return [[r for r in read_items(root / run, probs) if not str(r["arm"]).startswith("floor:")]
+    return [[r for r in read_items(root / run, probs, score_range(rec)) if not str(r["arm"]).startswith("floor:")]
             for run in pilot_folders(rec, root)]
 
 
@@ -626,7 +654,7 @@ def line8(rec, runs):
     return {"items": len(order), "at_0": at0, "at_1": at1, "rates": {i: tally[i] for i in order}}, lines, summary
 
 
-def line2(by_arm, arms, intended, thr, probs):
+def line2(by_arm, arms, intended, thr, probs, dup_hint=""):
     """Scored n equals intended n; failure shares under the threshold and equal across arms."""
     share, min_items = thr.get("share", 0.05), thr.get("min_items", 2)
     diff = thr.get("difference", share)
@@ -636,7 +664,7 @@ def line2(by_arm, arms, intended, thr, probs):
         ids = [r["id"] for r in rs]
         dup = sorted({i for i in ids if ids.count(i) > 1}, key=str)
         if dup:
-            probs.append(f"line 2: arm {arm} has duplicate ids in items.jsonl: {', '.join(map(str, dup[:5]))}")
+            probs.append(f"line 2: arm {arm} has duplicate ids in items.jsonl: {', '.join(map(str, dup[:5]))}{dup_hint}")
         n = len(rs)
         fails = collections.Counter(r["status"] for r in rs if r["status"] != "ok")
         k = sum(fails.values())
@@ -705,11 +733,53 @@ def violated_for_counted(rec, by_arm, arms, floors, means):
     return probs
 
 
-def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran, by_arm=None):
-    """The counted gate: a real intended n, a scorer whose line-3 check ran, every arm stamped against this record's
-    line-6 hash, two distinct stamped pilot runs and line 7 holds, a floor sits under the best arm, the record not
-    abandoned. A refusal by any line `check` runs, and violated_for_counted, also deny the label; the caller adds those."""
+def repo_rel(path, root, base=None):
+    """A record path relative to the repository root (posix), or its absolute path outside it. A relative path is
+    read against base (the current directory when None)."""
+    p = Path(path) if os.path.isabs(path) else Path(base or os.getcwd()) / path
+    try:
+        return p.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return p.resolve().as_posix()
+
+
+def stamp_record_problems(rec, path, root, stamps):
+    """A counted stamp belongs to the record it was stamped under: same file, same frozen hash. Runs stamped under
+    another record (an abandoned one, a copy) are not this record's runs. The scorer that scored them is the one
+    line 3 tests now: a scorer changed since a stamp means its arm was scored by another scorer."""
+    probs, here, frozen = [], repo_rel(path, root), (rec.get("opened") or {}).get("frozen_sha256")
+    sc_now = scorer_sha(rec, root)
+    for arm, st in stamps.items():
+        if st.get("label") != "counted":
+            continue
+        r = st.get("record") if isinstance(st.get("record"), dict) else {}
+        # a stamp from before record_repo_path: its path was given relative to where stamp ran, usually the root
+        there = st.get("record_repo_path") or (repo_rel(r["path"], root, root) if isinstance(r.get("path"), str) else None)
+        if there != here or r.get("frozen_sha256") != frozen:
+            probs.append(f"line 6: arm {arm}'s counted stamp was made under record {there or 'none'} (frozen hash "
+                         f"{r.get('frozen_sha256') or 'none'}), not {here} (frozen hash {frozen}): stamp and run the arms "
+                         f"again under this record")
+        if scorer_declared(rec):
+            then = (st.get("scorer") or {}).get("sha256") if isinstance(st.get("scorer"), dict) else None
+            if then != sc_now:
+                probs.append(f"line 3: the scorer {rec['scorer']['file']} is not the one arm {arm} was stamped with "
+                             f"(sha256 {(then or 'not recorded')[:16]} at stamp, {(sc_now or 'missing')[:16]} now); line 3 "
+                             f"tests the scorer as it is now, not the one that scored: stamp the arms again and score them "
+                             f"again with this scorer")
+    return probs
+
+
+def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran, by_arm=None, path=None):
+    """The counted gate: a real intended n and a declared primary.range, a scorer whose line-3 check ran and that
+    scored the arms, every arm stamped under this record (path and frozen hash) against its line-6 hash, two distinct
+    stamped pilot runs and line 7 holds, a floor with scored items sits under the best arm, the record not abandoned.
+    A refusal by any line `check` runs, and violated_for_counted, also deny the label; the caller adds those."""
     probs = []
+    if score_range(rec) is None:
+        v = (rec.get("primary") or {}).get("range")
+        probs.append(f"line 2: counted needs primary.range, [lo, hi], the scores the metric can take "
+                     f"({'absent' if v is None else f'the record has {v!r}'}); declare it. primary is frozen at open, so "
+                     f"a record opened without it needs a new record that declares it")
     if rec.get("status") == "abandoned":
         probs.append("the record's status is \"abandoned\": an abandoned record is never counted; start a new record")
     if len(arms) < 2:
@@ -720,6 +790,8 @@ def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran, by_a
     if not line3_ran:
         probs.append("line 3: counted needs a declared scorer (scorer.command, file, broken, good) whose check passes; none is declared")
     probs += pilot_gate(rec, root)
+    if path is not None:
+        probs += stamp_record_problems(rec, path, root, stamps)
     l6 = line6_part(rec)
     if rec.get("status") == "exploratory" or not l6 or (rec.get("opened") or {}).get("line6_sha256") != l6:
         probs.append("line 6: the record opened exploratory or without hashed line-6 fields (metric, comparison, smallest effect, unit)")
@@ -741,6 +813,11 @@ def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran, by_a
         probs.append(f"line 12: no floor:<name> arm in items.jsonl, and floors.none_reason {reason!r} is not a reason; "
                      f"a reason is needed: a sentence of at least four words saying why no trivial policy can be scored, "
                      f"or score one as floor:<name>")
+    for f in floors:
+        if means.get(f) is None:
+            n = len((by_arm or {}).get(f, []))
+            probs.append(f"line 12: {f} has no scored item ({n} rows, none ok); a floor needs at least one scored item, "
+                         f"and its mean is over scored items: fix the floor's run and score it again")
     hib = (rec.get("primary") or {}).get("higher_is_better", True)
     scored = [means[a] for a in arms if means.get(a) is not None and finite(means[a])]
     if scored:
@@ -883,7 +960,7 @@ def cmd_stamp(a):
     if (out / "stamp.json").exists():
         die(f"{out / 'stamp.json'} exists; a stamp is never overwritten: stamp a new run folder")
     root = repo_root() or Path(".")
-    rec, rec_info, data = None, NA, []
+    rec, rec_info, data, scorer = None, NA, [], NA
     if a.record:
         rec = load(a.record)
         if rec.get("schema") != 2:
@@ -897,6 +974,8 @@ def cmd_stamp(a):
         data = check_data(rec["arms"][a.arm].get("data"), rec_root(a.record), a.arm)
         rec_info = {"path": a.record, "sha256": full_sha(a.record), "frozen_sha256": rec["opened"]["frozen_sha256"],
                     "line6_sha256": rec["opened"].get("line6_sha256", NA)}
+        sc = scorer_sha(rec, rec_root(a.record))
+        scorer = {"file": rec["scorer"]["file"], "sha256": sc} if sc else NA
     if a.counted:
         if rec is None:
             die("line 6: --counted needs --record, an opened record whose line-6 fields were hashed; stamp without --counted to run exploratory")
@@ -930,6 +1009,7 @@ def cmd_stamp(a):
     snap = snapshot(root, out, run_id) if repo_root() else NA
     stamp = {"schema": 2, "run_id": run_id, "tracker_run_id": a.run_id or NA, "utc": now(), "host": socket.gethostname(),
              "argv": argv, "arm": a.arm or NA, "label": "counted" if a.counted else "exploratory", "record": rec_info,
+             "record_repo_path": repo_rel(a.record, rec_root(a.record)) if a.record else NA, "scorer": scorer,
              "config": config,
              "model": {"id": a.model or NA, "revision": a.model_revision or NA, "tokenizer_revision": a.tokenizer_revision or NA,
                        "date": a.model_date or NA},
@@ -966,7 +1046,9 @@ def cmd_check(a):
         for r in read_items(src, probs):
             by_arm.setdefault(r["arm"], []).append(r)
     arms = [x for x in by_arm if not str(x).startswith("floor:")]
-    line2(by_arm, arms, None, {}, probs)
+    hint = ("; each folder given is one run, so ids repeat across them: check each run folder on its own"
+            if len(a.sources) > 1 else "")
+    line2(by_arm, arms, None, {}, probs, hint)
     print("line 3: no record, so no scorer declared; not checked")
     line12(by_arm, arms, None)
     print("label: exploratory")
@@ -994,7 +1076,7 @@ def check_record(path):
             else:
                 stamps[arm] = st
                 print(f"run {st['run_id']}: {arm} ({st.get('label')})")
-        for r in read_items(root / folder, probs):
+        for r in read_items(root / folder, probs, score_range(rec)):
             if r["arm"] not in rec["arms"] and not str(r["arm"]).startswith("floor:"):
                 probs.append(f"line 2: {folder}/items.jsonl names arm {r['arm']!r}, neither a record arm nor floor:<name>")
                 continue
@@ -1018,6 +1100,9 @@ def check_record(path):
         l7["problems"] += deterministic_seed_problems([load_stamp(root / f) for f in pilot_folders(rec, root)], stamps)
     result["line7"] = l7
     print(line7_text(l7, rec))
+    if declared_deterministic(rec):
+        print(f"warning: line 7 rests on the pilot.deterministic declaration ({declared_deterministic(rec)}), not on "
+              f"measured run-to-run noise; if the harness has any randomness, the declaration is false")
     out = Path(path).with_suffix(".check.json")
     if runs:
         res8, lines, summary = line8(rec, runs)
@@ -1037,7 +1122,8 @@ def check_record(path):
         line3_ran = isinstance(result["line3"], dict) and "scorer_sha256" in result["line3"]
         probs += violated_for_counted(rec, by_arm, arms, floors, means)
         line_refusals = list(probs)
-        cp = counted_problems(rec, {a: stamps.get(a, {}) for a in arms}, l7, floors, means, arms, root, line3_ran, by_arm)
+        cp = counted_problems(rec, {a: stamps.get(a, {}) for a in arms}, l7, floors, means, arms, root, line3_ran, by_arm,
+                              path=path)
         earlier = len(probs)
         probs += [f"{p} (counted refused; the run stands as exploratory)" for p in cp]
         label = "counted" if not probs else "exploratory"
@@ -1048,6 +1134,8 @@ def check_record(path):
         pending = parity_problem(path, rec, root, inputs)
         if pending:
             label = PENDING
+        if l7 and l7.get("deterministic"):
+            label += DET_LABEL
     # line_refusals: lines violated (quote and close refuse while any stands); refusals: those plus the counted gate's
     result["label"], result["refusals"], result["line_refusals"], result["inputs"] = label, probs, line_refusals, inputs
     result["verdict_sha256"] = verdict_sha(result)
@@ -1160,7 +1248,7 @@ def parity_v2(a, rec):
     cp = Path(a.path).with_suffix(".check.json")
     check = read_json(cp)
     if check and str(check.get("label", "")).startswith("counted") and not changed_inputs(check.get("inputs"), inputs):
-        new = PENDING if problems else "counted"
+        new = (PENDING if problems else "counted") + (DET_LABEL if check["label"].endswith(DET_LABEL) else "")
         if check["label"] != new and check.get("verdict_sha256") == verdict_sha(check):
             check["label"] = new
             check["verdict_sha256"] = verdict_sha(check)
@@ -1221,8 +1309,8 @@ def data_drift(rec, root):
 def judged_inputs(rec, root):
     """sha256 of what check and parity judge: the record (less what close writes); for every arm, pilot and floor
     run folder, its items.jsonl and stamp.json ("absent" when missing); every data file the record or those stamps
-    list. Stored in check.json and parity.json; quote and close recompute it. A plain hash: it catches stale or copied
-    results, not a forger who recomputes it."""
+    list; the declared scorer file. Stored in check.json and parity.json; quote and close recompute it. A plain hash:
+    it catches stale or copied results, not a forger who recomputes it."""
     out = {"record": hashlib.sha256(json.dumps({k: v for k, v in rec.items() if k not in CLOSE_FIELDS},
                                                sort_keys=True).encode()).hexdigest()}
     for f in judged_folders(rec):
@@ -1232,6 +1320,8 @@ def judged_inputs(rec, root):
     for _, path, _ in declared_data(rec, root):
         p = data_path(root, path)
         out[f"data:{os.path.normpath(path)}"] = full_sha(p) if p.is_file() else "absent"
+    if scorer_declared(rec):
+        out[f"scorer:{os.path.normpath(rec['scorer']['file'])}"] = scorer_sha(rec, root) or "absent"
     return out
 
 
@@ -1279,19 +1369,19 @@ def parity_problem(path, rec, root, inputs):
 
 
 def result_gate(path, rec, root):
-    """(refusals, label now). A record with an arm stamped counted (or a check that labeled it counted) is quoted or
-    closed only while check.json is on file, hashes the files as they are now, carries its own verdict hash, and
-    records no violated line; and, if it says counted, a passing parity.json is current too. The label is "counted"
-    only when all of that holds; else "exploratory"."""
+    """(refusals, label now). A schema-2 record, counted or exploratory, is quoted or closed only while check.json is
+    on file, hashes the files as they are now, carries its own verdict hash, and records no violated line; and, if it
+    says counted, a passing parity.json is current too. The label is "counted" only when all of that holds; else
+    "exploratory". An unmet counted gate alone (power, pilots, floors) leaves a quotable exploratory result."""
     cp = Path(path).with_suffix(".check.json")
     check = read_json(cp)
     claimed = any((load_stamp(root / spec["out"]) or {}).get("label") == "counted" for spec in rec["arms"].values())
-    if not claimed and not (check and str(check.get("label", "")).startswith("counted")):
-        return [], "exploratory"
     inputs = judged_inputs(rec, root)
     if check is None:
-        return [f"line 13: {path} has arms stamped counted but no check result on file ({cp}); "
-                f"run `prereg.py check {path}`, then `prereg.py parity {path}`"], "exploratory"
+        return [(f"line 13: {path} has arms stamped counted but no check result on file ({cp}); "
+                 f"run `prereg.py check {path}`, then `prereg.py parity {path}`") if claimed else
+                (f"no check result on file for {path} ({cp}): run `prereg.py check {path}`; its numbers are quoted "
+                 f"or closed only after check refuses no line")], "exploratory"
     probs = []
     diff = changed_inputs(check.get("inputs"), inputs)
     if diff:
@@ -1332,7 +1422,7 @@ def cmd_close(a):
     if gate:
         finish(gate)
     for arm, spec in rec["arms"].items():
-        rows = [r for r in read_items(root / spec["out"], probs) if r["arm"] == arm]
+        rows = [r for r in read_items(root / spec["out"], probs, score_range(rec)) if r["arm"] == arm]
         observed[arm] = {"n": len(rows), "mean": mean_ok(rows)}
         print(f"  {arm:<12} n {len(rows)}  mean {fmt(observed[arm]['mean'])}")
     if probs:
