@@ -40,5 +40,3 @@ Record each judge so it can be reproduced and audited:
 - Corrected pass rate: <θ̂> (CI …) from observed <p_obs>
 - Valid for: <distribution / arms>; re-validate on <trigger>
 ```
-
-The source behind the tuning-ledger rule is in [references/evidence.md](references/evidence.md).

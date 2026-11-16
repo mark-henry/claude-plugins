@@ -49,7 +49,7 @@ Optional: list inputs outside the repository in `lab-inputs.md` at its root; `st
 11. **Train, dev and test share no unit; an LLM judge or baseline gets one item per call.** A baseline that reproduces the answer verbatim is a leak until audited.
 12. **Score trivial policies (random, constant, best fixed rule, padded output) with the metric and any training reward on the real items; report floors beside results.** Stamp floor runs as plain runs (no `--record`) with arms named `floor:<name>` in `items.jsonl`, listed in `floors.runs`. Counted is refused with no floor arm and no `floors.none_reason` (a sentence), when a floor has no scored item, or when a floor reaches the best arm.
 13. **Recompute per arm, from the files actually loaded, example count, tokens, source mix and hash; differences between arms or from recorded values must be declared.** `stamp` refuses a data file whose hash or line count differs from the record; `parity` refuses any difference in configuration, model, data, seeds, packages or code that `varies` does not name.
-14. **Before the run, raise an eyebrow at the design.** Run `check:eyebrow` on it with one added question: what is the cheapest way to score well without doing the task? Test that way; line 12 scores it.
+14. **Before the run, raise an eyebrow at the design.** Run `check:eyebrow` on it (if it is not installed: a fresh agent says what the people who know this area best would say of the design, and you search for the case against) with one added question: what is the cheapest way to score well without doing the task? Test that way; line 12 scores it.
 
 ## Judgment the script does not make
 

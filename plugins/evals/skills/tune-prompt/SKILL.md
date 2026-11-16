@@ -5,7 +5,7 @@ description: "Tune a prompt-driven component (a router or selector, a skill, an 
 
 # Tune a prompt by watching it, one case at a time
 
-A new prompt-driven component has no eval set yet, and its first few runs teach the most. Shadowing means running it on real cases one at a time, committing to a prediction of each result before the run, and having the expert rule on every outcome. It is the first stage of Hamel Husain's critique shadowing (one expert rules pass or fail with a critique, and the thing gets fixed), at the size where a component is still taking shape. The prompt edited here is the component's own. A grader that stands in for the expert, with a number you can quote, is the next stage: `evals:build-judge`, whose test cases must be ones this tuning never used. Writing the prediction down is a one-item preregistration: it stops the result from being rationalized after the fact, and a wrong prediction is itself a finding, about the component or about your model of it.
+A new prompt-driven component has no eval set yet, and its first few runs teach the most. Shadowing means running it on real cases one at a time, committing to a prediction of each result before the run, and having the expert rule on every outcome. It is the first stage of Hamel Husain's [critique shadowing](https://hamel.dev/blog/posts/llm-judge/) (one expert rules pass or fail with a critique, and the thing gets fixed), at the size where a component is still taking shape. The prompt edited here is the component's own. A grader that stands in for the expert, with a number you can quote, is the next stage: `evals:build-judge`, whose test cases must be ones this tuning never used. Writing the prediction down is a one-item preregistration: it stops the result from being rationalized after the fact, and a wrong prediction is itself a finding, about the component or about your model of it.
 
 ## The human is the expert; the agent bets
 
@@ -44,5 +44,3 @@ One JSON line per case, appended to the log the component names (for example a r
 ```
 
 `ruled_by: agent-only` marks a line the human never ruled on: its verdict is only the agent's bet, so don't promote it to an example or count it in `bet_hit`. The share of bets that hit, over the lines the human ruled, says how far the agent's taste tracks the human's on this component.
-
-The source for the method is in [references/evidence.md](references/evidence.md).

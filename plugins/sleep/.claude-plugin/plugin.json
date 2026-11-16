@@ -1,9 +1,0 @@
-{
-  "name": "sleep",
-  "description": "Infer last night's bedtime and wake time from the Mac lid log, cross-checked against Chrome history.",
-  "author": {
-    "name": "Mark Henry"
-  },
-  "homepage": "https://github.com/mark-henry/claude-plugins",
-  "license": "MIT"
-}

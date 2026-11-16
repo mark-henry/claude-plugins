@@ -23,11 +23,6 @@
       "description": "Scrape the Google Flights price calendar (cheapest fare per day across months) via browser-use."
     },
     {
-      "name": "sleep",
-      "source": "./plugins/sleep",
-      "description": "Infer last night's bedtime and wake time from the Mac lid log, cross-checked against Chrome history."
-    },
-    {
       "name": "gordian",
       "source": "./plugins/gordian",
       "description": "Big-picture simplification audit for code that has accumulated complexity from many small edits."
@@ -41,11 +36,6 @@
       "name": "naming",
       "source": "./plugins/naming",
       "description": "Choose a name that travels: state its job, list the siblings it must not be confused with, brainstorm widely, test candidates against the classic rules, recommend one."
-    },
-    {
-      "name": "amazon",
-      "source": "./plugins/amazon",
-      "description": "Read the Amazon Cart (with same-day windowed items flagged), Amazon Fresh Cart and Whole Foods Market Cart from a dedicated agent Chrome; hand items to your real Chrome to add."
     },
     {
       "name": "evals",
