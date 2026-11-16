@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Unit tests for arbiter-loop's ratchet: per-pass git snapshots, restore of the best pass at a failing exit.
+# Unit tests for arbiter-loop's ratchet: per-pass git snapshots, a worse pass rejected (after a rerun of the check)
+# and reset before the next worker, the supervisor's status line, restore of the best pass at a failing exit.
 # Run: bash tests/arbiter-ratchet.sh. Throwaway repositories under a temp directory; a fake worker and check.
 set -uo pipefail
 loop=${ARBITER_LOOP:-$(cd "$(dirname "$0")/.." && pwd)/plugins/unattended/bin/arbiter-loop}
@@ -12,8 +13,12 @@ has() { grep -qF -- "$2" "$1" && echo yes || echo no; }
 w=$tmp/w s=$tmp/s
 # The fake worker: pass k writes line k of $tmp/seq to `score`, rewrites a tracked file, adds an untracked file,
 # and rewrites an ignored one. With FORGE=k it also forges the pass count on pass k (the existing tamper check).
+# It saves its stdin as stdin-k and what it found on disk as saw-k (a.txt / score / ig.log / new-* files).
+# A score line "a b" makes the check report a the first time it sees that pass's files and b on a rerun.
 cat > "$tmp/worker.sh" <<EOF
 n=\$(( \$(cat "$tmp/n") + 1 )); echo \$n > "$tmp/n"
+cat > "$tmp/stdin-\$n"
+echo "\$(cat a.txt) / \$(cat score) / \$(cat ig.log) / \$(ls new-*.txt 2>/dev/null | tr '\n' ' ')" > "$tmp/saw-\$n"
 sed -n "\${n}p" "$tmp/seq" > score
 echo "pass \$n" > a.txt
 echo "pass \$n" > "new-\$n.txt"
@@ -21,14 +26,21 @@ echo "pass \$n" > ig.log
 [ "\$n" = "\$(cat "$tmp/forge")" ] && echo 0 > "$s/passes"
 exit 0
 EOF
-CHECK='s=$(cat "$LOOP_DIR/score"); echo "$s" > "$ARBITER_RESULT"'
+cat > "$tmp/check.sh" <<EOF
+p=\$(cat "\$LOOP_DIR/a.txt"); echo "\$p" >> "$tmp/checks"
+set -- \$(cat "\$LOOP_DIR/score")
+if [ "\$(grep -cxF "\$p" "$tmp/checks")" -gt 1 ] && [ -n "\${2:-}" ]; then r=\$2; else r=\$1; fi
+echo "\$r" > "\$ARBITER_RESULT"
+EOF
+CHECK="bash '$tmp/check.sh'"
+checks() { grep -cxF "pass $1" "$tmp/checks"; } # how many times the check ran on pass k's files
 g() { git -C "$w" "$@"; }
 
 # fresh <git|plain> <score per pass...>: a loop directory at baseline score 0, and the worker's sequence.
 fresh() {
   local kind=$1; shift
   rm -rf "$w" "$s"; mkdir -p "$w"; echo go > "$tmp/prompt.md"
-  printf '%s\n' "$@" > "$tmp/seq"; echo 0 > "$tmp/n"; echo 0 > "$tmp/forge"
+  printf '%s\n' "$@" > "$tmp/seq"; echo 0 > "$tmp/n"; echo 0 > "$tmp/forge"; : > "$tmp/checks"; rm -f "$tmp"/stdin-* "$tmp"/saw-*
   echo 0 > "$w/score"; echo base > "$w/a.txt"; echo base > "$w/staged.txt"; echo base > "$w/ig.log"
   if [ "$kind" = git ]; then
     echo '*.log' > "$w/.gitignore"
@@ -105,5 +117,58 @@ t "the report warns that the best pass was flagged by the tamper check" "$(grep 
 fresh git 3 5 2 1; echo 3 > "$tmp/forge"
 run STALL=2 "$loop" "$w" 9
 t "a flag on a pass that is not the best draws no warning" "$(grep -c 'warning.*tamper' "$tmp/out")" 0
+
+nl='
+'
+echo "-- a worse pass confirmed by the rerun is rejected and reset before the next worker"
+fresh git 3 5 2 6
+run STALL=100 "$loop" "$w" 4
+t "hits the cap (exit 2)" "$code" 2
+t "the next worker found the best pass's files, the ignored file as the rejected pass left it" "$(cat "$tmp/saw-4")" "pass 2 / 5 / pass 3 / new-1.txt new-2.txt "
+t "the rejected ref still holds the rejected tree" "$(g show refs/arbiter/pass-3:a.txt 2>/dev/null) $(g show refs/arbiter/pass-3:score 2>/dev/null) $(g show refs/arbiter/pass-3:new-3.txt 2>/dev/null)" "pass 3 2 pass 3"
+t "the rejected ref's message says it was rejected" "$(g log -1 --format=%s refs/arbiter/pass-3 2>/dev/null | grep -c rejected)" 1
+t "the check ran twice on the worse pass" "$(checks 3)" 2
+t "the check ran once on each pass that was not worse" "$(checks 1) $(checks 2) $(checks 4)" "1 1 1"
+t "the log says the pass was rejected" "$(has "$s/loop.log" 'pass 3: rejected')" yes
+t "the log says the files were reset" "$(grep -c 'pass 3: files reset to refs/arbiter/pass-2 before pass 4' "$s/loop.log")" 1
+t "status on the first pass: pass number and cap only" "$(cat "$tmp/stdin-1")" "go${nl}${nl}Status from the supervisor: pass 1 of 4."
+t "status after a kept pass" "$(cat "$tmp/stdin-3")" "go${nl}${nl}Status from the supervisor: pass 3 of 4. Best count so far 5 (pass 2). The last pass was kept (count 5)."
+t "status after a rejected pass" "$(cat "$tmp/stdin-4")" "go${nl}${nl}Status from the supervisor: pass 4 of 4. Best count so far 5 (pass 2). The last pass was rejected (count 2); its tree is readable at refs/arbiter/pass-3; do not restore from it."
+t "the frozen prompt file is byte-identical to the prompt" "$(cmp -s "$tmp/prompt.md" "$s/prompt.md" && echo same || echo differs) $(cat "$s/prompt.md")" "same go"
+t "the last pass is the best, so nothing is restored at exit" "$(cat "$w/a.txt") $(g rev-parse -q --verify refs/arbiter/final >/dev/null && echo final || echo nofinal)" "pass 4 nofinal"
+t "the user's index, HEAD and branch are unchanged" "$(user_state)" "$before"
+t "the user's unstaged change is kept apart from the index" "$(g diff --cached --name-only)" staged.txt
+
+echo "-- a worse pass not confirmed by the rerun is kept, and the log says the check disagreed"
+fresh git 3 5 "2 5" 1
+run STALL=100 "$loop" "$w" 4
+t "the check ran twice on the worse-looking pass" "$(checks 3)" 2
+t "the next worker found that pass's files" "$(cat "$tmp/saw-4")" "pass 3 / 2 5 / pass 3 / new-1.txt new-2.txt new-3.txt "
+t "the log says the two counts disagreed" "$(grep -c 'pass 3: .*disagreed.*2.*5' "$s/loop.log")" 1
+t "the pass is kept with the rerun's count" "$(cat "$tmp/stdin-4")" "go${nl}${nl}Status from the supervisor: pass 4 of 4. Best count so far 5 (pass 2). The last pass was kept (count 5)."
+t "the kept pass's ref records the rerun's count and no rejection" "$(g log -1 --format=%s refs/arbiter/pass-3 2>/dev/null | grep -c '5 passing') $(g log -1 --format=%s refs/arbiter/pass-3 2>/dev/null | grep -c rejected)" "1 0"
+
+echo "-- a tie with the best is kept"
+fresh git 3 5 5
+run STALL=100 "$loop" "$w" 3
+t "hits the cap (exit 2)" "$code" 2
+t "the check ran once on the tied pass" "$(checks 3)" 1
+t "the tied pass's files stay" "$(cat "$w/a.txt") $(ls "$w"/new-3.txt 2>/dev/null | wc -l | tr -d ' ')" "pass 3 1"
+t "no final ref is written" "$(g rev-parse -q --verify refs/arbiter/final >/dev/null && echo yes || echo no)" no
+t "the log does not say rejected" "$(has "$s/loop.log" rejected)" no
+
+echo "-- a passing exit after a rejected pass"
+fresh git 3 1 done
+run STALL=100 "$loop" "$w" 9
+t "the worker after the rejected pass found the best pass's files" "$(cat "$tmp/saw-3")" "pass 1 / 3 / pass 2 / new-1.txt "
+
+echo "-- the status line without git"
+fresh plain 3 5 2 1
+run STALL=100 "$loop" "$w" 4
+t "the check ran twice on the worse pass" "$(checks 3)" 2
+t "nothing is reset: the next worker found the rejected pass's files" "$(cat "$tmp/saw-4")" "pass 3 / 2 / pass 3 / new-1.txt new-2.txt new-3.txt "
+t "the log says nothing was reset" "$(grep -c 'pass 3: .*nothing was reset' "$s/loop.log")" 1
+t "status after a kept pass" "$(cat "$tmp/stdin-2")" "go${nl}${nl}Status from the supervisor: pass 2 of 4. Best count so far 3 (pass 1). The last pass was kept (count 3)."
+t "status after a rejected pass gives counts only" "$(cat "$tmp/stdin-4")" "go${nl}${nl}Status from the supervisor: pass 4 of 4. Best count so far 5 (pass 2). The last pass was rejected (count 2)."
 
 [ "$fails" = 0 ] && echo "all passed" || { echo "$fails failed"; exit 1; }

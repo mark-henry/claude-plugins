@@ -89,7 +89,7 @@ sl AGENT_CMD=true CHECK_CMD="$(count 0)" STATE_DIR="$s" "$loop" "$w" 3
 t "a prompt changed since the last launch draws a warning" "$(grep -c 'changed since the last launch' "$tmp/out")" 1
 fresh; rm "$w/PROMPT.md"; echo outside > "$tmp/prompt.md"
 sl AGENT_CMD="cat > '$tmp/seen'" CHECK_CMD="$(count 0)" STATE_DIR="$s" PROMPT="$tmp/prompt.md" "$loop" "$w" 1
-t "PROMPT names a prompt file outside the loop directory" "$(cat "$tmp/seen" 2>/dev/null)" outside
+t "PROMPT names a prompt file outside the loop directory" "$(head -n 1 "$tmp/seen" 2>/dev/null)" outside
 t "... with no warning" "$(grep -c warning "$tmp/out")" 0
 
 [ "$fails" = 0 ] && echo "all passed" || { echo "$fails failed"; exit 1; }
