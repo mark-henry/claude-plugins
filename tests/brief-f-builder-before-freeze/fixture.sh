@@ -31,15 +31,6 @@ class CountWords(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 EOF
-cat > run/2026-11-12-word-counter/search.md <<'EOF'
-# Search: word counter, 2026-11-12
-
-Searched: this workspace (only wordcount.py, a stub, and test_wordcount.py); the Python standard library (str.split, re); no outside search needed for a one-function job.
-
-Found: `len(text.split())` counts whitespace-separated tokens and passes four of the five test cases. It fails only the bare-punctuation case ("-- ... ! yes" gives 4, the test wants 1).
-
-Changed: offered the simpler route to the user instead of writing a tokenizer; the user took it with one addition (see rulings.md, 2026-11-12).
-EOF
 cat > run/2026-11-12-word-counter/rulings.md <<'EOF'
 # Rulings: word counter, 2026-11-12
 
@@ -49,4 +40,8 @@ cat > run/2026-11-12-word-counter/rulings.md <<'EOF'
 - Fails even if it passes: special-casing the test strings, or any edit to `test_wordcount.py`: user "yes to 1", 2026-11-12
 - Simpler route: use `len(text.split())` but skip tokens with no letter or digit in them: user "for 2 use split but ignore tokens with no letter or digit", 2026-11-12
 - Cap: user "cap: approved up to 3% of this week's quota", 2026-11-12
+- Permissions: read and edit `./wordcount.py` only, run `python -m unittest` if a shell is available; nothing posted, pushed, deleted, installed or sent: user "yes to both", 2026-11-12
+- Stop rule: after three honest failed attempts, stop and report which cases fail and why; never edit the test file: user "yes to both", 2026-11-12
+- Would change their mind: user "1 yes, if the notes tool already counts words I'd drop this.", 2026-11-12
+- Grants: user "2 right, no grants.", 2026-11-12
 EOF

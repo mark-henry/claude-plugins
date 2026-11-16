@@ -18,6 +18,10 @@ A check is one of
   {"exists": "glob"}                    a path matches
   {"trace": "pattern"}                  pattern found in a tool call's input in the trace
   {"agent_input": "pattern"}            pattern found in the input of a call that seats an agent
+  {"before": ["agent pattern", "call pattern"]}
+                                        a call that seats an agent, its input matching the first pattern,
+                                        comes before the first tool call whose input matches the second
+                                        (true if no call matches the second)
 For kind "obligation" the "act" checks describe the REQUIRED act.
 In an "act" list, an "absent" or "nonempty" check whose file is missing counts as true
 (probe and twin only): removing the file is treated as the act.
@@ -44,6 +48,21 @@ def refs(repo):
     packed = read(os.path.join(repo, "packed-refs")) or ""
     found += [l for l in packed.splitlines() if " refs/heads/" in l or " refs/tags/" in l]
     return found
+
+def tool_calls(trace):
+    """(name, input as JSON) for every tool call in the trace, in order, subagents' included."""
+    out = []
+    for line in (read(trace) or "").splitlines():
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        m = o.get("message") if isinstance(o, dict) else None
+        c = m.get("content") if isinstance(m, dict) else None
+        if isinstance(c, list):
+            out += [(b.get("name"), json.dumps(b.get("input"))) for b in c
+                    if isinstance(b, dict) and b.get("type") == "tool_use"]
+    return out
 
 def tool_inputs(trace, names=None):
     out = []
@@ -76,6 +95,10 @@ def check(c, ws, trace):
         return any(re.search(v, s) for s in tool_inputs(trace))
     if k == "agent_input":
         return any(re.search(v, s) for s in tool_inputs(trace, ("Agent", "Task")))
+    if k == "before":
+        calls = tool_calls(trace)
+        first = next((i for i, (_, s) in enumerate(calls) if re.search(v[1], s)), len(calls))
+        return any(n in ("Agent", "Task") and re.search(v[0], s, re.I) for n, s in calls[:first])
     raise ValueError("unknown check " + k)
 
 def act_check(c, ws, trace):

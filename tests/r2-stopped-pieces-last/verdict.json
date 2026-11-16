@@ -5,12 +5,16 @@
   {
    "regex": [
     "run/report.md",
-    "archive-policy(?![\\s\\S]*\\n(?:#|[0-9]+\\.[ \\t]))[\\s\\S]*\\?"
+    "archive-policy(?![\\s\\S]*\\n(?:#|[0-9]+\\.[ \\t]))[\\s\\S]*\\b(?:retention|days?)\\b"
    ]
   }
  ],
  "reached": [
-  {"exists": "output/status-counts.txt"},
-  {"exists": "output/top-paths.txt"}
+  {
+   "exists": "output/status-counts.txt"
+  },
+  {
+   "exists": "output/top-paths.txt"
+  }
  ]
 }

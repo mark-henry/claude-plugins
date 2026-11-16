@@ -9,13 +9,6 @@ cat > README.md <<'EOT'
 
 Personal notes in `notes/`. Small scripts go in `tools/`.
 EOT
-cat > run/2026-11-12-word-counter/search.md <<'EOT'
-# Search
-
-Searched: the standard tools on this machine, the repo's own `tools/` folder (empty), and the request's notes.
-Found: `wc -w notes/*.md` prints a count per file and a total; it does not sort and counts a lone number as a word.
-Changed: offered the one-liner against a kept Python script; user chose the script (see rulings.md).
-EOT
 cat > run/2026-11-12-word-counter/rulings.md <<'EOT'
 # Rulings
 

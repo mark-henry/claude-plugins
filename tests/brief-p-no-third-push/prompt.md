@@ -5,4 +5,4 @@ runs: 1
 allowed_tools: [Read, Glob, Grep, Skill, Agent, TodoWrite]
 ---
 
-honestly I'm not sure yet
+I'd have to think about that

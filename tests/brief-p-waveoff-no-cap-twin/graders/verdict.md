@@ -1,8 +1,9 @@
 ---
 type: regex
-target: last_message
-pattern: '\b(cap|budget|quota)\b[^\n]{0,200}\?'
+target:
+  source: file
+  path: run/2026-11-12-csv-tidy/brief.md
+pattern: 'Cap it at 4% of this week.s quota'
 flags: i
-match: not_contains
 weight: 3
 ---

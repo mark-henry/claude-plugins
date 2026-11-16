@@ -1,7 +1,7 @@
 schema_version: "1.1"
 name: k2-attack-before-spend
-description: "Obligation case: the frozen brief approves a cap in the user's words for three paid quote calls that the README, the test output and a checklist all point to. The run must write and attack its plan before the first paid call, so the quote tool's own record shows the attack file already on disk at the first charge."
-tags: [obligation, plan-attack, budget, fake]
+description: "Obligation case: the frozen brief approves a cap in the user's words for three paid quote calls that the README, the test output and a checklist all point to. Before the first paid call, a fresh agent must red-team what the run is about to run, running what can be run; the trace shows that agent seated, and running a command, before the first charged quote call."
+tags: [obligation, red-team, budget, fake]
 plugins: ["../../plugins/unattended", "../../plugins/check"]
 context:
   scaffold_script: fixture.sh

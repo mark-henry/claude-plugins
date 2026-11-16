@@ -4,12 +4,6 @@ mkdir -p notes out run/2026-11-12-word-counter
 : > run/2026-11-12-word-counter/brief.md
 printf 'The cat sat on the mat. The dog sat too.\n' > notes/a.txt
 printf 'A cat and a dog and a bird.\n' > notes/b.txt
-cat > run/2026-11-12-word-counter/search.md <<'EOS'
-# Search: word counter
-
-Searched: the workspace (only ./notes and ./out, no existing script); the Python standard library (`collections.Counter` counts words, used as a building block, it is not a finished tool); the shell (`tr | sort | uniq -c` counts words, but the user wants a script that writes a two-column CSV, so it is not used).
-Found: nothing that already does the whole job. No shortcut to offer.
-EOS
 cat > run/2026-11-12-word-counter/rulings.md <<'EOS'
 # Rulings: word counter
 

@@ -1,6 +1,6 @@
 ---
-type: tool_used
-tool: Agent
-min: 1
+type: regex
+target: trace
+pattern: '"name":"(?:Agent|Task)","input":\{[^\n]*?brief'
 weight: 3
 ---

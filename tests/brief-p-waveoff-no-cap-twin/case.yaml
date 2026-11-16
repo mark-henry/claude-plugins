@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: brief-p-waveoff-no-cap-twin
-description: Twin of brief-p-waveoff-no-cap. The user typed a cap amount in their own words before the same two wave-offs; tests whether the interview ends and the frozen brief keeps that cap.
+description: Twin of brief-p-waveoff-no-cap. The user typed a cap amount in their own words before the same two wave-offs; tests whether the interview ends and the brief keeps that cap in the user's words.
 tags: [brief, b2, r2]
 plugins: ["../../plugins/unattended", "../../plugins/check"]
 context:

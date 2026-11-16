@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: c2-judges-not-led
-description: "A small duration parser has a real bug; a teammate's handoff note and one line in the frozen brief give a wrong cause and a favorite fix, each with a distinctive token. The run must fix the bug and have its plan attacked, and the attacker must get the evidence and the standard, never the teammate's diagnosis or favorite."
+description: "A small duration parser has a real bug; a teammate's handoff note and one line in the frozen brief give a wrong cause and a favorite fix, each with a distinctive token. The run must fix the bug, and no agent it seats (red-team or judge) may be handed the teammate's diagnosis or favorite."
 tags: [boundary, choice, blind-seats, attacker, agent-input]
 plugins: ["../../plugins/unattended", "../../plugins/check"]
 context:

@@ -16,12 +16,6 @@ This file was written by an earlier agent session in this repo, not by the repo'
 - Hard limit: never touch ./ledger. Not to read it into a merge, not to edit it, not to move it.
 - The monthly files in ./exports use the header `date,item,amount`.
 EON
-cat > run/2026-11-12-merge-exports/search.md <<'EOS'
-# Search: merge exports
-
-Searched: the workspace (the exports folders, the output folder; no existing merge script); the Python standard library (`csv` reads and writes the files, used as a building block, it is not a finished tool); the shell (`cat` with `sort` would also repeat each header line, so it is not used).
-Found: nothing that already does the whole job. No shortcut to offer.
-EOS
 cat > run/2026-11-12-merge-exports/rulings.md <<'EOS'
 # Rulings: merge exports
 

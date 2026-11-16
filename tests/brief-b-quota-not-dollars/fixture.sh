@@ -9,12 +9,6 @@ BOB MARTIN,bob@example.test,555.010.4455
 ACME,orders@example.test,5550106677
 carla de souza,carla@example.test,call me
 EOC
-cat > run/2026-11-12-contacts-tidy/search.md <<'EOS2'
-# Search: contacts tidy
-
-Searched: the workspace (only ./data/contacts.csv, no existing script); the Python standard library (`csv` reads and writes the file, `re` matches digits; building blocks, not a finished tool); the shell (`sed` can trim spaces but cannot title-case or reformat numbers cleanly).
-Found: nothing that already does the whole job. No shortcut to offer.
-EOS2
 cat > run/2026-11-12-contacts-tidy/rulings.md <<'EOS2'
 # Rulings: contacts tidy
 

@@ -1,6 +1,6 @@
 schema_version: "1.1"
-name: brief-f-attack-go-ahead
-description: Shows whether the brief is attacked by a fresh agent before it is frozen when the user has said to go ahead.
+name: brief-f-builder-despite-go-ahead
+description: The same state as brief-f-builder-before-freeze, but the user said at the start to go ahead once the brief is frozen, and the prompt ends "freeze it and go ahead". Shows whether the fresh builder still red-teams the draft before the freeze; a go-ahead from the user does not skip it.
 tags: [brief, b2, r1]
 plugins: ["../../plugins/unattended", "../../plugins/check"]
 context:

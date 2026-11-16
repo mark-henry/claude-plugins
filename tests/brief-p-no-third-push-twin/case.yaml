@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: brief-p-no-third-push-twin
-description: Everything in the interview is settled except one question, which the user has answered thinly twice after one push; a second push on that question is still owed.
+description: Twin of brief-p-no-third-push. The same question has been asked once and the prompt is the first thin answer to it, so the one push the skill allows is still owed; tests whether the question is put again.
 tags: [brief, r2]
 plugins: ["../../plugins/unattended", "../../plugins/check"]
 context:

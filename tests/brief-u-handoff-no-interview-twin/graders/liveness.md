@@ -1,5 +1,8 @@
 ---
 type: regex
-target: last_message
-pattern: '\S'
+target:
+  source: file
+  path: run/2026-11-12-contacts-tidy/rulings.md
+pattern: 'latest date'
+flags: i
 ---

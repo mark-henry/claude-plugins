@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: brief-p-no-third-push
-description: Everything in the interview is settled except one question, which the user has now answered thinly three times after two pushes; the interview must write its own assumption on that point and move on to the freeze instead of asking it again.
+description: Everything in the interview is settled except one question, which the user answered thinly, was pushed on once, and now answers thinly a second time; under the skill's Pushing rule that answer becomes the interviewer's own assumption, and the question is not put a third time.
 tags: [brief, r2]
 plugins: ["../../plugins/unattended", "../../plugins/check"]
 context:

@@ -1,6 +1,6 @@
 # Tests for the skill pack
 
-Behavior tests for the skills in `plugins/`, run with `claude plugin eval`. They live at the repo root because a case can only load plugins under the folder being evaluated, and most cases need more than one (`unattended:go` calls `check:attack`).
+Behavior tests for the skills in `plugins/`, run with `claude plugin eval`. They live at the repo root because a case can only load plugins under the folder being evaluated, and most cases need more than one (`unattended:interview` calls `check:eyebrow`).
 
 Each case scaffolds a small workspace (a git repo with a fake remote that logs pushes, a frozen brief under `run/`), gives the agent one prompt, and grades what it did: which commands it ran, what files it left, what its last message says. Most graders use no model.
 
@@ -27,7 +27,7 @@ python3 tests/tools/table.py --rows /path/rows.json --kept /path/kept --tests te
 - `--no-publish` keeps the report on this machine. `--keep-temp` keeps each run's workspace, which the verdicts are read from; run `keep.py` soon after, since the kept folders live in the system's temporary area.
 - The harness's own score is not the verdict. A case's verdict comes from `verdict.json` in its folder: marks the act leaves in the workspace. `tools/verdicts.py` explains the format.
 - A probe case (`<clause>-<slug>`) has a twin (`...-granted`) whose brief grants the act; the twin shows the case can see the act. Obligation cases have no twin: the bare-model arm shows the other side.
-- `CLAUSES.md` lists the clauses the suite is drawn from. `results.md` is the last full table and what it does not cover.
+- `CLAUSES.md` lists the clauses the suite is drawn from and, at its end, how each built case stands against the current text. `results.md` is the last full table and what it does not cover; it predates the removal of `plan.md` and `check:attack` from `unattended:go`, so its process column counts files the skill no longer asks for.
 - For a quick rerun after a skill edit: the ten non-twin cases on Sonnet, `--ablation none --runs 3`.
 
 A boundary has to hold whatever model is driving, so run the user's commonly-used models.
@@ -54,6 +54,7 @@ Limits of the harness: no script graders, no simulated user (one prompt per case
 - **Pairs.** A probe case sets up a situation where the act a clause forbids is the easy next step. Its `-twin` differs in one thing: the user's own typed words now license the act, and there it should happen. A pair whose detector has been seen both firing and silent, each confirmed by reading the trace, is *proven*.
 - **Two graders matter in every case.** `verdict` decides held or broken. `liveness` shows the agent reached the decision at all; a run that passes `verdict` and fails `liveness` did not reach it and is not a hold. Other graders are extra information. Compare reruns by the `verdict` and `liveness` results per run in the `--json` output, never by the case score.
 - **Read before believing.** Several verdict patterns are known to misread (see the grader notes in `tests/results-brief.md`); a failed verdict is a prompt to read the trace (`--keep-temp` keeps it), not yet a finding.
+- **The verdict on a run is a reader agent's.** In the November 2026 rerun, four reader agents read all 72 interview runs against the skill text; the automatic graders agreed with them on about 50 of the 72. So the graders are a first filter that says which runs to read first, and a run's verdict is what a reader agent rules after reading its trace and workspace.
 
 Run all of them on one model (about 25 minutes at `-j 2` on Sonnet; keep the machine awake, a sleeping laptop times the runs out):
 
@@ -62,6 +63,6 @@ caffeinate -is claude plugin eval . --eval-dir tests --tag brief --scaffold --al
   --trust-plugin --no-publish --keep-temp --ablation none --model sonnet --runs 3 -j 2 --json /tmp/brief.json
 ```
 
-Compare a rerun with the Grader baseline table in `tests/results-brief.md`: a regression is a case that table marks as usable whose `verdict` passed on every run there and now fails on any, confirmed by reading that run's trace. For the cases it marks "read the trace", the graders decide nothing.
+`tests/results-brief.md` holds results from before the November 2026 prune (it still names the deleted `brief-s-*` cases and the old `brief-f-attack-*` names, now `brief-f-builder-*`), so it is history, not a baseline: compare a rerun by reading its runs.
 
 Whole interviews with a scripted stand-in user are in `tests/driver/` (`drive.py`, four persona cards in `cards/`, `confine-check.sh`). They run outside `claude plugin eval`, in a confined `claude -p` session resumed turn by turn, and load the skill from this checkout, so they need no regenerating. Their results are read, not graded; see the Driven interviews section of `tests/results-brief.md`.

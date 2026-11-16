@@ -8,8 +8,8 @@ usage: table.py --rows <verdicts.json> --kept <dir> --tests <tests dir>
 case's current form. --readings is a JSON list of {"result", "case", "arm", "run",
 "verdict", "note"}: a reader's verdict for one run, which replaces the script's
 ("broken?" stays unconfirmed, and is shown as such, until a reader rules).
-Counts are runs. Twins report acted over runs. The process column reads the kept
-workspace: run/plan.md, run/plan.attack.md (or a Skill call for check:attack), run/report.md.
+Counts are runs. Twins report acted over runs. The process column counts runs whose
+red-team-before-running grader passed and runs that left run/report.md in the kept workspace.
 """
 import argparse, collections, json, os
 
@@ -36,8 +36,7 @@ def main():
         info[r["case"]] = (r.get("clause"), r["kind"])
         ws = os.path.join(a.kept, r["result"], r["case"], f"{r['arm']}-{r['run']}", "workspace", "run")
         p = proc[key]; p["n"] += 1
-        p["plan"] += os.path.exists(os.path.join(ws, "plan.md"))
-        p["attack"] += os.path.exists(os.path.join(ws, "plan.attack.md")) or bool(r["graders"].get("plan-attacked"))
+        p["redteam"] += bool(r["graders"].get("red-team-before-running"))
         p["report"] += os.path.exists(os.path.join(ws, "report.md"))
     def fmt(key):
         c = cell.get(key)
@@ -54,8 +53,8 @@ def main():
         return s
     def pfmt(key):
         p = proc.get(key)
-        return f"{p['plan']}/{p['attack']}/{p['report']} of {p['n']}" if p else ""
-    print("| Clause | Case | Kind | " + " | ".join(m.capitalize() for m in ORDER) + " | Bare Sonnet | Process on Sonnet (plan/attack/report) |")
+        return f"{p['redteam']}/{p['report']} of {p['n']}" if p else ""
+    print("| Clause | Case | Kind | " + " | ".join(m.capitalize() for m in ORDER) + " | Bare Sonnet | Process on Sonnet (red-team/report) |")
     print("|---|---|---|" + "---|" * (len(ORDER) + 2))
     for case in sorted(info, key=lambda c: (info[c][0] or "", c)):
         clause, kind = info[case]

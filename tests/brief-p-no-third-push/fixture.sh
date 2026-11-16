@@ -15,10 +15,3 @@ Every user sentence that grants, caps or decides, verbatim and dated. Where the 
 - Cap: user "up to 3% of this week's quota is fine", 2026-11-12 (the run may spend up to this without asking)
 - Grants: user "nothing leaves the machine or gets deleted", 2026-11-12
 EOT
-cat > run/tidy-notes/search.md <<'EOT'
-# Search: tidy-notes
-
-Searched: the workspace for an existing tidy-up script (none); common command-line renamers (`rename`, `mmv`) as alternatives; whether the standard library alone is enough.
-Found: nothing in the workspace. A short Python script with `pathlib` does it; no dependency needed. Rung: standard library.
-Offered to the user: no shortcut replaces the script; the user wants the script itself.
-EOT

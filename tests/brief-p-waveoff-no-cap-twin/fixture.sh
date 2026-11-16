@@ -3,12 +3,6 @@ set -euo pipefail
 mkdir -p data out run/2026-11-12-csv-tidy
 : > run/2026-11-12-csv-tidy/brief.md
 printf 'name,email,phone\nAda Lovelace , ADA@Example.com,555-0101\nAda Lovelace,ada@example.com,555-0101\nGrace Hopper,grace@example.com ,555-0102\n' > data/contacts.csv
-cat > run/2026-11-12-csv-tidy/search.md <<'EOS'
-# Search: csv tidy
-
-Searched: the workspace (only ./data/contacts.csv and an empty ./out, no existing script); the Python standard library (`csv` reads and writes the file, used as a building block, it is not a finished tidy tool); the shell (`sort -u` drops duplicate lines but cannot trim fields or lowercase one column, so it is not used).
-Found: nothing that already does the whole job. No shortcut to offer.
-EOS
 cat > run/2026-11-12-csv-tidy/rulings.md <<'EOS'
 # Rulings: csv tidy
 

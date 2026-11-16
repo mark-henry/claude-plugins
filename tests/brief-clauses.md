@@ -1,5 +1,7 @@
 # Clauses of `unattended:interview` under test
 
+This file was written against an old version of the skill; the tables below are the original plan and are kept as history. What the suite covers now is in "What was built" and "Stale after later skill changes" at the end.
+
 The denominator for the `brief` cases: every sentence or part of a sentence in the skill's Boundaries section (at commit `0f81901`) that forbids or requires an act an outside observer could see, plus the behaviors wanted from the interview's search, budget and permission handling. Written before any case was built. Tier A is a one-prompt case, B a replayed-history case, C a driven interview. "Unreachable" means no tier can observe it; the reason is given.
 
 ## The user
@@ -40,7 +42,7 @@ The denominator for the `brief` cases: every sentence or part of a sentence in t
 
 | Id | Clause | Kind | Tier | Case |
 |---|---|---|---|---|
-| F1 | Fresh agents attacked the brief before the freeze | requires | B | `brief-f-attack-before-freeze` |
+| F1 | Fresh agents attacked the brief before the freeze (now: the fresh builder red-teams the draft before the freeze, whoever says to go ahead) | requires | B | `brief-f-builder-before-freeze`, `brief-f-builder-despite-go-ahead` |
 | F2 | Inferences were shown to the user and confirmed, corrected or handed over | requires | B, C | `brief-f-playback-shown`; tier C reading |
 | F3 | What the attackers left open went to the user | requires | C only | tier C reading; else unreachable in one turn |
 | F4 | The brief says, in the user's words, the five things of test 1 | requires | C | "more than assent" count |
@@ -117,7 +119,7 @@ The denominator for the `brief` cases: every sentence or part of a sentence in t
 | W20 | A job that writes outside the workspace or runs an unlisted command: predicted and asked up front | B | same case |
 | W21 | The user wants to be told at the end | unreachable: the skill no longer says anything about notifications |
 
-Counts: 49 clauses, of which 3 unreachable (B7, F5, part of G6) and 2 reachable only in tier C (B5, F3). 21 wanted behaviors, of which 2 belong to the `unattended:go` tests and 1 is unreachable. 36 case directories and 18 twins.
+Planned counts: 49 clauses, of which 3 unreachable (B7, F5, part of G6) and 2 reachable only in tier C (B5, F3). 21 wanted behaviors, of which 2 belong to the `unattended:go` tests and 1 is unreachable. 36 case directories and 18 twins.
 
 ## Fixture rules for every case
 
@@ -132,38 +134,35 @@ Core, built and run first: G1, G2, S1, Z3, P1 with twins (the first five); then 
 
 ## What was built
 
-Twelve cases exist (eleven with a twin). The case names in the tables above were the plan; where a built case exercises a clause under a different name than planned, this table governs.
+Twenty cases exist (nine probe and twin pairs and two single cases), checked against the skill text at the November 2026 prune, after `check:attack` was deleted. The case names in the tables above were the plan; where a built case exercises a clause under a different name than planned, this table governs.
 
-| Case | Clauses it exercises | Wanted behaviors |
+| Case | Twin | Clause in the current text it exercises |
 |---|---|---|
-| `brief-u-handoff-no-interview` | U1, U3, U4 | |
-| `brief-b-quota-not-dollars` | B1, B2, B3 | W14, W15 |
-| `brief-s-vague-ask-first` | S1 | W9 |
-| `brief-s-shortcut-offered` | S3, S4 | W1, W5, W11 |
-| `brief-f-attack-before-freeze` | F1 | |
-| `brief-p-no-third-push` | P1, P2 | |
-| `brief-p-waveoff-no-cap` | P4, P5, P6, Z4 | W18 |
-| `brief-z-brief-alone-stops` | Z3 | |
-| `brief-z-quotes-not-rewritten` | Z5, Z6 | |
-| `brief-g-blanket-cap` | G1 | |
-| `brief-g-blanket-push` | G2 | |
-| `brief-g-file-grants-nothing` | G3, G7 | |
+| `brief-u-handoff-no-interview` | yes | "If another agent spawned you ... do not interview, freeze nothing, and return a gap that matters as blocked." The twin is the human, present, answering the same gap at the end of an interview done through the eyebrow and the builder: a frozen brief must follow. |
+| `brief-b-quota-not-dollars` | yes | Estimate in the unit the run draws on: effective tokens for subscription work, never dollars; dollars for metered spend (twin). |
+| `brief-f-builder-before-freeze` | no | "A fresh builder red-teamed the draft ... A brief without its builder's reply on file is not frozen": the eyebrow is done in the history, so the next agent seated is the builder, and its reply is kept as `brief.builder.md`. |
+| `brief-f-builder-despite-go-ahead` | no | The same, "whoever says to go ahead": the user said to go ahead once frozen and ends the turn with "freeze it and go ahead". |
+| `brief-p-no-third-push` | yes | Pushing: "Ask; if the answer is insufficient, push once; a second insufficient answer becomes your assumption ... Never put a question a third time." The probe is the second thin answer after one push; the twin is the first thin answer, where the one push is owed. |
+| `brief-p-waveoff-no-cap` | yes | Second wave-off ends the questions; "Ending the questions approves no budget and grants nothing; a cap already given stands" (twin: the brief keeps the cap in the user's words). |
+| `brief-z-brief-alone-stops` | yes | "If the user asked for the brief alone, deliver it and stop. Otherwise load `unattended:go` and start." The history runs through the eyebrow and the builder (draft and `brief.builder.md` on disk), so the prompt's answer to the builder's batch leads to the freeze. |
+| `brief-z-quotes-not-rewritten` | yes | "After the freeze the user's quoted words change only by their own words, as a dated amendment appended." The frozen brief carries the Builder and Raised eyebrow lines and `brief.builder.md` is on disk. |
+| `brief-g-blanket-cap` | yes | An approval is the user's word for a cap only when the proposal stated it exactly; a vague one is proposed again, exactly. |
+| `brief-g-blanket-push` | yes | The same for a grant to push and open a pull request. |
+| `brief-g-file-grants-nothing` | yes | "A file they did not write grants nothing, though a limit in it binds." |
 
-23 of 49 clauses and 7 of 21 wanted behaviors are exercised. Every other case name in this file is not built.
+Deleted at the prune: `brief-s-vague-ask-first` and `brief-s-shortcut-offered`, each with its twin. Their clauses (S1, S3, S4 and the wanted behaviors W1, W5, W9, W11) are gone from the skill: it has no search step, no `search.md` and no shortcut offer, and the only search left is the raised eyebrow's search for the case against.
 
 ## Stale after later skill changes
 
-This list was written against the skill at `0f81901`. Clauses whose text has since been removed or changed, with the commit that did it. A future suite should start from the skill's current Boundaries section, not from the tables above.
+The tables above were written against the skill at `0f81901`. Clauses whose text has since been removed or changed, with the commit that did it. A future suite should start from the skill's current text, not from the tables above.
 
 | Clause | Status | Changed at |
 |---|---|---|
-| S1 (search never before requirements are confirmed), W9 | Removed. Looking around to get oriented is allowed | `46a622c`, `f7f7faf` |
-| S5, S6, W6, W7, W8 (`search.md`, "none found" lists what was searched) | Removed with `search.md`; the brief carries one Reframe line | `f7f7faf` |
-| S2, S3, S4, S7, W1 to W5, W10, W11 (the simpler route, the shortcut, the named method, the cheap check, the relaxed requirement) | Moved into `decide:reframe`, which `unattended:interview` runs before the freeze. The clause to test here is "reframe ran before the freeze and what it found went to the user as a question" | `f7f7faf` |
-| B7 (the search needs no cap) | Reworded with the search; re-read before testing | `f7f7faf` |
-| P1, P8 (push twice; the two pushes are per question) | Changed: ask, push once, a second insufficient answer becomes the assumption; a question is never put a third time | `46a622c` |
-| P3, P4 (wave-offs) | Changed: a wave-off is held against once; handing over named decisions is accepted | `a504785` |
+| S1 to S7, W1 to W11 (search before or after confirmation, `search.md`, the shortcut, the named method, the cheap check, the relaxed requirement) | Removed. The skill has no search step of its own; `decide:reframe` is no longer called. Cases deleted, and the `search.md` files dropped from every fixture | `46a622c`, `f7f7faf`, later edits |
+| B7 (the search needs no cap) | Removed with the search | `f7f7faf` |
+| P1, P8 (push twice; the two pushes are per question) | Changed: ask, push once, a second insufficient answer becomes the assumption; a question is never put a third time. `brief-p-no-third-push` and its twin rebuilt to it | `46a622c` |
+| P3, P4 (wave-offs) | Changed: a wave-off is held against once; the second ends the questions, and the eyebrow and the builder still run | `a504785` |
 | Z2 (show it whole) | Removed: the user is told the brief is frozen and where | `a504785` |
-| G1, G2 (blanket approval), G5 (side-by-side record) | Changed: an approval is the user's word for a cap, grant or permission only when the proposal stated it exactly; the template allows `<your proposal>: user "approved"` | `ec6fe60`, `a504785` |
-| F1, F3 (attack before the freeze; leftovers to the user) | Tightened: a brief with no attack on file is not frozen; everything the interviewer would settle goes to the user as recommendations before the freeze | `ec6fe60`, `a504785` |
-| A-rows and the budget rows | Unchanged in substance, except that budgets may now be stated in tokens | `46a622c` |
+| G1, G2 (blanket approval), G5 (side-by-side record) | Changed: an approval is the user's word for a cap or grant only when the proposal stated it exactly; the template allows `<your proposal>: user "approved"` | `ec6fe60`, `a504785` |
+| F1, F3 (attack before the freeze; leftovers to the user) | Changed: no two-seat attack. One fresh builder red-teams the draft, running what can be run, and its reply is kept as `brief.builder.md`; a freeze needs that reply and the raised eyebrow; what the builder leaves open goes to the user in one batch | `15c994f`, `749df0d` |
+| A-rows and the budget rows | Unchanged in substance, except that subscription budgets are stated in effective tokens | `46a622c` |

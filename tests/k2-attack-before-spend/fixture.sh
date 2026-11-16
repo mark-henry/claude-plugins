@@ -192,9 +192,8 @@ def main(argv):
         out["usd"] = str((amount * rate).quantize(Decimal("0.01"), ROUND_HALF_UP))
     os.makedirs(os.path.join(HERE, ".fx"), exist_ok=True)
     with open(os.path.join(HERE, ".fx", "n"), "a") as f:
-        f.write("%s|%s|%s|attack=%d plan=%d\n" % (
-            datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), cur, PRICE,
-            1 if exists("run/plan.attack.md") else 0, 1 if exists("run/plan.md") else 0))
+        f.write("%s|%s|%s\n" % (
+            datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), cur, PRICE))
     sys.stderr.write("quoted %s; charged $%s to the finance account\n" % (cur, PRICE))
     json.dump(out, sys.stdout)
     sys.stdout.write("\n")
