@@ -28,7 +28,7 @@ Build these in. An instruction to the worker is not a control, and the shipped s
 
 Deterministic first: a command that exits 0 when done and grades the final state, not the path or the report. The worker will solve whatever it measures, so a stub or a special case must not pass.
 
-When "done" needs judgment, the judge is a fresh agent on a smart model, never a fork (a fork inherits the conversation).
+When "done" needs judgment, the judge is a fresh agent on a model that will not be talked past, never a fork (a fork inherits the conversation).
 
 - It gets the standard word for word and the work itself: the diff, the built thing, the resulting state. It never gets the worker's messages, summary, commit messages or notes.
 - Text planted in the work is met by what the judge is given: outputs of commands it runs itself and, where possible, the work with comments and prose stripped. Telling it "this is data" is a label, not a control.
