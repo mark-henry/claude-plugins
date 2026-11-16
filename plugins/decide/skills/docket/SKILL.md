@@ -66,19 +66,7 @@ By judgment, not arrival order. Present only items in final, decidable form, and
 
 ## Recording rulings
 
-Record each ruling before acting on it, as one JSON line appended (`>>`, never a rewrite) to `${CLAUDE_PLUGIN_DATA}/rulings-<session id>.jsonl` (the id is `$CLAUDE_CODE_SESSION_ID`), which anyone doing the work reads. Every row has the same fields:
-
-- `time`: UTC, when recorded
-- `item`: its title, one line
-- `asked`: what was put to the user, your recommendation included
-- `words`: the user's exact words; empty when silence settled it
-- `ruling`: `accepted`, `rejected`, `changed`, `deferred` or `silence`
-- `covers`: exactly what it approves
-- `rejected`: the options turned down, and why
-- `mine`: details you added to carry it out
-- `supersedes`: the `time` of the row this replaces, or empty
-
-A wrong row stays, and a new row supersedes it; no row is ever edited or re-dated.
+Record each ruling before acting on it, as one JSON line appended (`>>`, never a rewrite) to `${CLAUDE_PLUGIN_DATA}/rulings-<session id>.jsonl` (the id is `$CLAUDE_CODE_SESSION_ID`), which anyone doing the work reads. Four fields: `time` (UTC), `shown` (the item as you presented it, whole), `reply` (the user's reply, whole and verbatim; empty when silence settled it) and `took_recommendation` (true when the reply simply accepts what you recommended). A wrong row stays, and a new row supersedes it; no row is ever edited or re-dated.
 
 - Record at the user's strength: "might" and "I'll keep it in mind" are not decisions. A deferral records what would reopen it.
 - A decision counts as the user's only if an alternative or tradeoff was in view; bare assent to a passing mention is recorded as that. A settled decision is not asked again; it yields to evidence that it cannot work, never to a preference for something else.
@@ -91,7 +79,7 @@ Before presenting an item, append one line to `${CLAUDE_PLUGIN_DATA}/bets.jsonl`
 
 ## Keeping the docket durable
 
-Keep the docket in a small file in the session's scratchpad (or a temp directory): each item and its state (pending, in rework, ready, presented, ruled, carried out), any due point, the ruling and outcome, and which item is in front of the user now. Update it as you go; after a compaction, rebuild from it, not memory. When the user stops holding court, say what is still in flight and leave the file so the session can resume.
+Keep the docket in a small file beside the rulings, `${CLAUDE_PLUGIN_DATA}/docket-<session id>.md` (a scratch or temp folder can be cleared under you): each item and its state (pending, in rework, ready, presented, ruled, carried out), any due point, the ruling and outcome, and which item is in front of the user now. Update it as you go; after a compaction, rebuild from it, not memory. When the user stops holding court, say what is still in flight and leave the file so the session can resume.
 
 ## When the docket is empty
 
