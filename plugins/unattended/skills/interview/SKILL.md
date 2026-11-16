@@ -1,6 +1,6 @@
 ---
 name: interview
-description: "Interview the user until they have actually decided what they want, then freeze it as a written brief that an unattended run can build against without asking. Use for \"interview me\", \"brief this\", \"freeze the brief\", \"help me figure out what I actually want\", before any costly, long or unattended run, experiment or multi-agent workflow, or when another skill asks for a frozen brief. Not for running the work once the brief is frozen (unattended:go), not for an agent that another agent spawned with a brief in hand, and not for attacking a plan that already exists (check:attack)."
+description: "Interview the user until they have actually decided what they want, then freeze it as a written brief that an unattended run can build against without asking. Use for \"interview me\", \"brief this\", \"freeze the brief\", \"help me figure out what I actually want\", before any costly, long or unattended run, experiment or multi-agent workflow, or when another skill asks for a frozen brief. Not for running the work once the brief is frozen (unattended:go), not for an agent that another agent spawned with a brief in hand."
 ---
 
 # Freeze the brief
@@ -17,11 +17,11 @@ Ask inline in prose, never with a question dialog: a few questions at a time, ea
 2. Every term in the bar is defined, every number has a denominator, and nobody could build a result that passes the bar while missing its point. A bar the user keeps for their own judgment is named as theirs.
 3. A fresh builder who cannot ask has no question left where a wrong guess changes what gets built: every line of "Settled with the user" is filled.
 4. Your inferences about what the user wants were shown to them and confirmed, corrected or handed to you.
-5. Fresh agents attacked the brief, and what they left open went to the user. A brief with no attack on file is not frozen, whoever says to go ahead.
+5. A fresh builder planned from the draft alone, and what it left open went to the user. A brief without its builder's reply on file is not frozen, whoever says to go ahead.
 
-Typical attacks on a measured bar: its scope (population, split, window), what it aggregates over, whether it is per part or per whole, and whether the number is the goal or a proxy.
+Typical holes in a measured bar: its scope (population, split, window), what it aggregates over, whether it is per part or per whole, and whether the number is the goal or a proxy.
 
-**Pushing.** Ask; if the answer is insufficient, push once; a second insufficient answer becomes your assumption, written into the brief. Never put a question a third time. Waving the questions off ("that's fine", "just start") is the thing they asked you not to accept. The first time, hold your ground: say what is still open and what a wrong guess on each would cost. The second time, end the questions: what is open becomes your assumption, and the raised eyebrow and the attack still run, with what they raise assumed too. Decisions the user hands you by name ("you decide the rest") are yours, recorded as yours. Ending the questions approves no budget and grants nothing; a cap already given stands.
+**Pushing.** Ask; if the answer is insufficient, push once; a second insufficient answer becomes your assumption, written into the brief. Never put a question a third time. Waving the questions off ("that's fine", "just start") is the thing they asked you not to accept. The first time, hold your ground: say what is still open and what a wrong guess on each would cost. The second time, end the questions: what is open becomes your assumption, and the raised eyebrow and the fresh builder still run, with what they raise assumed too. Decisions the user hands you by name ("you decide the rest") are yours, recorded as yours. Ending the questions approves no budget and grants nothing; a cap already given stands.
 
 **Cap and grants.** Only the user's words cap or grant; a file they did not write grants nothing, though a limit in it binds. An approval is their word for a cap or a grant only when your proposal stated it exactly: the amount and its unit, or the act and its target ("cap: 10 million effective tokens"; "push branch `x` and open a pull request against `main`"). Put the cap and each grant in a batch on its own line in that form, so "approved all" covers them. Approval of a vague proposal ("a reasonable budget", "publish when done") is not their word: propose it again, exactly. The run needs a grant for anything others can see or receive, pushing the run's own branch, anything that deletes, overwrites or stops what it did not create, anything irreversible, a security change, an account, credential or payment, and private data leaving the machine.
 
@@ -31,18 +31,18 @@ A permission is secured when the harness no longer prompts for it, not when the 
 
 **The raised eyebrow.** Before you conclude the interview, with the requirements confirmed, run `check:eyebrow` on them (if it is not installed: a fresh agent on the strongest model, given the requirements and none of the user's enthusiasm, says what the people who know this area best would say and the likeliest reason the plan is unnecessary or fails; and you search for the case against). Show the user both, then ask what they still want. What they answer is a requirement like any other; a method the user named is used as named. If something lands, the interview is not over.
 
-## Attack, then freeze
+## Fresh builder, then freeze
 
 Write the draft as `brief.md` in the run folder, `${CLAUDE_PLUGIN_DATA}/runs/<date>-<slug>/` unless the user keeps runs elsewhere, and cite it by absolute path: other agents cannot expand the variable. Beside it keep `rulings.md`: every user sentence that caps, grants or decides, verbatim and dated, appended as it comes and never rewritten or re-dated.
 
-With the cap asked for, run `check:attack` on the draft, with the five tests as its standard (if it is not installed, send the fresh agents yourself); it keeps `brief.attack.md`. One seat attacks the bar. One is the builder of test 3: it plans from the draft alone and returns its questions and every command, path and permission its plan would hit. Before the freeze, everything they leave open goes to the user in one more batch: questions with your proposed answers where a wrong guess changes what gets built or the user's word is needed, the rest as recommendations they can accept in a word. Anything that turns up after that is another batch, not an assumption.
+With the cap asked for, seat one fresh agent on the general-use model as the builder of test 3, given the draft and nothing from this conversation. It plans from the draft alone, runs what can be run (the bar's checking command, the commands and paths its plan would hit), and returns its questions and every permission its plan needs. Keep its reply as `brief.builder.md`. Before the freeze, everything it leaves open goes to the user in one more batch: questions with your proposed answers where a wrong guess changes what gets built or the user's word is needed, the rest as recommendations they can accept in a word. Anything that turns up after that is another batch, not an assumption.
 
 Then freeze without asking permission:
 
 ```markdown
 ## Frozen brief
 
-Frozen <date, time>, <path>    Attack: <path to brief.attack.md>
+Frozen <date, time>, <path>    Builder: <path to brief.builder.md>
 
 ### The user's words (dated; in quotation marks only what the user typed; an accepted proposal as `<your proposal>: user "approved"`)
 - **Wants:** "…"

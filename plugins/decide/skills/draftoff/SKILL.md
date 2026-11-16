@@ -1,6 +1,6 @@
 ---
 name: draftoff
-description: "Write a long or high-stakes document (a skill, a plan, a spec, a report) by draft-off: several fresh drafts on different organizing ideas, grafted into one, then picked blind against a plain draft. Use for \"/decide:draftoff\", \"draft-off\", \"draft it three ways\", \"get three drafts and merge\", \"write this skill properly\", or any document whose structure is itself an open question. Not for a short document or one with a single sensible structure (just write it), not for improving a draft that exists, not for code or designs that must be built and measured, and not for finding what is wrong with a finished draft (check:attack)."
+description: "Write a long or high-stakes document (a skill, a plan, a spec, a report) by draft-off: several fresh drafts on different organizing ideas, grafted into one, then picked blind against a plain draft. Use for \"/decide:draftoff\", \"draft-off\", \"draft it three ways\", \"get three drafts and merge\", \"write this skill properly\", or any document whose structure is itself an open question. Not for a short document or one with a single sensible structure (just write it), not for improving a draft that exists, not for code or designs that must be built and measured."
 ---
 
 # Draft-off
@@ -28,7 +28,7 @@ If you graft, you do not open the default and you do not pick.
 
 ## 4. Pick, blind
 
-Before any attack or polish, two fresh judges each rank three texts, ideal first: the grafted result, the bare base and the sealed default. The texts carry neutral shuffled labels with no lean, author or model, and each judge gets a different order. Each uses only the brief's criteria and is told that length is not merit. "None of these" is a valid ranking.
+Before any polish, two fresh judges each rank three texts, ideal first: the grafted result, the bare base and the sealed default. The texts carry neutral shuffled labels with no lean, author or model, and each judge gets a different order. Each uses only the brief's criteria and is told that length is not merit. "None of these" is a valid ranking.
 
 - Both rank the same text first: it wins.
 - They differ: a third fresh judge, a third order, breaks the tie.
@@ -37,7 +37,7 @@ Before any attack or polish, two fresh judges each rank three texts, ideal first
 
 ## 5. Then check it
 
-Run `check:attack` on the winner once, against the brief. If it condenses sources, check its coverage against them, each claim opened at its source. Fixes after an attack add words: count them, and say when the text has passed its limit.
+Run what in the winner can be run. If it condenses sources, check its coverage against them, each claim opened at its source. Fixes add words: count them, and say when the text has passed its limit.
 
 ## The record
 
