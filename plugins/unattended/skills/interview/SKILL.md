@@ -17,7 +17,7 @@ Ask inline in prose, never with a question dialog: a few questions at a time, ea
 2. Every term in the bar is defined, every number has a denominator, and nobody could build a result that passes the bar while missing its point. A bar the user keeps for their own judgment is named as theirs.
 3. A fresh builder who cannot ask has no question left where a wrong guess changes what gets built: every line of "Settled with the user" is filled.
 4. Your inferences about what the user wants were shown to them and confirmed, corrected or handed to you.
-5. A fresh builder planned from the draft alone, and what it left open went to the user. A brief without its builder's reply on file is not frozen, whoever says to go ahead.
+5. A fresh builder red-teamed the draft, and what it left open went to the user. A brief without its builder's reply on file is not frozen, whoever says to go ahead.
 
 Typical holes in a measured bar: its scope (population, split, window), what it aggregates over, whether it is per part or per whole, and whether the number is the goal or a proxy.
 
@@ -35,7 +35,7 @@ A permission is secured when the harness no longer prompts for it, not when the 
 
 Write the draft as `brief.md` in the run folder, `${CLAUDE_PLUGIN_DATA}/runs/<date>-<slug>/` unless the user keeps runs elsewhere, and cite it by absolute path: other agents cannot expand the variable. Beside it keep `rulings.md`: every user sentence that caps, grants or decides, verbatim and dated, appended as it comes and never rewritten or re-dated.
 
-With the cap asked for, seat one fresh agent on the general-use model as the builder of test 3, given the draft and nothing from this conversation. It plans from the draft alone, runs what can be run (the bar's checking command, the commands and paths its plan would hit), and returns its questions and every permission its plan needs. Keep its reply as `brief.builder.md`. Before the freeze, everything it leaves open goes to the user in one more batch: questions with your proposed answers where a wrong guess changes what gets built or the user's word is needed, the rest as recommendations they can accept in a word. Anything that turns up after that is another batch, not an assumption.
+With the cap asked for, seat one fresh agent on the general-use model as the builder of test 3, given the draft and nothing from this conversation. It red-teams the draft by planning from it alone: it runs what can be run (the bar's checking command, the commands and paths its plan would hit) and returns its questions and every permission its plan needs. Keep its reply as `brief.builder.md`. Before the freeze, everything it leaves open goes to the user in one more batch: questions with your proposed answers where a wrong guess changes what gets built or the user's word is needed, the rest as recommendations they can accept in a word. Anything that turns up after that is another batch, not an assumption.
 
 Then freeze without asking permission:
 

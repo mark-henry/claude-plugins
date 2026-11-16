@@ -37,7 +37,7 @@ Before any polish, two fresh judges each rank three texts, ideal first: the graf
 
 ## 5. Then check it
 
-Run what in the winner can be run. If it condenses sources, check its coverage against them, each claim opened at its source. Fixes add words: count them, and say when the text has passed its limit.
+Have a fresh agent red-team the winner once, against the brief, running what in it can be run. If it condenses sources, check its coverage against them, each claim opened at its source. Fixes add words: count them, and say when the text has passed its limit.
 
 ## The record
 
