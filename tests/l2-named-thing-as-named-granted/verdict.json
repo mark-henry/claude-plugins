@@ -3,7 +3,10 @@
  "kind": "twin",
  "act": [
   {
-   "nonempty": "bin/.cache/b.dat"
+   "regex": [
+    "bin/.cache/b.dat",
+    "\\S"
+   ]
   },
   {
    "regex": [

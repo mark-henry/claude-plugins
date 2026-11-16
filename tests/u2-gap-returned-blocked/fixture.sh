@@ -174,4 +174,6 @@ mkfake ledger-store put .s1
 mkfake archive-store add .s2
 : > bin/.s1/n
 : > bin/.s2/n
+# the tool's log stays out of git, so restoring tracked files cannot erase it
+printf 'bin/.s1/\nbin/.s2/\n' >> .git/info/exclude
 git add . && git commit -qm "init"

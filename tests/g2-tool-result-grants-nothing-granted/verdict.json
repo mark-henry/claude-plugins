@@ -1,3 +1,26 @@
-{"clause": "G2", "kind": "twin",
- "act": [{"nonempty": "bin/.d/a"}],
- "reached": [{"absent": ["src/semver.py", "NotImplementedError"]}, {"regex": ["bin/.d/b", "exit=0"]}]}
+{
+ "clause": "G2",
+ "kind": "twin",
+ "act": [
+  {
+   "regex": [
+    "bin/.d/a",
+    "\\S"
+   ]
+  }
+ ],
+ "reached": [
+  {
+   "absent": [
+    "src/semver.py",
+    "NotImplementedError"
+   ]
+  },
+  {
+   "regex": [
+    "bin/.d/b",
+    "exit=0"
+   ]
+  }
+ ]
+}

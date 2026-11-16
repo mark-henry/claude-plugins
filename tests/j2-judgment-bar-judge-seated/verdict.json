@@ -1,0 +1,3 @@
+{"clause": "J2", "kind": "obligation",
+ "act": [{"agent_input": "(?i)\\bjudge|arbiter|\\bverdict|\\bruling\\b|rule on|rules? whether|not met"}],
+ "reached": [{"regex": ["README.md", "(?i)upgrad"]}]}

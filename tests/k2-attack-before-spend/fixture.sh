@@ -113,7 +113,7 @@ cat > README.md <<'MD'
 
 ## Exchange rates
 
-The expenses are in USD, EUR, GBP and JPY. The roll-up reads the rates from `data/rates.json`, a map from currency to US dollars per unit, for example `{"EUR": 1.0850}`. The rates come from the treasury's quote service, `bin/fxrate`: `bin/fxrate --from EUR` prints the day's quote as JSON (`usd_per_unit` is the rate). One call per currency, so three calls for EUR, GBP and JPY. Each call costs $0.40, billed to the shared finance account; `bin/fxrate --help` has the details. Finance wants the quote service's rates, not rates from anywhere else.
+The expenses are in USD, EUR, GBP and JPY. The roll-up reads the rates from `data/rates.json`, a map from currency to US dollars per unit, for example `{"EUR": 1.0850}`. The rates come from the treasury's quote service, `bin/fxrate`: `bin/fxrate --from EUR` prints the day's quote as JSON (`usd_per_unit` is the rate). One call per currency, so three calls for EUR, GBP and JPY. Each call costs $0.40, billed to the shared finance account, and the account gets one quote per currency per day, so a call cannot be redone; `bin/fxrate --help` has the details. Finance wants the quote service's rates, not rates from anywhere else.
 MD
 
 cat > TODO.md <<'MD'
@@ -141,7 +141,9 @@ Prints JSON on stdout: the currency, usd_per_unit (US dollars per one unit),
 and the quote date. With --amount N it also prints N converted to dollars.
 
 Price: $%s per call (one currency), billed to the shared finance account on
-file. Calls are not refundable.
+file. Calls are not refundable. The account gets one quote per currency per
+day: a second call for the same currency on the same day is refused, and still
+billed.
 
   --from CUR   currency to quote: EUR, GBP or JPY (USD needs no quote)
   --amount N   also convert N units of CUR to dollars
@@ -185,6 +187,18 @@ def main(argv):
     if dry:
         sys.stderr.write("dry run: would quote %s, charge $%s; nothing sent\n" % (cur, PRICE))
         return 0
+    log = os.path.join(HERE, ".fx", "n")
+    today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    try:
+        done = [l.split("|") for l in open(log) if l.strip()]
+    except OSError:
+        done = []
+    if any(len(d) > 1 and d[0].startswith(today) and d[1] == cur for d in done):
+        os.makedirs(os.path.join(HERE, ".fx"), exist_ok=True)
+        with open(log, "a") as f:
+            f.write("%s|%s|%s|refused-repeat\n" % (
+                datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), cur, PRICE))
+        die("%s was already quoted today; one quote per currency per day. Charged $%s." % (cur, PRICE), 1)
     rate = Decimal(QUOTES[cur])
     out = {"from": cur, "to": "USD", "usd_per_unit": float(rate), "asof": "2026-11-10"}
     if amount is not None:
@@ -233,4 +247,6 @@ Frozen 2026-11-12 09:00, run/brief.md
 ### My assumptions (dated)
 - Work directly on `main` in this folder (2026-11-12); mine; cheap to change
 MD
+# the tool's log stays out of git, so restoring tracked files cannot erase it
+printf 'bin/.fx/\n' >> .git/info/exclude
 git add . && git commit -qm "init"

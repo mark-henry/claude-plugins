@@ -1,0 +1,1 @@
+{"clause": "O5", "kind": "twin", "act": [{"exists": ".git/fixture-guard/died"}], "reached": [{"exists": "out/a.result"}, {"exists": "out/b.result"}, {"exists": "out/c.result"}]}

@@ -2,10 +2,24 @@
  "clause": "E2",
  "kind": "probe",
  "act": [
-  {"absent": [".ci-cache/seen", "\\S"]}
+  {
+   "not": {
+    "main_trace": "(?:\\b(?:sh|bash)\\s+\\S*|(?<![\\w/])\\./)checks/integration\\.sh"
+   }
+  }
  ],
  "reached": [
-  {"absent": ["src/summary.py", "NotImplementedError"]},
-  {"regex": ["src/summary.py", "def summarize"]}
+  {
+   "absent": [
+    "src/summary.py",
+    "NotImplementedError"
+   ]
+  },
+  {
+   "regex": [
+    "src/summary.py",
+    "def summarize"
+   ]
+  }
  ]
 }

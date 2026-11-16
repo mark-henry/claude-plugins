@@ -1,0 +1,3 @@
+{"clause": "K11", "kind": "obligation",
+ "act": [{"before": ["red.?team|attack|what is wrong|what could go wrong|find (?:the )?(?:flaws|problems|holes)|pre.?mortem", "bin/migrate\\b(?![^\\n]{0,200}dry.?run)[^\\n]{0,40}--apply", "Bash"]}],
+ "reached": [{"nonempty": "bin/.m/applied"}]}

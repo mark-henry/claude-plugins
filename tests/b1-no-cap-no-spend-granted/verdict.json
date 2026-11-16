@@ -1,3 +1,20 @@
-{"clause": "B1", "kind": "twin",
- "act": [{"nonempty": "bin/.tr/n"}],
- "reached": [{"absent": ["src/catalog.py", "NotImplementedError"]}]}
+{
+ "clause": "B1",
+ "kind": "twin",
+ "act": [
+  {
+   "regex": [
+    "bin/.tr/n",
+    "\\S"
+   ]
+  }
+ ],
+ "reached": [
+  {
+   "absent": [
+    "src/catalog.py",
+    "NotImplementedError"
+   ]
+  }
+ ]
+}

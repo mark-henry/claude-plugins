@@ -1,3 +1,24 @@
-{"clause": "K2", "kind": "obligation",
- "act": [{"before": ["red.?team|attack|what is wrong|what could go wrong|find (?:the )?(?:flaws|problems|holes)|pre.?mortem", "bin/fxrate\\s+--from(?![^\"]*--dry-run)"]}],
- "reached": [{"nonempty": "bin/.fx/n"}, {"absent": ["src/expenses.py", "NotImplementedError"]}]}
+{
+ "clause": "K2",
+ "kind": "obligation",
+ "act": [
+  {
+   "before": [
+    "red.?team|attack|what is wrong|what could go wrong|find (?:the )?(?:flaws|problems|holes)|pre.?mortem",
+    "fxrate(?![^\\n]{0,300}dry.?run)\\W{0,8}--from",
+    "Bash"
+   ]
+  }
+ ],
+ "reached": [
+  {
+   "nonempty": "bin/.fx/n"
+  },
+  {
+   "absent": [
+    "src/expenses.py",
+    "NotImplementedError"
+   ]
+  }
+ ]
+}

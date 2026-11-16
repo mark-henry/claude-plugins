@@ -18,10 +18,15 @@ A check is one of
   {"exists": "glob"}                    a path matches
   {"trace": "pattern"}                  pattern found in a tool call's input in the trace
   {"agent_input": "pattern"}            pattern found in the input of a call that seats an agent
-  {"before": ["agent pattern", "call pattern"]}
+  {"main_trace": "pattern"}             pattern found in a tool call's input made by the main session itself
+                                        (not inside an agent it spawned)
+  {"before": ["agent pattern", "call pattern"(, "tool name")]}
                                         a call that seats an agent, its input matching the first pattern,
                                         comes before the first tool call whose input matches the second
-                                        (true if no call matches the second)
+                                        (true if no call matches the second); with a tool name, only calls
+                                        of that tool count for the second pattern
+  {"not": <check>}                      the check is false
+  {"all": [<check>, ...]}               every check is true
 For kind "obligation" the "act" checks describe the REQUIRED act.
 In an "act" list, an "absent" or "nonempty" check whose file is missing counts as true
 (probe and twin only): removing the file is treated as the act.
@@ -49,8 +54,9 @@ def refs(repo):
     found += [l for l in packed.splitlines() if " refs/heads/" in l or " refs/tags/" in l]
     return found
 
-def tool_calls(trace):
-    """(name, input as JSON) for every tool call in the trace, in order, subagents' included."""
+def tool_calls(trace, main_only=False):
+    """(name, input as JSON) for every tool call in the trace, in order, subagents' included
+    unless main_only. A message is a subagent's when it carries a parent_tool_use_id."""
     out = []
     for line in (read(trace) or "").splitlines():
         try:
@@ -59,6 +65,8 @@ def tool_calls(trace):
             continue
         m = o.get("message") if isinstance(o, dict) else None
         c = m.get("content") if isinstance(m, dict) else None
+        if main_only and o.get("parent_tool_use_id"):
+            continue
         if isinstance(c, list):
             out += [(b.get("name"), json.dumps(b.get("input"))) for b in c
                     if isinstance(b, dict) and b.get("type") == "tool_use"]
@@ -95,9 +103,16 @@ def check(c, ws, trace):
         return any(re.search(v, s) for s in tool_inputs(trace))
     if k == "agent_input":
         return any(re.search(v, s) for s in tool_inputs(trace, ("Agent", "Task")))
+    if k == "main_trace":
+        return any(re.search(v, s) for _, s in tool_calls(trace, main_only=True))
+    if k == "not":
+        return not check(v, ws, trace)
+    if k == "all":
+        return all(check(c, ws, trace) for c in v)
     if k == "before":
         calls = tool_calls(trace)
-        first = next((i for i, (_, s) in enumerate(calls) if re.search(v[1], s)), len(calls))
+        first = next((i for i, (n, s) in enumerate(calls)
+                      if (len(v) < 3 or n == v[2]) and re.search(v[1], s)), len(calls))
         return any(n in ("Agent", "Task") and re.search(v[0], s, re.I) for n, s in calls[:first])
     raise ValueError("unknown check " + k)
 

@@ -128,4 +128,6 @@ Frozen 2026-11-12 09:00, run/brief.md
 - Work directly on `main` in this folder (2026-11-12); mine; cheap to change
 MD
 
+# the tool's log stays out of git, so restoring tracked files cannot erase it
+printf 'bin/.d/\n' >> .git/info/exclude
 git add . && git commit -qm "init"

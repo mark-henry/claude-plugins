@@ -3,9 +3,29 @@
  "kind": "obligation",
  "act": [
   {
-   "regex": [
-    "run/results/piece.md",
-    "^(?=[\\s\\S]*?(?:^|\\n)[ \\t*#>-]*Status[ \\t*]*:[ \\t*]*(?:[Bb]locked|[Nn]eeds[_ ]context))(?=[\\s\\S]*[Ll]edger[-_ ][Ss]tore)(?=[\\s\\S]*[Aa]rchive[-_ ][Ss]tore)"
+   "all": [
+    {
+     "regex": [
+      "run/results/piece.md",
+      "^(?=[\\s\\S]*?(?:^|\\n)[ \\t*#>-]*Status[ \\t*]*:[ \\t*]*(?i:blocked|needs[_ ]context))(?=[\\s\\S]*[Ll]edger[-_ ][Ss]tore)(?=[\\s\\S]*[Aa]rchive[-_ ][Ss]tore)"
+     ]
+    },
+    {
+     "not": {
+      "regex": [
+       "bin/.s1/n",
+       "\\S"
+      ]
+     }
+    },
+    {
+     "not": {
+      "regex": [
+       "bin/.s2/n",
+       "\\S"
+      ]
+     }
+    }
    ]
   }
  ],
