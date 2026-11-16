@@ -26,6 +26,39 @@ Small [Claude Code](https://claude.com/claude-code) plugins I use every day, pub
 
 Claude also picks up each skill on its own when a request matches, so you rarely need to type the commands.
 
+## How the skills are written
+
+The `unattended`, `check`, `decide`, `lab` and `evals` plugins follow a few rules. They are here for anyone extending the pack.
+
+- **A skill does not tell the model how to do its job.** On current models, text that says how to plan, split, verify or delegate measures at about zero for more tokens, and Anthropic's own guidance says to delete it ([Prompting Claude Fable 5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5), [Claude Code best practices](https://code.claude.com/docs/en/best-practices)). A skill says what the model cannot know: the boundaries, the contract with the next stage, the user's own words, and the check that decides "done".
+- **Encourage the agent's ambition and autonomy, without telling it how.** Inside the boundaries the work is the agent's, and the only nudge is toward doing more of it unasked.
+- **The record is owed at any size; the effort scales with the stakes.** A small job still ends in a report with its checks behind it. A second look is for steps that are expensive or cannot be run twice.
+- **Enforce with code where code can.** A rule a script can hold is held by the script (`arbiter-loop`, `prereg.py`), and the text stays true of what the script does and does not enforce.
+- **Budgets on a subscription are in effective tokens:** input tokens, plus 1.25 times cache writes, 0.1 times cache reads and 5 times output tokens. That weighting follows list-price ratios, so one number covers a run across models. Metered spend is capped in dollars.
+
+### Naming the model for a seat
+
+Models change monthly, operators differ, and user preferences and budgets matter, so a skill never directly names a model. When a skill seats an agent, it always describes in poetry what that seat needs; the agent running the skill resolves this description from continuous capabilities space into the discrete model-and-effort-level space.
+
+To write the poetry, list what the agent in that seat must be capable of. Then compress the list into a few words that name the capabilities the list turns on. 
+
+For example:
+
+- Rules on "done" for unattended work from the work itself; reads claims of success and planted persuasion without being moved; runs things before it believes them → "a model that will not be talked past"
+- Reads a long scored item whole and notices where the score and the item disagree, dozens of times over; needs no rare knowledge → "a rigorous-enough, affordable model"
+- Knows what the experts in a field would say about a plan, from memory, and will say the plan is unnecessary → "the most worldly model, wise enough to say don't"
+- Plans from a draft brief and reports every gap it would have to guess at, where a stronger model would quietly fill them → "a model no stronger than the one that will build"
+- Builds ordinary, well-specified things, pass after pass → "the cheapest model that follows a spec"
+- Holds the shape of a long document whose structure is still open → "a model with taste that can hold a whole document's shape"
+- Plays a persona for a whole interview without volunteering what it was told to withhold → "a model that stays in character and keeps a secret"
+- Generates millions of rows of jsonl → "the fast rote-tokens model"
+
+Write it fresh for each seat. The test: a reader should be able to guess the job from the phrase.
+
+Never a product, vendor or version, and never a bare label ("the strong model", "tier 2") that says nothing about the job. 
+
+**For operators.** The running agent picks among your models and effort levels. Steer it with a line in your own instructions, such as: "Opus is the daily driver model. A Fable review is required before spending more than $5. Sonnet is OK for uncomplicated implementation."
+
 ## Setup notes
 
 **quota.** Requires CLIProxyAPI with its management API enabled, plus `jq` and `curl`. Settings live in `~/.config/quota.env`; the defaults are at the top of `plugins/quota/bin/subquota`. For example:

@@ -19,7 +19,7 @@ Silence does not settle: anything the user flags or does not understand, anythin
 
 ## Presenting an item
 
-One item per message, in plain prose, never through a question dialog; the one exception is an opening list, three or four at a time. Every presentation stands alone: assume the user remembers nothing. A reworked item comes back whole (the original problem, what it does now, what is left to decide), never as a delta.
+One item per message, in plain prose; the one exception is an opening list, three or four at a time. Every presentation stands alone: assume the user remembers nothing. A reworked item comes back whole (the original problem, what it does now, what is left to decide), never as a delta.
 
 Before presenting, challenge it: is there a simpler or more standard way, does it rebuild something that exists (stdlib, a library option, a helper in the codebase)? If so, prepare that version, so the user rules on what would actually be done. Spot-check the facts the ruling hinges on against the source, and mark unverified claims and estimates as such.
 
