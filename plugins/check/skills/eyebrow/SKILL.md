@@ -11,4 +11,4 @@ Ask who has tried this and what happened to them, from two sources, each blind t
 
 **The internet.** Search for the case against ("why not", "problems with", "we stopped doing") as well as for whether it already exists. For costly work make it a research fan-out, and have a fresh agent check that each cited page says what it is cited for. Search in generic terms: nothing private goes into a query.
 
-Show the user both as they came, then ask what they still want. What they answer is a requirement like any other; a method the user named is used as named. With no way to spawn an agent, say so: your own opinion is not the eyebrow.
+Launch both together; while waiting, at most one short line. Then show the user both as they came, in one message, unsummarized, and ask what they still want. What they answer is a requirement like any other; a method the user named is used as named. With no way to spawn an agent, say so: your own opinion is not the eyebrow.
