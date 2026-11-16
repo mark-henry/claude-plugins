@@ -35,7 +35,7 @@ When "done" needs judgment, the judge is a fresh agent on a smart model, never a
 - It runs what can be run, then gives a verdict per criterion with evidence from its own tool results. "Cannot tell" is a fail.
 - It changes nothing; its findings are the worker's next input. A judge asked often enough passes something: behind `arbiter-loop` the round cap is the pass cap, unless the check sets a lower one.
 
-Prove any judge before the run and whenever it changes: five known-bad pieces of work, each carrying a confident claim of success, and five known-good; all ten must be ruled correctly.
+The judge is known-good before the run, and again whenever it changes. A judge handed to you as known-good is taken as such.
 
 Hiding the scorer stops tampering, not attempts. After the first passes and at stop, read the logs and the diff for the quiet ways around a check: a skipped or deleted test, a golden output regenerated over wrong output, a widened threshold or timeout, an added suppression, a bypassed hook.
 

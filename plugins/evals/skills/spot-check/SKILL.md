@@ -12,7 +12,7 @@ This catches mistakes in how a scorer was applied. It does not decide what "good
 ## The contract
 
 - **The sample** is 30 to 50 items stratified by score, not random: the top, the bottom, the middle near the threshold, and where they exist the disagreements (judge against human, arm against arm), outliers, parse failures, empty outputs and refusals. Record the seed and the selection rule so it can be redrawn.
-- **The auditor** is a fresh subagent given how a score is produced and each sampled item whole: input, output, reference, score and any judge critique. It never gets your hypothesis or the headline number.
+- **The auditor** is a fresh subagent on a rigorous-enough, affordable model, given how a score is produced and each sampled item whole: input, output, reference, score and any judge critique. It never gets your hypothesis or the headline number.
 - **For each item** it says whether the score is right, too high, too low or broken, with one line quoted from the item and a suspected cause.
 - **A flag that would change a decision** is rechecked by you, or by a second auditor told only "check this item".
 - **The report** gives flagged counts by stratum, flags grouped by cause, and what each cause does to the aggregate. Fix scorer and data bugs, rescore, and audit again on a fresh sample, never the items just fixed.
