@@ -32,6 +32,11 @@
 #               Refused inside <loop-dir> or containing it.
 # Exit codes: 0 done, 1 refused, 2 max passes, 3 stall, 4 STOP file in STATE_DIR, 5 no count before any pass.
 # The check runs once before pass 1: if it already passes, no worker runs.
+# Ratchet: when <loop-dir> is in a git work tree, each pass's files there (tracked and untracked, .gitignore
+# respected) are snapshotted under refs/arbiter/pass-N, the count in its commit message; the index, HEAD and
+# branches are never touched. Nothing is restored between passes. At a stall or max-passes exit, if an earlier
+# pass beat the final count, the final state is saved as refs/arbiter/final and the files are restored to the
+# best pass. A pass during which the pass count was forged is flagged, and a flagged best pass draws a warning.
 # Not provided: a timeout or budget, or protection from a worker that kills this script or creates STOP.
 set -euo pipefail
 
@@ -66,12 +71,55 @@ log=$state/loop.log
 cd "$dir"
 echo "arbiter-loop: logs in $state; touch $state/STOP to stop after the current pass" >&2
 
+tamper() { # prints why the pass count on disk was forged, if it was; at launch, and after each pass
+  local n=0 last
+  [ -f "$state/passes" ] && n=$(cat "$state/passes")
+  case "$n" in ''|*[!0-9]*) echo "unreadable pass count in $state/passes"; return 0 ;; esac
+  last=$(ls "$state/logs" | sed -n 's/^pass-\([0-9]*\)\.log$/\1/p' | sort -n | tail -n 1)
+  if [ "${last:-0}" -gt "$n" ]; then echo "pass count $n in $state/passes is below the log of pass $last; it was changed outside arbiter-loop"; fi
+}
 # Passes already spent by earlier launches against this state directory.
+why=$(tamper); [ -z "$why" ] || refuse "$why"
 used=0
 [ -f "$state/passes" ] && used=$(cat "$state/passes")
-case "$used" in ''|*[!0-9]*) refuse "unreadable pass count in $state/passes" ;; esac
-last=$(ls "$state/logs" | sed -n 's/^pass-\([0-9]*\)\.log$/\1/p' | sort -n | tail -n 1)
-[ "${last:-0}" -gt "$used" ] && refuse "pass count $used in $state/passes is below the log of pass $last; it was changed outside arbiter-loop"
+
+# The ratchet's git commands: no hooks, fsmonitor or signing; never the real index, HEAD or branches.
+g() { git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c commit.gpgSign=false "$@"; }
+repo=; [ "$(g rev-parse --is-inside-work-tree 2>/dev/null)" = true ] && repo=1
+snaptree() { # prints the tree of <loop-dir>'s files now, built in a scratch copy of the index
+  local t rc=0; t=$(mktemp -d)
+  cp "$(g rev-parse --git-path index)" "$t/index" 2>/dev/null || true
+  GIT_INDEX_FILE=$t/index g add -A -- . > /dev/null 2>&1 && GIT_INDEX_FILE=$t/index g write-tree || rc=1
+  rm -rf "$t"; return "$rc"
+}
+snapref() { # snapref <tree> <ref> <message>
+  local p= c
+  g rev-parse -q --verify 'HEAD^{commit}' > /dev/null && p="-p HEAD"
+  c=$(echo "$3" | GIT_AUTHOR_NAME=arbiter-loop GIT_AUTHOR_EMAIL=arbiter-loop@localhost \
+    GIT_COMMITTER_NAME=arbiter-loop GIT_COMMITTER_EMAIL=arbiter-loop@localhost g commit-tree "$1" $p) && g update-ref "$2" "$c"
+}
+restore() { # restore <ref>: <loop-dir>'s files to that snapshot; files saved in refs/arbiter/final but not in it are removed
+  local t rc=0; t=$(mktemp -d)
+  GIT_INDEX_FILE=$t/index g read-tree refs/arbiter/final && GIT_INDEX_FILE=$t/index g restore -q --source="$1" --worktree -- . || rc=1
+  rm -rf "$t"; return "$rc"
+}
+bestpass= bestcount=-1 bestflag= lastcount=
+say() { echo "$1" | tee -a "$log"; }
+ratchet() { # at a stall or max-passes exit: report the best pass, and restore it if it beat the final state
+  [ -n "$bestpass" ] || return 0
+  if [ -z "$repo" ]; then
+    say "ratchet: best count $bestcount (pass $bestpass); not a git repository, so nothing was restored"
+  elif [ "$bestcount" -le "$lastcount" ]; then
+    say "ratchet: best count $bestcount (pass $bestpass, refs/arbiter/pass-$bestpass) is the final state's; nothing was restored"
+  elif ! tree=$(snaptree) || ! snapref "$tree" refs/arbiter/final "arbiter-loop final: $lastcount passing"; then
+    say "ratchet: best count $bestcount (pass $bestpass, refs/arbiter/pass-$bestpass); the final state could not be saved, so nothing was restored"
+  elif restore "refs/arbiter/pass-$bestpass"; then
+    say "ratchet: best count $bestcount (pass $bestpass) beat the final $lastcount: final state saved as refs/arbiter/final, files restored to refs/arbiter/pass-$bestpass"
+  else
+    say "ratchet: best count $bestcount (pass $bestpass): final state saved as refs/arbiter/final, but restoring refs/arbiter/pass-$bestpass failed"
+  fi
+  if [ -n "$bestflag" ]; then say "ratchet: warning: best pass $bestpass was flagged by the tamper check: $bestflag"; fi
+}
 
 if [ -f "$state/prompt.md" ] && ! cmp -s "$prompt" "$state/prompt.md"; then
   warn "prompt $prompt changed since the last launch"; echo "prompt changed since the last launch" >> "$log"
@@ -95,6 +143,7 @@ check() { # check <log>: sets res to "done", the count passing, or "" for no cou
 }
 stop() { # stop <exit-code> <message>
   echo "$2" | tee -a "$log"
+  case "$1" in 2|3) ratchet ;; esac # before the held-out set, so it grades what is left on disk
   if [ -n "${FINAL_CMD:-}" ]; then
     # One final log per launch, never overwritten: an earlier launch's held-out result stays on disk.
     final=$state/logs/final-pass-$used.log; k=1
@@ -123,7 +172,13 @@ for ((i = used + 1; i <= cap; i++)); do
   used=$i; echo "$used" > "$state/passes" # counted when it starts: a pass killed midway was still spent
   # An agent that dies or exits nonzero is restarted by the next pass, not fatal.
   cat "$state/prompt.md" | $hide bash -c "$AGENT_CMD" 2>&1 | cat > "$state/logs/pass-$i.log" || echo "pass $i: agent exited $?" >> "$log"
+  flag=$(tamper); [ -z "$flag" ] || echo "pass $i: flagged by the tamper check: $flag" >> "$log"
+  tree=; if [ -n "$repo" ] && ! tree=$(snaptree); then tree=; echo "pass $i: snapshot failed" >> "$log"; fi
   check "$state/logs/check-$i.log"
+  if [ -n "$tree" ]; then
+    snapref "$tree" "refs/arbiter/pass-$i" "arbiter-loop pass $i: ${res:-no count} passing${flag:+ (flagged: $flag)}" \
+      || { tree=; echo "pass $i: snapshot failed" >> "$log"; }
+  fi
   [ "$res" = done ] && stop 0 "pass $i: check passed, done"
   if [ -z "$res" ]; then
     echo "pass $i: check wrote no count (exit $rc, see $state/logs/check-$i.log), counted as 0" >> "$log"
@@ -131,6 +186,8 @@ for ((i = used + 1; i <= cap; i++)); do
   else
     echo "pass $i: $res passing (check exit $rc)" >> "$log"
   fi
+  lastcount=$res
+  if { [ -n "$tree" ] || [ -z "$repo" ]; } && [ "$res" -gt "$bestcount" ]; then bestpass=$i bestcount=$res bestflag=$flag; fi
   if [ "$res" -gt "$best" ]; then best=$res; flat=0; else flat=$((flat + 1)); fi
   [ "$flat" -ge "$stall" ] && stop 3 "stalled: $stall passes without a new best ($best)"
 done

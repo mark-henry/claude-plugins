@@ -38,6 +38,8 @@ Limits of the harness: no script graders, no simulated user (one prompt per case
 
 `tests/arbiter-loop.sh` is a plain bash test of the `arbiter-loop` supervisor script, not an eval case: `bash tests/arbiter-loop.sh`. Its workers run as the same user, so it tests the script's defaults and refusals, not isolation.
 
+`tests/arbiter-ratchet.sh` tests its ratchet (per-pass git snapshots, restore of the best pass at a stall or max-passes exit) in throwaway repositories: `bash tests/arbiter-ratchet.sh`.
+
 ## Cases for unattended:interview
 
 `unattended:interview` is an interview, and the harness gives a case one user turn. So each `brief-*` case replays a hand-written conversation up to the point of interest and makes its prompt the next thing the user says. `tests/brief-clauses.md` lists the clauses under test and which case covers each; `tests/results-brief.md` has the last results.
