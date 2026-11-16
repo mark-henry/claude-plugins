@@ -59,4 +59,4 @@ Optional: list inputs outside the repository in `lab-inputs.md` at its root; `st
 
 ## Sign-off
 
-Only for a number that leaves the user's hands. Give one fresh agent the run folders, the record, `<record>.check.json`, the parity and quote output and the sentence as it will be quoted, never your own account of the run. It reruns the commands, reads raw items, and says whether the sentence is fit to quote, as counted or as exploratory, naming each line that fails. It fixes nothing.
+Only for a number that leaves the user's hands. Run `check:attack` on the sentence as it will be quoted, with the run folders, the record, `<record>.check.json` and the parity and quote output as its files (never your own account of the run) and the fourteen lines as its standard. Have it rerun the commands, read raw items, and say whether the sentence is fit to quote, as counted or as exploratory, naming each line that fails.
