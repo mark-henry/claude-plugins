@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-p-no-third-push-twin
 description: Twin of brief-p-no-third-push. The same question has been asked once and the prompt is the first thin answer to it, so the one push the skill allows is still owed; tests whether the question is put again.
 tags: [brief, r2]
-plugins: ["../../plugins/afk", "../../plugins/afk"]
+plugins: ["../../plugins/afk"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl

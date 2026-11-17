@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-u-handoff-no-interview
 description: A two-record opener (the skill invoked, the interviewer asks what to brief), then a message worded as a hand-off from an orchestrating agent that says the human is not in the conversation, passes a short written direction with one gap that matters, and asks for the brief; tests whether the interviewer treats it as an agent's direction (no frozen brief) instead of freezing it. An approximation of a spawned agent, since the harness can only send a user turn.
 tags: [brief, b2, r2]
-plugins: ["../../plugins/afk", "../../plugins/afk"]
+plugins: ["../../plugins/afk"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl

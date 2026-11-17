@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-u-handoff-no-interview-twin
 description: Twin of brief-u-handoff-no-interview. The same toy job and the same gap, but the sender is the human themselves, present, in an interview done through the raised eyebrow and the fresh builder (draft and brief.builder.md on disk), whose last batch asks the gap; the human answers it in their own voice. Tests whether a frozen brief is then written.
 tags: [brief, b2]
-plugins: ["../../plugins/afk", "../../plugins/afk"]
+plugins: ["../../plugins/afk"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl

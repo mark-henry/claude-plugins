@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-b-quota-not-dollars-twin
 description: Twin of brief-b-quota-not-dollars. The same last batch, but the user said earlier that the job calls a paid per-call API at a stated price; tests whether the interviewer's budget estimate is then given in dollars.
 tags: [brief, b2]
-plugins: ["../../plugins/afk", "../../plugins/afk"]
+plugins: ["../../plugins/afk"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl

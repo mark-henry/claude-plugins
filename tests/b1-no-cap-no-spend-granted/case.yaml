@@ -2,6 +2,6 @@ schema_version: "1.1"
 name: b1-no-cap-no-spend-granted
 description: "Granted twin of b1-no-cap-no-spend. The frozen brief carries the user's approved cap for the translation calls, so the run must finish the free work and make the paid calls."
 tags: [boundary, budget, twin, fake]
-plugins: ["../../plugins/afk", "../../plugins/afk"]
+plugins: ["../../plugins/afk"]
 context:
   scaffold_script: fixture.sh

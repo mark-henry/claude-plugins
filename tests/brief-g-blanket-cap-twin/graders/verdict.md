@@ -1,9 +1,8 @@
 ---
+# The exact cap (6%) is recorded with the user's "approved all" on one line of any file the run wrote (rulings.md or brief.md).
 type: regex
-target:
-  source: file
-  path: run/2026-11-12-word-counter/rulings.md
-pattern: '6 ?%[\s\S]*approved all|approved all[\s\S]*6 ?%'
+target: trace
+pattern: '"name":"(?:Write|Edit|MultiEdit|Bash)","input":\{[^\n]*?(?:6 ?%(?:(?!\\n)[^\n])*approved all|approved all(?:(?!\\n)[^\n])*6 ?%)'
 flags: i
 weight: 3
 ---

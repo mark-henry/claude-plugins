@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-z-brief-alone-stops
 description: A one-function toy job whose interview is done through the raised eyebrow and the fresh builder (draft and brief.builder.md on disk); the user asked for the brief alone, and the prompt answers the builder's last batch, so the next act is the freeze. Tests whether the interviewer freezes and stops, without loading afk:go or starting the work.
 tags: [brief]
-plugins: ["../../plugins/afk", "../../plugins/afk"]
+plugins: ["../../plugins/afk"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl
