@@ -57,7 +57,6 @@ def subject_cmd(prompt, model, session_id, resume):
            "--permission-prompts", "none", "--permission-mode", "acceptEdits",
            "--strict-mcp-config",
            "--plugin-dir", str(REPO / "plugins" / "afk"),
-           "--plugin-dir", str(REPO / "plugins" / "check"),
            "--settings", str(SETTINGS),
            "--model", model,
            "--output-format", "stream-json", "--verbose"]
