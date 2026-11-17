@@ -29,7 +29,7 @@ Estimate in the unit the run will draw on: dollars for metered spend; effective 
 
 A permission is secured when the harness no longer prompts for it, not when the user says yes: have them add the rule, or approve a harmless trigger, while they are here.
 
-**The raised eyebrow.** Before you conclude the interview, with the requirements confirmed, run `check:eyebrow` on them (if it is not installed: a fresh agent on the strongest model, given the requirements and none of the user's enthusiasm, says what the people who know this area best would say and the likeliest reason the plan is unnecessary or fails; and you search for the case against). Show the user both, then ask what they still want. What they answer is a requirement like any other; a method the user named is used as named. If something lands, the interview is not over, unless the questions have already ended: then what it raises is your assumption.
+**The raised eyebrow.** Before you conclude the interview, with the requirements confirmed, run `check:eyebrow` on them (if it is not installed: a fresh agent on the most worldly model, wise enough to say don't, given the requirements and none of the user's enthusiasm, says what the people who know this area best would say and the likeliest reason the plan is unnecessary or fails; and you search for the case against). Show the user both, then ask what they still want. What they answer is a requirement like any other; a method the user named is used as named. If something lands, the interview is not over, unless the questions have already ended: then what it raises is your assumption.
 
 ## Fresh builder, then freeze
 
