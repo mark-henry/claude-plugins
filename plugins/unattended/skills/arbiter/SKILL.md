@@ -17,6 +17,7 @@ Build these in. An instruction to the worker is not a control, and the shipped s
 
 - Separation holds only where the worker cannot write: another user, a container, a read-only mount. A worker running as the script's user can rewrite any check, scorer or state it can reach, wherever it sits.
 - Out of the worker's write reach: the check, the scorer and its items, the judge's prompt, the prompt file the next worker reads, and the script's state directory (it holds the pass count and the held-out output). The scorer's items, the held-out set and the state directory must be out of its sight too: a read-only mount stops writes, not reads.
+- The worker runs with the tools, connectors and network the job needs, and no more.
 - The script runs the check. The worker's message, exit code and ledger are never the stop signal.
 - The check trusts no exit code and no output line the worker's code can produce. Code imported into the check's process can exit 0 for it or print a forged count: run the worker's code in a process of its own, and compute pass and count in the check from the results. Run no host-side git command under the worker's repository config or hooks.
 - What the worker may run for feedback returns counts, its inputs and its outputs, never expected answers. Look in its memory and config files for leaked ones.

@@ -13,7 +13,7 @@ For example:
 - Rules on "done" for unattended work from the work itself; reads claims of success and planted persuasion without being moved; runs things before it believes them → "a model that will not be talked past"
 - Reads a long scored item whole and notices where the score and the item disagree, dozens of times over; needs no rare knowledge → "a rigorous-enough, affordable model"
 - Knows what the experts in a field would say about a plan, from memory, and will say the plan is unnecessary → "the most worldly model, wise enough to say don't"
-- Plans from a draft brief and reports every gap it would have to guess at, where a stronger model would quietly fill them → "a model no stronger than the one that will build"
+- Plans from a draft brief and reports every gap it would have to guess at, where a stronger model would quietly fill them → "the model you would hand this build to"
 - Builds ordinary, well-specified things, pass after pass → "the cheapest model that follows a spec"
 - Holds the shape of a long document whose structure is still open → "a model with taste that can hold a whole document's shape"
 - Plays a persona for a whole interview without volunteering what it was told to withhold → "a model that stays in character and keeps a secret"
