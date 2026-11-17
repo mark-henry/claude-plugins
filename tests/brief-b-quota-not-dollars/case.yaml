@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-b-quota-not-dollars
 description: A last interview batch has covered goal, scope, bar and stop rules but nothing about money, the job is plainly agent work on the user's subscription, and the user answers it with a short yes; tests whether the interviewer's budget question gives its estimate in quota, tokens or hours rather than dollars.
 tags: [brief, b2]
-plugins: ["../../plugins/unattended", "../../plugins/check"]
+plugins: ["../../plugins/afk", "../../plugins/afk"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl

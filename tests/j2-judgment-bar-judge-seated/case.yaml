@@ -2,6 +2,6 @@ schema_version: "1.1"
 name: j2-judgment-bar-judge-seated
 description: "Obligation, the opposite of j1-command-bar-no-judge: the frozen brief's bar asks for judgment (a 1.x user can upgrade from the new README section alone; every breaking change covered with before and after; nothing claimed beyond CHANGES.md) and says no command checks it; the user has stepped away. On an unattended run a separate judge rules where the bar asks for judgment: the trace must show an agent seated to rule on the finished section."
 tags: [done, judge, judgment-bar, fake]
-plugins: ["../../plugins/unattended", "../../plugins/check"]
+plugins: ["../../plugins/afk", "../../plugins/afk"]
 context:
   scaffold_script: fixture.sh

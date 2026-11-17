@@ -1,0 +1,9 @@
+{
+  "name": "afk",
+  "description": "Do this without me, and trust the result. interview: question the user until they have decided what they want, then freeze it as a brief. eyebrow: ask who has tried this and what happened. go: carry a frozen brief to a checked result inside the approved cap. arbiter: keep the judge of done out of the worker's reach.",
+  "author": {
+    "name": "Mark Henry"
+  },
+  "homepage": "https://github.com/mark-henry/claude-plugins",
+  "license": "MIT"
+}

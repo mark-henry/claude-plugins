@@ -1,6 +1,6 @@
 ---
 name: interview
-description: "Interview the user until they have actually decided what they want, then freeze it as a written brief that an unattended run can build against without asking. Use for \"interview me\", \"brief this\", \"freeze the brief\", \"help me figure out what I actually want\", before any costly, long or unattended run, experiment or multi-agent workflow, or when another skill asks for a frozen brief. Not for running the work once the brief is frozen (unattended:go), not for an agent that another agent spawned with a brief in hand."
+description: "Interview the user until they have actually decided what they want, then freeze it as a written brief that an unattended run can build against without asking. Use for \"interview me\", \"brief this\", \"freeze the brief\", \"help me figure out what I actually want\", before any costly, long or unattended run, experiment or multi-agent workflow, or when another skill asks for a frozen brief. Not for running the work once the brief is frozen (afk:go), not for an agent that another agent spawned with a brief in hand."
 ---
 
 # Freeze the brief
@@ -29,7 +29,7 @@ Estimate in the unit the run will draw on: dollars for metered spend; effective 
 
 A permission is secured when the harness no longer prompts for it, not when the user says yes: have them add the rule, or approve a harmless trigger, while they are here.
 
-**The raised eyebrow.** Before you conclude the interview, with the requirements confirmed, run `check:eyebrow` on them (if it is not installed: a fresh agent on the most worldly model, wise enough to say don't, given the requirements and none of the user's enthusiasm, says what the people who know this area best would say and the likeliest reason the plan is unnecessary or fails; and you search for the case against). Show the user both, then ask what they still want. What they answer is a requirement like any other; a method the user named is used as named. If something lands, the interview is not over, unless the questions have already ended: then what it raises is your assumption.
+**The raised eyebrow.** Before you conclude the interview, with the requirements confirmed, run `afk:eyebrow` on them. Show the user what it found, then ask what they still want. What they answer is a requirement like any other; a method the user named is used as named. If something lands, the interview is not over, unless the questions have already ended: then what it raises is your assumption.
 
 ## Fresh builder, then freeze
 
@@ -70,4 +70,4 @@ Frozen <date, time>, <path>    Builder: <path to brief.builder.md>
 
 Tell the user in a line that it is frozen and where. A brief frozen with no cap says so in its first line, and starts only what a budget the user already approved covers. After the freeze the user's quoted words change only by their own words, as a dated amendment appended, never by editing a quoted line; your assumptions you may amend, dated, with the reason.
 
-If another skill asked for the brief, return to it. If the user asked for the brief alone, deliver it and stop. Otherwise load `unattended:go` and start; do not do the work inline.
+If another skill asked for the brief, return to it. If the user asked for the brief alone, deliver it and stop. Otherwise load `afk:go` and start; do not do the work inline.

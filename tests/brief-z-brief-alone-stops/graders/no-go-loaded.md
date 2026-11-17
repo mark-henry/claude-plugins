@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"unattended:go"'
+input_match: '"skill"\s*:\s*"afk:go"'
 min: 0
 max: 0
 arm: both

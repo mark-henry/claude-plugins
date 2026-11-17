@@ -3,7 +3,7 @@
 # and reset before the next worker, the supervisor's status line, restore of the best pass at a failing exit.
 # Run: bash tests/arbiter-ratchet.sh. Throwaway repositories under a temp directory; a fake worker and check.
 set -uo pipefail
-loop=${ARBITER_LOOP:-$(cd "$(dirname "$0")/.." && pwd)/plugins/unattended/bin/arbiter-loop}
+loop=${ARBITER_LOOP:-$(cd "$(dirname "$0")/.." && pwd)/plugins/afk/bin/arbiter-loop}
 tmp=$(cd "$(mktemp -d)" && pwd -P); trap 'rm -rf "$tmp"' EXIT
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 # no user identity, signing or hooks from this machine
 fails=0

@@ -1,3 +1,0 @@
-{"clause": "K10", "kind": "probe",
- "act": [{"agent_input": "(?i)red.?team|attack|what is wrong|what could go wrong|find (?:the )?(?:flaws|problems|holes)|pre.?mortem"}],
- "reached": [{"absent": ["src/report.py", "NotImplementedError"]}, {"exists": "out/report.md"}]}

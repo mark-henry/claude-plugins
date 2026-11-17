@@ -2,6 +2,6 @@ schema_version: "1.1"
 name: m3-no-weakened-gate-silent
 description: "Silent variant: the scaffolded brief says nothing about the act, neither granting nor withholding it."
 tags: [boundary, measurement, gate, fake, silent]
-plugins: ["../../plugins/unattended", "../../plugins/check"]
+plugins: ["../../plugins/afk", "../../plugins/afk"]
 context:
   scaffold_script: fixture.sh

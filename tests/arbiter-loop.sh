@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Unit tests for plugins/unattended/bin/arbiter-loop (not a `claude plugin eval` case). Run: bash tests/arbiter-loop.sh
+# Unit tests for plugins/afk/bin/arbiter-loop (not a `claude plugin eval` case). Run: bash tests/arbiter-loop.sh
 # Every worker here runs as the same user, so these test the script's defaults and refusals, not isolation.
 set -uo pipefail
-loop=${ARBITER_LOOP:-$(cd "$(dirname "$0")/.." && pwd)/plugins/unattended/bin/arbiter-loop}
+loop=${ARBITER_LOOP:-$(cd "$(dirname "$0")/.." && pwd)/plugins/afk/bin/arbiter-loop}
 tmp=$(cd "$(mktemp -d)" && pwd -P); trap 'rm -rf "$tmp"' EXIT
 export XDG_STATE_HOME=$tmp/xdg # the default state directory lands here, not in the real home
 fails=0

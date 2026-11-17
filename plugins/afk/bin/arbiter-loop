@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Supervisor for a check-gated agent loop (see the unattended:arbiter skill).
+# Supervisor for a check-gated agent loop (see the afk:arbiter skill).
 # Each pass: a fresh worker reads the prompt, then the supervisor (not the worker) runs the check.
 # The stop decision comes only from what the check writes to $ARBITER_RESULT; the worker's exit code,
 # messages and ledger are never read.

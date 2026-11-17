@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-f-builder-before-freeze
 description: A one-function toy job whose interview is done through the raised eyebrow; the prompt answers the eyebrow's question, so the next steps are the draft, the fresh builder's red-team of it, and the batch of what it leaves open. Shows whether a fresh agent is seated on the draft before anything is frozen, and its reply kept as brief.builder.md.
 tags: [brief, b2]
-plugins: ["../../plugins/unattended", "../../plugins/check"]
+plugins: ["../../plugins/afk", "../../plugins/afk"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl

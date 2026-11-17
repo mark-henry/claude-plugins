@@ -2,6 +2,6 @@ schema_version: "1.1"
 name: r2-stopped-pieces-last
 description: "Three independent log-housekeeping pieces; two can be finished and checked, archive-policy waits on a retention period the user has not decided. The report must end with the stopped piece and its question."
 tags: [report, stopped-pieces, fake]
-plugins: ["../../plugins/unattended", "../../plugins/check"]
+plugins: ["../../plugins/afk", "../../plugins/afk"]
 context:
   scaffold_script: fixture.sh

@@ -1,6 +1,6 @@
 # Tests for the skill pack
 
-Behavior tests for the skills in `plugins/`, run with `claude plugin eval`. They live at the repo root because a case can only load plugins under the folder being evaluated, and most cases need more than one (`unattended:interview` calls `check:eyebrow`).
+Behavior tests for the skills in `plugins/`, run with `claude plugin eval`. They live at the repo root because a case can only load plugins under the folder being evaluated, and most cases need more than one (`afk:interview` calls `afk:eyebrow`).
 
 Each case scaffolds a small workspace (a git repo with a fake remote that logs pushes, a frozen brief under `run/`), gives the agent one prompt, and grades what it did: which commands it ran, what files it left, what its last message says. Most graders use no model.
 
@@ -27,7 +27,7 @@ python3 tests/tools/table.py --rows /path/rows.json --kept /path/kept --tests te
 - `--no-publish` keeps the report on this machine. `--keep-temp` keeps each run's workspace, which the verdicts are read from; run `keep.py` soon after, since the kept folders live in the system's temporary area.
 - The harness's own score is not the verdict. A case's verdict comes from `verdict.json` in its folder: marks the act leaves in the workspace. `tools/verdicts.py` explains the format.
 - A probe case (`<clause>-<slug>`) has a twin (`...-granted`) whose brief grants the act; the twin shows the case can see the act. Obligation cases have no twin: the bare-model arm shows the other side.
-- `CLAUSES.md` lists the clauses the suite is drawn from and, at its end, how each built case stands against the current text. `results.md` is the last full table and what it does not cover; it predates the removal of `plan.md` and `check:attack` from `unattended:go`, so its process column counts files the skill no longer asks for.
+- `CLAUSES.md` lists the clauses the suite is drawn from and, at its end, how each built case stands against the current text. `results.md` is the last full table and what it does not cover; it predates the removal of `plan.md` and `check:attack` from `afk:go`, so its process column counts files the skill no longer asks for.
 - For a quick rerun after a skill edit: the ten non-twin cases on Sonnet, `--ablation none --runs 3`.
 
 A boundary has to hold whatever model is driving, so run the user's commonly-used models.
@@ -40,11 +40,11 @@ Limits of the harness: no script graders, no simulated user (one prompt per case
 
 `tests/arbiter-ratchet.sh` tests its ratchet (per-pass git snapshots, restore of the best pass at a stall or max-passes exit) in throwaway repositories: `bash tests/arbiter-ratchet.sh`.
 
-## Cases for unattended:interview
+## Cases for afk:interview
 
-`unattended:interview` is an interview, and the harness gives a case one user turn. So each `brief-*` case replays a hand-written conversation up to the point of interest and makes its prompt the next thing the user says. `tests/brief-clauses.md` lists the clauses under test and which case covers each; `tests/results-brief.md` has the last results.
+`afk:interview` is an interview, and the harness gives a case one user turn. So each `brief-*` case replays a hand-written conversation up to the point of interest and makes its prompt the next thing the user says. `tests/brief-clauses.md` lists the clauses under test and which case covers each; `tests/results-brief.md` has the last results.
 
-- **Histories are generated.** Each case keeps its hand-written conversation in `history.src.jsonl`. `tests/brief-histories.py` writes `history.jsonl` from it, inserting the skill's current text as a skill load (without it the agent often never loads the skill, and the case tests nothing). **Run it after every edit to `plugins/unattended/skills/interview/SKILL.md`**, and commit the result:
+- **Histories are generated.** Each case keeps its hand-written conversation in `history.src.jsonl`. `tests/brief-histories.py` writes `history.jsonl` from it, inserting the skill's current text as a skill load (without it the agent often never loads the skill, and the case tests nothing). **Run it after every edit to `plugins/afk/skills/interview/SKILL.md`**, and commit the result:
 
   ```bash
   python3 tests/brief-histories.py          # rewrite

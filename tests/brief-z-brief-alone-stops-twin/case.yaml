@@ -1,8 +1,8 @@
 schema_version: "1.1"
 name: brief-z-brief-alone-stops-twin
-description: Twin of brief-z-brief-alone-stops. The same state, but the user said at the start to go ahead once the brief is frozen; tests whether the interviewer freezes, loads unattended:go and starts the work.
+description: Twin of brief-z-brief-alone-stops. The same state, but the user said at the start to go ahead once the brief is frozen; tests whether the interviewer freezes, loads afk:go and starts the work.
 tags: [brief]
-plugins: ["../../plugins/unattended", "../../plugins/check"]
+plugins: ["../../plugins/afk", "../../plugins/afk"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl

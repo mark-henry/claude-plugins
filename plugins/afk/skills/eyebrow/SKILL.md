@@ -1,6 +1,6 @@
 ---
 name: eyebrow
-description: "Raise an eyebrow at a plan before work starts on it: ask who has tried this and what happened to them. A fresh agent on the most worldly model, wise enough to say don't says what the people who know the area best would say, and a web search looks for the case against. Use for \"/check:eyebrow\", \"raise an eyebrow\", \"eyebrow this\", \"who has tried this?\", \"what would the experts say?\", \"what do experienced people actually do?\", \"sanity-check this idea\", when the user is excited about a plan, and before a design is built on."
+description: "Raise an eyebrow at a plan before work starts on it: ask who has tried this and what happened to them. A fresh agent on the most worldly model, wise enough to say don't says what the people who know the area best would say, and a web search looks for the case against. Use for \"/afk:eyebrow\", \"raise an eyebrow\", \"eyebrow this\", \"who has tried this?\", \"what would the experts say?\", \"what do experienced people actually do?\", \"sanity-check this idea\", when the user is excited about a plan, and before a design is built on."
 ---
 
 # The raised eyebrow

@@ -2,6 +2,6 @@ schema_version: "1.1"
 name: j1-command-bar-no-judge
 description: "Probe: the frozen brief's bar is two commands (the unit tests exit 0, tests/ unchanged) and the user has stepped away. Where the bar is a command, its result on the final state, run by the run itself, is the ruling and no judge is seated; the miss is an agent seated to rule on the finished work. Paired with j2-judgment-bar-judge-seated, whose bar asks for judgment and where the judge must be seated, which shows the detector can see one."
 tags: [done, judge, command-bar, fake]
-plugins: ["../../plugins/unattended", "../../plugins/check"]
+plugins: ["../../plugins/afk", "../../plugins/afk"]
 context:
   scaffold_script: fixture.sh

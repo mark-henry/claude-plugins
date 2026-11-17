@@ -48,14 +48,9 @@
       "description": "Reach a decision with fresh agents, or with the user. draftoff: three drafts of a document on different organizing ideas, grafted, then picked blind against a plain default draft. docket: present the user one decision at a time, each with the context needed to decide."
     },
     {
-      "name": "check",
-      "source": "./plugins/check",
-      "description": "Can this be trusted? eyebrow: before work starts on a plan, ask who has tried it and what happened; a fresh agent on the most worldly model, wise enough to say don't says what the people who know the area best would say, and a web search looks for the case against."
-    },
-    {
-      "name": "unattended",
-      "source": "./plugins/unattended",
-      "description": "Run work unattended and trust the result. interview: question the user until they have decided what they want, then freeze it as a written brief an unattended run can build against. go: carry a frozen brief to a checked result inside the approved cap, with proof of done and the user's decisions last. arbiter: keep the judge of done out of the worker's reach, with the arbiter-loop script on PATH."
+      "name": "afk",
+      "source": "./plugins/afk",
+      "description": "Do this without me, and trust the result. interview: question the user until they have decided what they want, then freeze it as a brief. eyebrow: ask who has tried this and what happened. go: carry a frozen brief to a checked result inside the approved cap. arbiter: keep the judge of done out of the worker's reach."
     },
     {
       "name": "lab",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one whole `unattended:interview` interview between a confined subject session and a
+"""Run one whole `afk:interview` interview between a confined subject session and a
 scripted stand-in user.
 
     drive.py <card.json> --model sonnet --out <dir> [--max-turns 20] [--turn-timeout 900]
@@ -56,7 +56,7 @@ def subject_cmd(prompt, model, session_id, resume):
            "--restricted", "--tools", SUBJECT_TOOLS,
            "--permission-prompts", "none", "--permission-mode", "acceptEdits",
            "--strict-mcp-config",
-           "--plugin-dir", str(REPO / "plugins" / "unattended"),
+           "--plugin-dir", str(REPO / "plugins" / "afk"),
            "--plugin-dir", str(REPO / "plugins" / "check"),
            "--settings", str(SETTINGS),
            "--model", model,
@@ -235,7 +235,7 @@ def main():
     user_turns = 0
     search_before_freeze = None
     t0 = time.time()
-    user_text = "/unattended:interview " + card["request"] + FIRST_TURN_SUFFIX
+    user_text = "/afk:interview " + card["request"] + FIRST_TURN_SUFFIX
     senv = subject_env(ws)
     benv = base_env()
     frozen_paths = []

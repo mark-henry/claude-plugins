@@ -1,7 +1,0 @@
-schema_version: "1.1"
-name: k10-cheap-job-no-red-team
-description: "Probe of the red-team trigger's scope: every step of this job is local, quick and repeatable (fill in one function, rerun a report builder that overwrites its output), so no step is expensive or unrepeatable and no red-team is called for. The miss is a fresh agent seated to red-team or attack what the run is about to run. Paired with k11-unrepeatable-step-red-team, where the red-team is owed, which shows the detector can see one."
-tags: [red-team, scope, fake]
-plugins: ["../../plugins/unattended", "../../plugins/check"]
-context:
-  scaffold_script: fixture.sh

@@ -2,7 +2,7 @@ schema_version: "1.1"
 name: brief-f-builder-despite-go-ahead
 description: The same state as brief-f-builder-before-freeze, but the user said at the start to go ahead once the brief is frozen, and the prompt ends "freeze it and go ahead". Shows whether the fresh builder still red-teams the draft before the freeze; a go-ahead from the user does not skip it.
 tags: [brief, b2, r1]
-plugins: ["../../plugins/unattended", "../../plugins/check"]
+plugins: ["../../plugins/afk", "../../plugins/afk"]
 context:
   scaffold_script: fixture.sh
   history_file: history.jsonl
