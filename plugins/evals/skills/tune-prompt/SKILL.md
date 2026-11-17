@@ -30,6 +30,7 @@ The human rules on every case, and the human's ruling is what goes in the log. T
 ## Turning critiques into changes
 
 - **Fix bugs at once.** A code defect or a broken schema is not a matter of taste.
+- **Check the bare component first.** Before adding text for a failure, run the failing cases with that text absent (the component with no prompt, or the prompt without the passage in question). If the failure does not show up there, there is nothing to fix.
 - **Change the prompt only on a pattern.** Wait until two or three fails share a cause; one case is an anecdote, and editing on anecdotes makes a prompt that zigzags. Say which logged cases the change answers.
 - **Promote clear critiques to worked examples** in the prompt (input, decision, one-line reason), especially near a boundary between two behaviors. Keep the examples few, and keep the cases they came from out of any later test.
 - **Re-run an earlier failing case after a prompt change**, as a regression check, and log it as a new line with the new prompt version.
