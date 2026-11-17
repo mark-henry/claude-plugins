@@ -59,4 +59,4 @@ Optional: list inputs outside the repository in `lab-inputs.md` at its root; `st
 
 ## Sign-off
 
-Only for a number that leaves the user's hands. Have a fresh agent red-team the sentence as it will be quoted, given the run folders, the record, `<record>.check.json`, the parity and quote output (never your own account of the run) and the fourteen lines. Have it rerun the commands, read raw items, and say whether the sentence is fit to quote, as counted or as exploratory, naming each line that fails.
+Only for a number that leaves the user's hands. Have a fresh agent (a careful reader that will not round a number) red-team the sentence as it will be quoted, given the run folders, the record, `<record>.check.json`, the parity and quote output (never your own account of the run) and the fourteen lines. Have it rerun the commands, read raw items, and say whether the sentence is fit to quote, as counted or as exploratory, naming each line that fails.

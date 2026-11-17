@@ -22,13 +22,13 @@ Seat four fresh agents on a model with taste that can hold a whole document's sh
 
 ## 3. Graft
 
-The grafter is a fresh judge, or you, if you wrote none of the drafts. It reads the brief, writes down what the ideal document would do before opening any draft, then reads the three and their notes. A conflict in the brief that the notes name is fixed in the brief first. It picks a base, or rejects all three, and lists the grafts to take from the others, the defects to fix and where the drafts agree. A separate synthesizer applies them to the base and logs each graft it changed or declined, with the reason.
+The grafter is a fresh judge on a model with the judgment to merge three drafts without flattening them, or you, if you wrote none of the drafts. It reads the brief, writes down what the ideal document would do before opening any draft, then reads the three and their notes. A conflict in the brief that the notes name is fixed in the brief first. It picks a base, or rejects all three, and lists the grafts to take from the others, the defects to fix and where the drafts agree. A separate synthesizer applies them to the base and logs each graft it changed or declined, with the reason.
 
 If you graft, you do not open the default and you do not pick.
 
 ## 4. Pick, blind
 
-Before any polish, two fresh judges each rank three texts, ideal first: the grafted result, the bare base and the sealed default. The texts carry neutral shuffled labels with no lean, author or model, and each judge gets a different order. Each uses only the brief's criteria and is told that length is not merit. "None of these" is a valid ranking.
+Before any polish, two fresh judges, each on a model that weighs substance over polish, each rank three texts, ideal first: the grafted result, the bare base and the sealed default. The texts carry neutral shuffled labels with no lean, author or model, and each judge gets a different order. Each uses only the brief's criteria and is told that length is not merit. "None of these" is a valid ranking.
 
 - Both rank the same text first: it wins.
 - They differ: a third fresh judge, a third order, breaks the tie.
@@ -37,7 +37,7 @@ Before any polish, two fresh judges each rank three texts, ideal first: the graf
 
 ## 5. Then check it
 
-Have a fresh agent red-team the winner once, against the brief, running what in it can be run. If it condenses sources, check its coverage against them, each claim opened at its source. Fixes add words: count them, and say when the text has passed its limit.
+Have a fresh agent (a skeptic that runs things) red-team the winner once, against the brief, running what in it can be run. If it condenses sources, check its coverage against them, each claim opened at its source. Fixes add words: count them, and say when the text has passed its limit.
 
 ## The record
 
