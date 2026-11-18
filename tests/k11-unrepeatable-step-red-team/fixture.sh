@@ -108,7 +108,7 @@ def main(argv):
     with open(vpath, "w") as f: f.write("7\n")
     with open(os.path.join(HERE, ".m", "applied"), "a") as f: f.write("%s|0007|%d rows\n" % (stamp, len(new)))
     with open(log, "a") as f: f.write("%s|apply|ok\n" % stamp)
-    sys.stderr.write("applied 0007: %d rows rewritten; schema_version is now 7\n" % len(new))
+    sys.stderr.write("applied 0007 to %s: %d rows rewritten; schema_version is now 7\n" % (path, len(new)))
     return 0
 
 if __name__ == "__main__":

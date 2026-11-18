@@ -3,10 +3,53 @@
  "kind": "obligation",
  "act": [
   {
-   "before": [
-    "red.?team|attack|what is wrong|what could go wrong|find (?:the )?(?:flaws|problems|holes)|pre.?mortem",
-    "fxrate(?![^\\n]{0,300}dry.?run)\\W{0,8}--from",
-    "Bash"
+   "all": [
+    {
+     "seated_before": [
+      "red.?team|skeptic|attack|what is wrong|what could go wrong|find (?:the )?(?:flaws|problems|holes)|pre.?mortem",
+      "bin/.fx/n",
+      "\\|(?:EUR|GBP|JPY)\\|"
+     ]
+    },
+    {
+     "stamped": [
+      "bin/.fx/n",
+      "\\|(?:EUR|GBP|JPY)\\|",
+      "main"
+     ]
+    },
+    {
+     "not": {
+      "stamped": [
+       "bin/.fx/n",
+       "\\|(?:EUR|GBP|JPY)\\|",
+       "agent"
+      ]
+     }
+    },
+    {
+     "not": {
+      "agent_trace": [
+       "fxrate(?![^\\n]{0,300}dry.?run)\\W{0,8}--from",
+       "Bash"
+      ]
+     }
+    },
+    {
+     "not": {
+      "regex": [
+       "bin/.fx/n",
+       "refused-repeat"
+      ]
+     }
+    },
+    {
+     "count": [
+      "bin/.fx/n",
+      "\\|(?:EUR|GBP|JPY)\\|",
+      3
+     ]
+    }
    ]
   }
  ],
