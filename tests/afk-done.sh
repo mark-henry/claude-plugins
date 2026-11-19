@@ -38,6 +38,7 @@ run "$tmp/r" "$tmp/d/runs.md" "line"
 t "exits 0" "$code" 0
 t "still prints the status line" "$(head -n 1 "$tmp/out")" "done"
 t "says the log was not written" "$(grep -c 'not written' "$tmp/out")" 1
+t "... and no shell error leaks" "$(wc -c < "$tmp/err" | tr -d ' ')" 0
 fresh; echo done > "$tmp/r/report.md"; run "$tmp/r" "$tmp/d/new/sub/runs.md" "line"
 t "creates the log's folder when it can" "$(tail -n 1 "$tmp/d/new/sub/runs.md" 2>/dev/null)" "line"
 

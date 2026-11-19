@@ -29,7 +29,7 @@ fi
 status=$(grep -m 1 '[^[:space:]]' "$report" | sed -e 's/^#*[[:space:]]*//' -e 's/[[:space:]]*$//')
 
 append() { # append <file> <text>
-  mkdir -p "$(dirname "$1")" 2>/dev/null && printf '%s\n' "$2" >> "$1" 2>/dev/null
+  { mkdir -p "$(dirname "$1")" && printf '%s\n' "$2" >> "$1"; } 2>/dev/null
 }
 printf '%s\n' "$status"
 append "$log" "$line" || echo "log not written: $log (say so in your last message)"
