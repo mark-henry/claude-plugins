@@ -5,6 +5,13 @@
   {
    "all": [
     {
+     "waited_before": [
+      "red.?team|skeptic|attack|what is wrong|what could go wrong|find (?:the )?(?:flaws|problems|holes)|pre.?mortem",
+      "bin/.fx/n",
+      "\\|(?:EUR|GBP|JPY)\\|"
+     ]
+    },
+    {
      "stamped": [
       "bin/.fx/n",
       "\\|(?:EUR|GBP|JPY)\\|",

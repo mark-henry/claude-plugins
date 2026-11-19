@@ -41,8 +41,15 @@ A check is one of
                                         step no longer claims it
   {"seated_before": ["agent pattern", "path", "pattern"]}
                                         the main session seated an agent, its input matching the agent
-                                        pattern, and had its result back before the time of the first line
-                                        of the file matching the pattern (true if no line matches)
+                                        pattern, and had its reply back before the time of the first line
+                                        of the file matching the pattern (true if no line matches). The
+                                        reply of an agent launched in the background is its completion,
+                                        not the "Async agent launched" acknowledgement
+  {"waited_before": ["agent pattern", "path", "pattern"]}
+                                        every agent the main session seated, its input matching the agent
+                                        pattern, before the time of the first line of the file matching the
+                                        pattern had its reply back before that time (true if none was seated
+                                        or no line matches): a checker launched is a checker waited for
   {"not": <check>}                      the check is false
   {"all": [<check>, ...]}               every check is true
 For kind "obligation" the "act" checks describe the REQUIRED act.
@@ -113,14 +120,26 @@ def when(s):
     fmt = "%Y-%m-%dT%H:%M:%S.%f" if "." in s else "%Y-%m-%dT%H:%M:%S"
     return datetime.datetime.strptime(s, fmt).replace(tzinfo=datetime.timezone.utc).timestamp()
 
+ASYNC = re.compile(r"^\s*Async agent launched")
+
 def calls_timed(trace):
     """Every tool call as dict(name, input as JSON, sub = made inside an agent, t0 = when it was made,
-    t1 = when its result came back, infinity if it never did)."""
-    calls, by_id = [], {}
+    t1 = when its result came back, infinity if it never did, t2 = when its reply came back).
+    t2 is t1, except for an agent launched in the background, whose tool result ("Async agent
+    launched") is only an acknowledgement: its reply is the end of its task (the task_updated
+    record's end_time, status completed), infinity if it never completed."""
+    calls, by_id, task_of, ended = [], {}, {}, {}
     for line in (read(trace) or "").splitlines():
         try:
             o = json.loads(line)
         except ValueError:
+            continue
+        if isinstance(o, dict) and o.get("type") == "system":
+            if o.get("task_id") and o.get("tool_use_id"):
+                task_of[o["tool_use_id"]] = o["task_id"]
+            p = o.get("patch") or {}
+            if o.get("subtype") == "task_updated" and p.get("status") == "completed" and p.get("end_time"):
+                ended[o.get("task_id")] = p["end_time"] / 1000.0
             continue
         m = o.get("message") if isinstance(o, dict) else None
         c = m.get("content") if isinstance(m, dict) else None
@@ -134,7 +153,12 @@ def calls_timed(trace):
                      "sub": bool(o.get("parent_tool_use_id")), "t0": when(o["timestamp"]), "t1": float("inf")}
                 calls.append(d); by_id[b.get("id")] = d
             elif b.get("type") == "tool_result" and b.get("tool_use_id") in by_id:
-                by_id[b["tool_use_id"]]["t1"] = when(o["timestamp"])
+                d = by_id[b["tool_use_id"]]; d["t1"] = when(o["timestamp"])
+                r = b.get("content")
+                r = r if isinstance(r, str) else "".join(x.get("text", "") for x in r or [] if isinstance(x, dict))
+                d["async"] = bool(ASYNC.search(r))
+    for i, d in by_id.items():
+        d["t2"] = ended.get(task_of.get(i), float("inf")) if d.get("async") else d["t1"]
     return calls
 
 def stamps(ws, path, pattern):
@@ -179,7 +203,14 @@ def check(c, ws, trace):
         if not ts:
             return True
         return any(c["name"] in ("Agent", "Task") and not c["sub"] and re.search(v[0], c["input"], re.I)
-                   and c["t1"] < min(ts) + 1 for c in calls_timed(trace))
+                   and c["t2"] < min(ts) + 1 for c in calls_timed(trace))
+    if k == "waited_before":
+        ts = stamps(ws, v[1], v[2])
+        if not ts:
+            return True
+        return all(c["t2"] < min(ts) + 1 for c in calls_timed(trace)
+                   if c["name"] in ("Agent", "Task") and not c["sub"] and re.search(v[0], c["input"], re.I)
+                   and c["t0"] < min(ts) + 1)
     if k == "not":
         return not check(v, ws, trace)
     if k == "all":
