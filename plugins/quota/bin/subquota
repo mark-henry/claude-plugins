@@ -4,28 +4,31 @@
 #
 # Numbers are the rate-limit headers CLIProxyAPI last saw per credential (management API
 # /v0/management/auth-files), as of that credential's last proxied request (`seen`), not live.
-#   left   = 100 - used%
-#   target = share of the window still to come = what `left` would be if spent evenly
-#   pace   = left - target; positive is slack, negative is spending ahead of pace
+#   left    = 100 - used%
+#   reserve = the last % a Claude account keeps for people using it outside the proxy (QUOTA_RESERVES);
+#             a last resort, not a wall. 0 for accounts not listed, and for every non-Claude account.
+#   target  = what `left` would be if spent evenly down to the reserve by the reset:
+#             reserve + (100 - reserve) * share of the window still to come
+#   slack   = left - target; positive is slack, negative is spending ahead of pace (or inside the reserve)
 #
-# Rebalance policy (Claude accounts; weights are relative, session-affine in the proxy):
-#   headroom = left, except the protected account keeps RESERVE back
-#   The protected account is the one whose quota is being saved for the claude.ai web app. Its last
-#   RESERVE% is a last resort; above that it is spent like any other account, pace rules included.
-#   rate     = headroom / hours to reset   (the burn rate the account can afford)
-#   weight   = share of total rate, at least FLOOR; 0 if no headroom
-#   an account ahead of pace (left < target) with headroom gets FLOOR and no share: work goes to accounts with slack
-#   an account with no reading (after a proxy restart) gets FLOOR_UNREAD, so it serves a request soon and can be read
-#   if no account has headroom, the protected account takes everything (its reserve is for that)
-#   only an account with no headroom gets 0, because weight 0 takes it out of the pool the proxy fails
-#   over to: e.g. a session whose account has hit the Fable cap (7d_oi) could not move anywhere else
+# Rebalance policy (Claude accounts; weights are relative, session-affine in the proxy): winner takes all.
+#   If any account has slack, the winner is the one with the most slack per hour to reset (urgency:
+#   slack about to be lost at a reset goes first). If every account is ahead of pace, the winner is
+#   the one least far ahead (plain slack, since a near reset will fix the overspend by itself).
+#   The winner gets 100; every other account with quota left gets FLOOR (in the pool, ~no new sessions).
+#   Spending the winner shrinks its slack until another account overtakes it, so the split evens out.
+#   An account inside its reserve has negative slack, so it loses to any account that is not; when all
+#   are inside, the one least far in wins and the reserves drain evenly.
+#   An account with no reading (after a proxy restart) gets FLOOR_UNREAD, so it serves a request soon and can be read.
+#   Only an account with nothing left gets 0, because weight 0 takes it out of the pool the proxy fails
+#   over to: e.g. a session whose account has hit the Fable cap (7d_oi) could not move anywhere else.
 #
-# Fable reserve (protected account): the account's last FABLE_RESERVE% of its weekly Fable cap (7d_oi)
-#   is a last resort too. While its Fable left is at or under that and another Claude account can still
-#   serve Fable (not Fable-blocked, more than 1% Fable and some general quota left), --rebalance adds
-#   FABLE_PATTERN to the protected credential's excluded_models, so the proxy routes no Fable there and
-#   fails Fable sessions over to the others. The exclusion is lifted when no other account can serve
-#   Fable (the last resort) or when the protected account's Fable window resets. Its other excluded
+# Fable reserve (QUOTA_FABLE_RESERVES): an account's last N% of its weekly Fable cap (7d_oi) is a last
+#   resort too. While its Fable left is at or under that and another Claude account can still serve
+#   Fable (not Fable-blocked, not held, Fable left above 1% and above its own Fable reserve, some general
+#   quota left), --rebalance adds FABLE_PATTERN to the credential's excluded_models, so the proxy routes
+#   no Fable there and fails Fable sessions over to the others. The exclusion is lifted when no other
+#   account can serve Fable (the last resort) or when the account's Fable window resets. Its other excluded
 #   models are left alone. The 1% margin lifts it a little before the others hit the cap, because the
 #   rebalance runs only every 15 minutes. With no Fable reading yet (after a proxy restart) nothing is
 #   excluded until one arrives. Excluding Fable drops the credential's Fable reading, and the hold stops
@@ -33,7 +36,7 @@
 #   $QUOTA_STATE_DIR/fable-holds.json and keeps a held credential held, with no reading, until then.
 #   The auth-files listing does not show excluded_models; each credential's auth file is read for it.
 #
-# Pace note, printed under the report only when it applies: every account at or ahead of pace (slack
+# Pace note, printed under the report only when it applies: any account at or ahead of pace (slack
 # rounds to 0 or below), with a request that the agent say so in its first reply of the session.
 #
 # Session affinity: claude-mitm's addon records the auth_index CLIProxyAPI picked for each Claude Code
@@ -50,10 +53,11 @@ set -euo pipefail
 
 : "${QUOTA_PROXY_URL:=http://127.0.0.1:8317}"            # CLIProxyAPI base URL
 : "${QUOTA_MANAGEMENT_KEY_FILE:=~/.cli-proxy-api/management-key}"
-: "${QUOTA_PROTECTED_EMAIL:=}"                           # main account that must not run out; empty = none
-: "${QUOTA_RESERVE:=10}"                                 # % of its weekly quota kept for the web app; a last resort
-: "${QUOTA_FABLE_RESERVE:=10}"                           # % of its weekly Fable cap kept back the same way; 0 = off
+: "${QUOTA_RESERVES:=}"                                  # "email=pct,email=pct": last % of each Claude account's weekly quota kept back; a last resort
+: "${QUOTA_FABLE_RESERVES:=}"                            # same, for the weekly Fable cap
 : "${QUOTA_FABLE_PATTERN:=claude-fable-*}"               # excluded_models entry that holds Fable back
+# Older single-account settings, still honored when the lists above are empty:
+: "${QUOTA_PROTECTED_EMAIL:=}" "${QUOTA_RESERVE:=10}" "${QUOTA_FABLE_RESERVE:=10}"
 : "${QUOTA_STATE_DIR:=~/.cache/quota}"                   # remembers when a held Fable reserve resets
 : "${QUOTA_FLOOR:=1}"                                    # minimum weight for an account with headroom: in the pool, ~no new sessions
 : "${QUOTA_FLOOR_UNREAD:=10}"                            # weight for an account with no reading, so it serves a request soon and can be read
@@ -61,8 +65,17 @@ set -euo pipefail
 : "${QUOTA_SESSION_AUTH_DIR:=~/.cache/claude-mitm/session-auth}"  # written by claude-mitm's addon
 [[ -f ~/.config/quota.env ]] && source ~/.config/quota.env
 API=$QUOTA_PROXY_URL/v0/management
-FABLE_RESERVE=$QUOTA_FABLE_RESERVE FABLE_PATTERN=$QUOTA_FABLE_PATTERN
-PROTECTED_EMAIL=$QUOTA_PROTECTED_EMAIL RESERVE=$QUOTA_RESERVE FLOOR=$QUOTA_FLOOR FLOOR_UNREAD=$QUOTA_FLOOR_UNREAD
+FABLE_PATTERN=$QUOTA_FABLE_PATTERN FLOOR=$QUOTA_FLOOR FLOOR_UNREAD=$QUOTA_FLOOR_UNREAD
+if [[ -n $QUOTA_PROTECTED_EMAIL ]]; then
+  : "${QUOTA_RESERVES:=$QUOTA_PROTECTED_EMAIL=$QUOTA_RESERVE}" "${QUOTA_FABLE_RESERVES:=$QUOTA_PROTECTED_EMAIL=$QUOTA_FABLE_RESERVE}"
+fi
+pct_map() { # "email=pct,email=pct" -> {"email": pct}
+  jq -nc --arg s "$1" '[$s | split(",")[] | gsub("^\\s+|\\s+$"; "") | select(length > 0) | split("=")
+    | {(.[0] | gsub("\\s"; "")): (.[1] | gsub("\\s"; "") | tonumber)}] | add // {}'
+}
+if ! RESERVES=$(pct_map "$QUOTA_RESERVES") || ! FABLE_RESERVES=$(pct_map "$QUOTA_FABLE_RESERVES"); then
+  echo "subquota: QUOTA_RESERVES and QUOTA_FABLE_RESERVES take \"email=pct,email=pct\"" >&2; exit 2
+fi
 SESSION_AUTH_DIR=${QUOTA_SESSION_AUTH_DIR/#\~/$HOME} STATE_DIR=${QUOTA_STATE_DIR/#\~/$HOME}
 LOG=${QUOTA_LOG/#\~/$HOME} KEY_FILE=${QUOTA_MANAGEMENT_KEY_FILE/#\~/$HOME}
 export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
@@ -104,7 +117,7 @@ if [[ ! -r $KEY_FILE ]]; then
   exit 1
 fi
 key=$(<"$KEY_FILE")
-if ! json=$(curl -sf -m 4 -H "Authorization: Bearer $key" "$API/auth-files"); then
+if ! json=$(curl -sf -m 20 -H "Authorization: Bearer $key" "$API/auth-files"); then
   ((quiet)) && exit 0
   echo "subquota: can't reach CLIProxyAPI management API" >&2
   exit 1
@@ -130,10 +143,10 @@ holds=$(jq -c 'if type == "object" then . else {} end' "$holds_file" 2>/dev/null
 
 # Emits tab-separated rows: "L<TAB>report line", "P<TAB>account at or ahead of pace" and
 # "W<TAB>name<TAB>email<TAB>old<TAB>new<TAB>why"
-rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg mine "$session_auth" \
-  --argjson freserve "$FABLE_RESERVE" --arg fpat "$FABLE_PATTERN" \
+rows=$(jq -r --argjson now "$(date +%s)" --arg mine "$session_auth" \
+  --argjson reserves "$RESERVES" --argjson freserves "$FABLE_RESERVES" --arg fpat "$FABLE_PATTERN" \
   --argjson exclf "$excl_files" --argjson holds "$holds" \
-  --argjson reserve "$RESERVE" --argjson floor "$FLOOR" --argjson floor_unread "$FLOOR_UNREAD" '
+  --argjson floor "$FLOOR" --argjson floor_unread "$FLOOR_UNREAD" '
   def week: 604800;
   def epoch: (.[0:19] + "Z" | fromdateiso8601) -
     ((.[19:] | capture("(?<s>[+-])(?<h>\\d\\d):(?<m>\\d\\d)$")) as $z
@@ -170,28 +183,34 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
         | .length = (if .mins > 0 then .mins * 60 else null end)
         | .plan = (.sig["X-Codex-Plan-Type"] // "?")
       else . end
+    # Reserves are per Claude account; a Codex credential can share an email with one.
+    | .res = (if .provider == "claude" then $reserves[.email] // 0 else 0 end)
+    | .fres = (if .provider == "claude" then $freserves[.email] // 0 else 0 end)
     | .passed = (.reset != null and .reset <= $now)
     | .left = (if .used == null then null elif .passed then 100 else 100 - .used end)
-    | .target = (if .passed or .reset == null or .length == null then null else 100 * (.reset - $now) / .length end)
+    | .target = (if .passed or .reset == null or .length == null then null
+                 else .res + (100 - .res) * (.reset - $now) / .length end)
     | .freset = (oi("Reset") | num)
     | .fpassed = (.freset != null and .freset <= $now)
     | .fleft = (if .fpassed then 100 else oi("Utilization") | num | if . == null then null else 100 - . * 100 end end)
     | .fblocked = (.fleft != null and (.fpassed | not) and (.fleft <= 0 or oi("Status") == "rejected"))
     # Can take a session whose account is Fable-blocked: Fable not blocked (no reading counts as open),
-    # and general quota above what the account must keep back (for the protected account, its reserve).
-    | .fok = (.provider == "claude" and (.fblocked | not)
-              and (.left == null or .left > (if .email == $prot then $reserve else 0 end)))
+    # and general quota above what the account keeps back (its reserve).
+    | .fok = (.provider == "claude" and (.fblocked | not) and (.left == null or .left > .res))
+    | .held = (.excluded | index($fpat) != null)
   ] as $creds0
-  # Fable reserve: hold back the last $freserve% of the protected Fable cap while another account can serve Fable.
-  | ($creds0 | map(select(.provider == "claude" and .email != $prot and (.fblocked | not)
-                          and (.fleft == null or .fleft > 1) and (.left == null or .left > 0)))
-     | length > 0) as $fable_elsewhere
+  # Fable reserve: hold back the last .fres% of each Fable cap while another account can serve
+  # Fable. An account that is held, or inside its own Fable reserve, does not count, so two reserves
+  # never hold each other.
+  | ($creds0 | map(select(.provider == "claude" and (.fblocked | not) and (.held | not)
+                          and (.fleft == null or .fleft > ([1, .fres] | max)) and (.left == null or .left > 0))
+                   | .name)) as $fable_servers
   | ($creds0 | map(
+      .name as $n
       # Held with no fresh reading (the exclusion hid it): keep holding until the saved Fable reset.
-      .held = (.excluded | index($fpat) != null)
       | .fsaved = ($holds[.name] // null)
-      | .fguard = (.provider == "claude" and .email == $prot and $freserve > 0 and $fable_elsewhere
-                   and (if .fleft != null then (.fpassed | not) and .fleft <= $freserve
+      | .fguard = (.provider == "claude" and .fres > 0 and ($fable_servers - [$n] | length > 0)
+                   and (if .fleft != null then (.fpassed | not) and .fleft <= .fres
                         else .held and .fsaved != null and .fsaved > $now end))
       | .fhold_until = (if .fguard then (if .fleft != null then .freset else .fsaved end) else null end)
       | .fexcl = ((.excluded - [$fpat]) + (if .fguard then [$fpat] else [] end))
@@ -205,6 +224,7 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
       + (if .sig == null then "no data yet"
          elif .used == null then "format not understood"
          else (if .provider == "codex" and .mins != 10080 then (if .mins > 0 then "\(.mins / 60 | round)h window " else "? window " end) else "" end)
+           + (if .res > 0 then "keeps \(.res)%, " else "" end)
            + (if .passed then "reset since seen (~100%)"
               else (.left | pct)
                 + (if .target then (.left - .target) as $p | " vs \(.target | pct) (\(if $p >= 0 then "+" else "" end)\($p | round))" else "" end)
@@ -227,27 +247,23 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg prot "$PROTECTED_EMAIL" --arg min
    else "F\tFable blocked on \($fblocked | map(who) | join(", ")); its sessions fall back to \($fok | map(who) | join(" or ")) on their next Fable request."
    end),
 
-  # Rebalance proposals for every Claude credential
+  # Rebalance proposals for every Claude credential: winner takes all (see the policy at the top)
   ([ $creds[] | select(.provider == "claude")
-     | if .left == null or .reset == null then .nodata = true | .rate = 0
+     | if .left == null or .reset == null then .nodata = true
        else
          .next = (if .passed then .reset + week * ((($now - .reset) / week | floor) + 1) else .reset end)
          | .hrs = ([(.next - $now) / 3600, 1] | max)
-         | .tgt = 100 * (.next - $now) / week
-         | .head = (if .email == $prot then .left - $reserve else .left end)
-         | .behind = (.left < .tgt)
-         | .rate = (if .behind then 0 else ([.head, 0] | max) / .hrs end)
+         | .slack = .left - (.res + (100 - .res) * (.next - $now) / week)
+         | .live = (.left > 0)
        end ] as $c
-   | ($c | map(.rate) | add // 0) as $total
+   | ($c | map(select(.live == true))) as $live
+   | ($live | any(.slack > 0)) as $urgency
+   | ($live | map(.score = (if $urgency then .slack / .hrs else .slack end)) | max_by(.score) | .name // null) as $win
    | $c[]
-   | .new = (if .nodata then $floor_unread
-             elif $total == 0 and .email == $prot then 100
-             elif .head <= 0 then 0
-             elif .behind then $floor
-             elif $total == 0 or .rate == 0 then 0
-             else ([$floor, (100 * .rate / $total | round)] | max) end)
-   | .why = (if .nodata then "no reading" elif .behind and .head > 0 then "ahead of pace"
-             else "\(.head | round)pts/\(.hrs | round)h" end)
+   | .new = (if .nodata then $floor_unread elif .live | not then 0 elif .name == $win then 100 else $floor end)
+   | .why = (if .nodata then "no reading" elif .live | not then "nothing left"
+             else "slack \(if .slack >= 0 then "+" else "" end)\(.slack | round), \(.hrs | round)h to reset"
+               + (if .name != $win then "" elif $urgency then ", most urgent" else ", least ahead of pace" end) end)
    | "W\t\(.name)\t\(.email)\t\(.weight // 1)\t\(.new)\t\(.why)"
   ),
 
@@ -274,7 +290,7 @@ changes=()
 while IFS=$'\t' read -r _ name email old new why; do
   [[ $old == "$new" ]] && continue
   if ((dry)); then changes+=("${email%@*} ${old}→${new} ($why)"); continue; fi
-  if curl -sf -m 4 -X PATCH -H "Authorization: Bearer $key" -H 'Content-Type: application/json' \
+  if curl -sf -m 20 -X PATCH -H "Authorization: Bearer $key" -H 'Content-Type: application/json' \
        -d "$(jq -nc --arg n "$name" --argjson w "$new" '{name: $n, weight: $w}')" "$API/auth-files/fields" >/dev/null; then
     changes+=("${email%@*} ${old}→${new} ($why)")
   else
@@ -285,7 +301,7 @@ done < <(grep '^W' <<<"$rows" || true)
 while IFS=$'\t' read -r _ name email excl what; do
   label="${email%@*} Fable reserve $what"
   if ((dry)); then changes+=("$label"); continue; fi
-  if curl -sf -m 4 -X PATCH -H "Authorization: Bearer $key" -H 'Content-Type: application/json' \
+  if curl -sf -m 20 -X PATCH -H "Authorization: Bearer $key" -H 'Content-Type: application/json' \
        -d "$(jq -nc --arg n "$name" --argjson x "$excl" '{name: $n, excluded_models: $x}')" "$API/auth-files/fields" >/dev/null; then
     changes+=("$label")
   else
