@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# The last step of an unattended run: check the report is on disk, log the run, print the report's status line.
+#
+# usage: afk-done <run-folder> <runs.md> "<log line>" [--exchange "<row>"]
+#   <run-folder>  the folder holding report.md.
+#   <runs.md>     the log of runs the next brief estimates from; its folder is created if missing.
+#   <log line>    what ran, cost against estimate and cap, hours, status. Appended as one line.
+#   --exchange    a row for exchange.md beside runs.md (effective tokens by model, the meter before and after).
+#
+# Exit 1, logging nothing, when report.md is missing or empty: a run with no report on disk is not done.
+# Exit 0 otherwise, even when the log cannot be written (it says so): the report is what the run owes.
+# Prints the report's status line (its first line with text, heading marks dropped), which ends the last message.
+set -uo pipefail
+[ $# -ge 3 ] || { echo "usage: afk-done <run-folder> <runs.md> \"<log line>\" [--exchange \"<row>\"]" >&2; exit 2; }
+run=$1 log=$2 line=$3; shift 3
+exchange=
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --exchange) [ $# -ge 2 ] || { echo "afk-done: --exchange needs a row" >&2; exit 2; }; exchange=$2; shift 2 ;;
+    *) echo "afk-done: unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+report=$run/report.md
+if [ ! -s "$report" ]; then
+  echo "afk-done: refused: $report is missing or empty. Write it with a command of its own, read it back, then run this again." >&2
+  exit 1
+fi
+status=$(grep -m 1 '[^[:space:]]' "$report" | sed -e 's/^#*[[:space:]]*//' -e 's/[[:space:]]*$//')
+
+append() { # append <file> <text>
+  mkdir -p "$(dirname "$1")" 2>/dev/null && printf '%s\n' "$2" >> "$1" 2>/dev/null
+}
+printf '%s\n' "$status"
+append "$log" "$line" || echo "log not written: $log (say so in your last message)"
+if [ -n "$exchange" ]; then
+  append "$(dirname "$log")/exchange.md" "$exchange" || echo "exchange row not written: $(dirname "$log")/exchange.md"
+fi
