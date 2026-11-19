@@ -43,6 +43,8 @@
 # At a stall or max-passes exit, if the files are not the best pass's (the last pass was rejected, or no git),
 # the final state is saved as refs/arbiter/final and the files are restored to the best pass. A pass during
 # which the pass count was forged is flagged, and a flagged best pass draws a warning.
+# Refused unless overridden: a claude worker with permission checks bypassed (ARBITER_ALLOW_BYPASS=1) or without
+# --strict-mcp-config, which would inherit every connector of the launching user (ARBITER_ALLOW_CONNECTORS=1).
 # Not provided: a timeout or budget, or protection from a worker that kills this script or creates STOP.
 set -euo pipefail
 
@@ -54,6 +56,15 @@ case "$cap$stall" in *[!0-9]*) echo "max-passes and STALL must be whole numbers"
 
 refuse() { echo "arbiter-loop: refused: $1" >&2; exit 1; }
 warn() { echo "arbiter-loop: warning: $1" >&2; }
+# A claude worker gets no permission bypass and no inherited connectors unless the launcher says so.
+case "$AGENT_CMD" in *claude*)
+  case "$AGENT_CMD" in *dangerously-skip-permissions*|*bypassPermissions*)
+    [ "${ARBITER_ALLOW_BYPASS:-}" = 1 ] || refuse "AGENT_CMD runs a worker with permission checks bypassed; list the tools it needs with --allowedTools, or set ARBITER_ALLOW_BYPASS=1" ;;
+  esac
+  case "$AGENT_CMD" in *strict-mcp-config*) ;; *)
+    [ "${ARBITER_ALLOW_CONNECTORS:-}" = 1 ] || refuse "AGENT_CMD runs a worker that inherits every connector of the launching user; add --strict-mcp-config --mcp-config '{\"mcpServers\":{}}' (or a config naming the servers the job needs), or set ARBITER_ALLOW_CONNECTORS=1" ;;
+  esac ;;
+esac
 within() { case "$1/" in "$2"/*) return 0 ;; esac; return 1; } # within <path> <dir>: path is dir or under it
 
 dir=$(cd "$dir" && pwd -P)

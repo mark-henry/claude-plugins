@@ -92,4 +92,20 @@ sl AGENT_CMD="cat > '$tmp/seen'" CHECK_CMD="$(count 0)" STATE_DIR="$s" PROMPT="$
 t "PROMPT names a prompt file outside the loop directory" "$(head -n 1 "$tmp/seen" 2>/dev/null)" outside
 t "... with no warning" "$(grep -c warning "$tmp/out")" 0
 
+echo "-- worker access: a claude worker with bypassed permissions or inherited connectors is refused"
+fresh; sl AGENT_CMD="claude -p --dangerously-skip-permissions --strict-mcp-config" CHECK_CMD="$(count 1)" STATE_DIR="$s" "$loop" "$w" 1
+t "skip-permissions is refused" "$code" 1
+t "... naming the override" "$(grep -c ARBITER_ALLOW_BYPASS "$tmp/out")" 1
+fresh; sl AGENT_CMD="claude -p --permission-mode bypassPermissions --strict-mcp-config" CHECK_CMD="$(count 1)" STATE_DIR="$s" "$loop" "$w" 1
+t "bypassPermissions is refused" "$code" 1
+fresh; sl AGENT_CMD="claude -p --permission-mode acceptEdits" CHECK_CMD="$(count 1)" STATE_DIR="$s" "$loop" "$w" 1
+t "a claude worker without --strict-mcp-config is refused" "$code" 1
+t "... naming the override" "$(grep -c ARBITER_ALLOW_CONNECTORS "$tmp/out")" 1
+fresh; sl AGENT_CMD="true # claude -p --dangerously-skip-permissions" ARBITER_ALLOW_BYPASS=1 ARBITER_ALLOW_CONNECTORS=1 CHECK_CMD="$(count 1)" STATE_DIR="$s" "$loop" "$w" 1
+t "both overrides let it run to the cap" "$code" 2
+fresh; sl AGENT_CMD="true # claude -p --permission-mode acceptEdits --strict-mcp-config" CHECK_CMD="$(count 1)" STATE_DIR="$s" "$loop" "$w" 1
+t "a restricted claude worker runs" "$code" 2
+fresh; sl CHECK_CMD="$(count 1)" STATE_DIR="$s" "$loop" "$w" 1
+t "a worker that is not claude is not asked" "$code" 2
+
 [ "$fails" = 0 ] && echo "all passed" || { echo "$fails failed"; exit 1; }
