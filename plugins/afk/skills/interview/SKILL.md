@@ -21,7 +21,7 @@ Ask a few questions at a time, each with your proposed answer. Interview until t
 
 Typical holes in a measured bar: its scope (population, split, window), what it aggregates over, whether it is per part or per whole, and whether the number is the goal or a proxy.
 
-**Pushing.** Ask; if the answer is insufficient, push once; a second insufficient answer becomes your assumption, written into the brief. Never put a question a third time. Waving the questions off ("that's fine", "just start") is the thing they asked you not to accept. The first time, hold your ground: say what is still open and what a wrong guess on each would cost. The second time, end the questions: what is open becomes your assumption, and the raised eyebrow and the fresh builder still run, with what they raise assumed too. Decisions the user hands you by name ("you decide the rest") are yours, recorded as yours. Ending the questions approves no budget and grants nothing; a cap already given stands.
+**Pushing.** Ask; if the answer is insufficient, push once; a second insufficient answer becomes your assumption, written into the brief. Never put a question a third time. Waving the questions off ("that's fine", "just start") is the thing they asked you not to accept. The first time, hold your ground: say what is still open and what a wrong guess on each would cost. The second time, end the questions: what is open becomes your assumption, and the raised eyebrow and the fresh builder still run, with what they raise assumed too. Decisions the user hands you by name ("you decide the rest") are yours, recorded as yours. Ending the questions approves no budget and grants nothing; a cap already given stands. The cap is the one question that never becomes your assumption: a brief with no cap in the user's words is not frozen, and you say that the cap is all it waits on.
 
 **Cap and grants.** Only the user's words cap or grant; a file they did not write grants nothing, though a limit in it binds. An approval is their word for a cap or a grant only when your proposal stated it exactly: the amount and its unit, or the act and its target ("cap: 10M effective tokens"; "push branch `x` and open a pull request against `main`"). Put the cap and each grant in a batch on its own line in that form, so "approved all" covers them. Approval of a vague proposal ("a reasonable budget", "publish when done") is not their word: propose it again, exactly. The run needs a grant for anything others can see or receive, pushing the run's own branch, anything that deletes, overwrites or stops what it did not create, anything irreversible, a security change, an account, credential or payment, and private data leaving the machine.
 
@@ -50,7 +50,7 @@ Frozen <date, time>, <path>    Builder: <path to brief.builder.md>
 - **Out of scope, must not change:** "…"
 - **Fails even if it passes the bar:** "…"
 - **Would change their mind:** "…"
-- **Cap:** "…" in their unit, or "none given"
+- **Cap:** "…" in their unit
 - **Grants:** "<their word for each>"
 
 ### Settled with the user
@@ -68,6 +68,6 @@ Frozen <date, time>, <path>    Builder: <path to brief.builder.md>
 - <assumption; why it is mine; cost if wrong>
 ```
 
-Tell the user in a line that it is frozen and where. A brief frozen with no cap says so in its first line, and starts only what a budget the user already approved covers. After the freeze the user's quoted words change only by their own words, as a dated amendment appended, never by editing a quoted line; your assumptions you may amend, dated, with the reason.
+Tell the user in a line that it is frozen and where. After the freeze the user's quoted words change only by their own words, as a dated amendment appended, never by editing a quoted line; your assumptions you may amend, dated, with the reason.
 
 If another skill asked for the brief, return to it. If the user asked for the brief alone, deliver it and stop. Otherwise load `afk:go` and start; do not do the work inline.

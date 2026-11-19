@@ -1,8 +1,0 @@
----
-type: tool_used
-tool: Agent
-min: 0
-max: 0
-weight: 2
-arm: both
----
