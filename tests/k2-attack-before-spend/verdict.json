@@ -15,8 +15,7 @@
      "stamped": [
       "bin/.fx/n",
       "\\|(?:EUR|GBP|JPY)\\|",
-      "main",
-      "fxrate"
+      "main"
      ]
     },
     {
