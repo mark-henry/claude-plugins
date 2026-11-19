@@ -1021,9 +1021,6 @@ def cmd_stamp(a):
         f.write(json.dumps(stamp, indent=2) + "\n")
     if snap == NA:
         print("warning: not a git repository: no snapshot of the code was taken", file=sys.stderr)
-    elif snap["dirty"] or snap["untracked"]:
-        print(f"warning: uncommitted code ({len(snap['dirty'])} modified, {len(snap['untracked'])} untracked); "
-              f"{snap['ref']} holds it, but commit your code", file=sys.stderr)
     print(f"stamped {out} as {run_id} ({stamp['label']})" + (f" at {snap['commit'][:8]}" if snap != NA else ""))
 
 

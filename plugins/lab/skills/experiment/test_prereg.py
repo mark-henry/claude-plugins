@@ -381,8 +381,7 @@ class StampV2(unittest.TestCase):
         self.assertEqual(status_after, status_before.splitlines())     # only the stamp itself is new
         self.assertEqual((d / ".git" / "index").read_bytes(), index_before)
         warnings = [l for l in r.stderr.splitlines() if l.strip()]
-        self.assertEqual(len(warnings), 1, r.stderr)
-        self.assertIn("uncommitted", warnings[0])
+        self.assertEqual(warnings, [], r.stderr)     # uncommitted code is snapshotted under refs/lab, with no warning
         s = json.loads((d / "runs" / "treated" / "stamp.json").read_text())
         rec = json.loads((d / rp).read_text())
         self.assertEqual(s["schema"], 2)

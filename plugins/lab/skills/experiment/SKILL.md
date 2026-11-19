@@ -17,7 +17,7 @@ python3 prereg.py stamp runs/try1 --run-id <tracker id> -- <launch command>
 python3 prereg.py check runs/try1      # lines 2 and 12 from items.jsonl
 ```
 
-The stamp snapshots the working tree under `refs/lab/<run id>` with the command, configuration, model, data hashes, seeds and packages. Uncommitted code gets a warning; stamps are never overwritten. Its numbers are quoted as exploratory: they pass no bar and pick no arm. `check` given several folders reads them as one run, so check each pilot folder on its own.
+The stamp snapshots the working tree under `refs/lab/<run id>` with the command, configuration, model, data hashes, seeds and packages. Uncommitted code is snapshotted too, silently; stamps are never overwritten. Its numbers are quoted as exploratory: they pass no bar and pick no arm. `check` given several folders reads them as one run, so check each pilot folder on its own.
 
 ## Counted run
 
