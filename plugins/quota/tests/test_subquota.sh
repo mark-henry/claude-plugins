@@ -41,12 +41,14 @@ refute() { # refute <name> <output> <fixed string that must not appear>
 
 # Half the week left (84h). spender: 45% left vs 50% (-5). even: 50% vs 50% (0). saver: 70% vs 50% (+20).
 out=$(report "$(account spender 55 84)" "$(account even 50 84)" "$(account saver 30 84)")
-expect "names accounts at or ahead of pace, with their slack" "$out" "At or ahead of pace: claude spender (-5), claude even (0)."
+expect "names accounts at or over pace, with how far over" "$out" "At or over pace: claude spender (5 over), claude even (on pace)."
+expect "report line says over pace" "$out" "45% left, 5 pts over pace (pace 50%)"
+expect "report line says under pace" "$out" "70% left, 20 pts under pace (pace 50%)"
 expect "asks for a mention in the first reply" "$out" "first reply"
-refute "leaves out accounts with slack" "$(grep -F 'ahead of pace' <<<"$out" || true)" "saver"
+refute "leaves out accounts with slack" "$(grep -F 'over pace:' <<<"$out" || true)" "saver"
 
 out=$(report "$(account saver 30 84)" "$(account thrifty 10 84)")
-refute "says nothing when every account has slack" "$out" "ahead of pace"
+refute "says nothing when every account has slack" "$out" "At or over pace"
 refute "asks for no mention when every account has slack" "$out" "first reply"
 
 exit $((fails > 0))

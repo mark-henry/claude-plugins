@@ -9,12 +9,13 @@
 #             a last resort, not a wall. 0 for accounts not listed, and for every non-Claude account.
 #   target  = what `left` would be if spent evenly down to the reserve by the reset:
 #             reserve + (100 - reserve) * share of the window still to come
-#   slack   = left - target; positive is slack, negative is spending ahead of pace (or inside the reserve)
+#   slack   = left - target; positive is slack, negative is spending over pace (or inside the reserve).
+#             The report shows it as "N pts over pace" / "N pts under pace" / "on pace"
 #
 # Rebalance policy (Claude accounts; weights are relative, session-affine in the proxy): winner takes all.
 #   If any account has slack, the winner is the one with the most slack per hour to reset (urgency:
-#   slack about to be lost at a reset goes first). If every account is ahead of pace, the winner is
-#   the one least far ahead (plain slack, since a near reset will fix the overspend by itself).
+#   slack about to be lost at a reset goes first). If every account is over pace, the winner is
+#   the one least far over (plain slack, since a near reset will fix the overspend by itself).
 #   The winner gets 100; every other account with quota left gets FLOOR (in the pool, ~no new sessions).
 #   Spending the winner shrinks its slack until another account overtakes it, so the split evens out.
 #   An account inside its reserve has negative slack, so it loses to any account that is not; when all
@@ -36,7 +37,7 @@
 #   $QUOTA_STATE_DIR/fable-holds.json and keeps a held credential held, with no reading, until then.
 #   The auth-files listing does not show excluded_models; each credential's auth file is read for it.
 #
-# Pace note, printed under the report only when it applies: any account at or ahead of pace (slack
+# Pace note, printed under the report only when it applies: any account at or over pace (slack
 # rounds to 0 or below), with a request that the agent say so in its first reply of the session.
 #
 # Session affinity: claude-mitm's addon records the auth_index CLIProxyAPI picked for each Claude Code
@@ -141,7 +142,7 @@ excl_files=$(jq -r '.files[] | select(.provider == "claude" and .path != null) |
 holds_file=$STATE_DIR/fable-holds.json
 holds=$(jq -c 'if type == "object" then . else {} end' "$holds_file" 2>/dev/null || echo '{}')
 
-# Emits tab-separated rows: "L<TAB>report line", "P<TAB>account at or ahead of pace" and
+# Emits tab-separated rows: "L<TAB>report line", "P<TAB>account at or over pace" and
 # "W<TAB>name<TAB>email<TAB>old<TAB>new<TAB>why"
 rows=$(jq -r --argjson now "$(date +%s)" --arg mine "$session_auth" \
   --argjson reserves "$RESERVES" --argjson freserves "$FABLE_RESERVES" --arg fpat "$FABLE_PATTERN" \
@@ -227,7 +228,10 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg mine "$session_auth" \
            + (if .res > 0 then "keeps \(.res)%, " else "" end)
            + (if .passed then "reset since seen (~100%)"
               else (.left | pct)
-                + (if .target then (.left - .target) as $p | " vs \(.target | pct) (\(if $p >= 0 then "+" else "" end)\($p | round))" else "" end)
+                + " left"
+                + (if .target then (.left - .target | round) as $p
+                   | ", " + (if $p < 0 then "\(-$p) pts over pace" elif $p > 0 then "\($p) pts under pace" else "on pace" end)
+                     + " (pace \(.target | pct))" else "" end)
                 + (if .reset then ", \(resets)" else "" end)
               end)
            + ", seen \(.seen | ago)"
@@ -237,9 +241,9 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg mine "$session_auth" \
       + (if .excluded | index($fpat) then " (Fable reserve held: last resort only)" else "" end)
       + (if $mine != "" and .auth_index == $mine then "  ← this session" else "" end)),
 
-  # Accounts at or ahead of pace
+  # Accounts at or over pace
   ($creds[] | select(.left != null and .target != null) | (.left - .target | round) as $p | select($p <= 0)
-   | "P\t\(.provider) \(who) (\($p))"),
+   | "P\t\(.provider) \(who) (\(if $p < 0 then "\(-$p) over" else "on pace" end))"),
 
   # Fable note: which accounts have hit the Fable cap, and where their sessions fail over to
   (if ($fblocked | length) == 0 then empty
@@ -263,7 +267,7 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg mine "$session_auth" \
    | .new = (if .nodata then $floor_unread elif .live | not then 0 elif .name == $win then 100 else $floor end)
    | .why = (if .nodata then "no reading" elif .live | not then "nothing left"
              else "slack \(if .slack >= 0 then "+" else "" end)\(.slack | round), \(.hrs | round)h to reset"
-               + (if .name != $win then "" elif $urgency then ", most urgent" else ", least ahead of pace" end) end)
+               + (if .name != $win then "" elif $urgency then ", most urgent" else ", least over pace" end) end)
    | "W\t\(.name)\t\(.email)\t\(.weight // 1)\t\(.new)\t\(.why)"
   ),
 
@@ -275,11 +279,11 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg mine "$session_auth" \
   "H\t\([$creds[] | select(.fguard and .fhold_until != null) | {(.name): .fhold_until}] | add // {} | tojson)"
 ' <<<"$json")
 
-echo "Quota (weekly % left vs even-spend target, slack):"
+echo "Quota (weekly % left; pace = what spending evenly to the reset would leave; over pace = spending too fast):"
 grep '^L' <<<"$rows" | cut -f2- || true
 over=$(grep '^P' <<<"$rows" | cut -f2- || true)
 fable=$(grep '^F' <<<"$rows" | cut -f2- || true)
-[[ -n $over ]] && echo "At or ahead of pace: $(paste -sd ';' - <<<"$over" | sed 's/;/, /g')."
+[[ -n $over ]] && echo "At or over pace: $(paste -sd ';' - <<<"$over" | sed 's/;/, /g')."
 [[ -n $fable ]] && echo "$fable"
 if [[ -n $over || -n $fable ]]; then
   echo "(Tell the user this in one line in your first reply of the session; don't repeat it after that.)"

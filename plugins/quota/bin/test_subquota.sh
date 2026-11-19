@@ -38,13 +38,13 @@ out=$(proposed "$(cred side 1 0.20 84)" "$(cred main 1 0.14 96)")
 t "both with slack: the most slack per hour to reset takes all" "$out" "side 1→100"
 nt "both with slack: the other stays at the floor" "$out" "main 1→"
 
-# side spent ahead of pace (21% left with 45h of 168h to go; even spend would leave 27%).
+# side spent over pace (21% left with 45h of 168h to go; even spend would leave 27%).
 out=$(proposed "$(cred side 61 0.79 45)" "$(cred main 39 0.14 96)")
-t "one ahead of pace: it drops to the floor" "$out" "side 61→1 "
-t "one ahead of pace: the one with slack takes all" "$out" "main 39→100"
+t "one over pace: it drops to the floor" "$out" "side 61→1 "
+t "one over pace: the one with slack takes all" "$out" "main 39→100"
 out=$(proposed "$(cred side 61 0.20 84)" "$(cred main 39 0.59 70)")
-t "protected ahead of pace: the floor" "$out" "main 39→1 "
-t "protected ahead of pace: the other takes all" "$out" "side 61→100"
+t "protected over pace: the floor" "$out" "main 39→1 "
+t "protected over pace: the other takes all" "$out" "side 61→100"
 
 # Both ahead (2026-11-18 bug: the protected account took everything). The least far ahead takes all.
 # side 21% vs 27% (-6); main 30% vs 48% (-18).
@@ -76,8 +76,8 @@ t "protected, inside its last 10%: takes everything when nothing else is left" "
 
 # Per-account reserves: each target runs down to that account's reserve.
 out=$(RES="main@example.invalid=10,side@example.invalid=5" report "$(cred side 1 0.50 84)" "$(cred main 1 0.50 84)")
-t "report: a second reserve shows" "$out" "side (weight 1): keeps 5%, 50% vs 5"
-t "report: the first reserve shows" "$out" "main (weight 1): keeps 10%, 50% vs 55% (-5)"
+t "report: a second reserve shows" "$out" "side (weight 1): keeps 5%, 50% left"
+t "report: the first reserve shows" "$out" "main (weight 1): keeps 10%, 50% left, 5 pts over pace (pace 55%)"
 out=$(RES="main@example.invalid=10" report "$(cred side 1 0.50 84)")
 nt "report: no reserve, no note" "$out" "keeps"
 
