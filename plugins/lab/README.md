@@ -7,7 +7,8 @@ One skill, `lab:experiment`, and its script `prereg.py`: standard checks for a s
 - **The code is in git.** `prereg.py stamp` snapshots the working tree under `refs/lab/<run id>`, and `parity` compares arms by diffing commits. Outside a git repository the stamp prints a warning and takes no snapshot, so nothing ties a number to the code that produced it.
 - **Runs have an id from a tracker** (MLflow, W&B, an Inspect log). The script never contacts the tracker; the id is a string you pass with `--run-id`, and every quoted number must carry it. With no tracker, the id falls back to the folder name and time.
 - **Your harness writes `items.jsonl` in each run folder:** one JSON object per scored item with `id`, `arm`, `unit`, `score` and `status`. The checks read only this file. A harness that reports an aggregate and no per-item rows cannot be checked.
-- **Each arm is one launch command** that can be wrapped as `prereg.py stamp <out> ... -- <command>`.
+- **Each launch is one command** that can be wrapped as `prereg.py run <out> ... -- <command>` (or stamped with `prereg.py stamp` when it launches elsewhere); one command may write several arm folders (`--arms`).
+- **A run ledger, `runs.jsonl`, at the repository root:** `stamp`, `run` and `close` append to it, `note` adds findings, `ls` reads it. Commit it or not, as you like; it is kept out of code snapshots.
 - **Python 3 with the standard library.** No packages are installed.
 - **One experiment at a time:** a comparison between named arms on one primary metric. It does not manage sweeps, schedules or compute.
 

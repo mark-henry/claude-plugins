@@ -4,17 +4,26 @@
   prereg.py new    PATH                          write a template record (schema 2) to fill in
   prereg.py open   PATH                          validate; hash the frozen fields and the line-6 fields; hash arm data
   prereg.py stamp  OUT [options] -- CMD...       snapshot the tree under refs/lab/<run id>, write OUT/stamp.json
+  prereg.py run    OUT [options] -- CMD...       stamp, then run CMD (output streamed, its exit code returned)
+                   --arms a,b,c                  (stamp or run) one command writing OUT/a, OUT/b, OUT/c: a stamp each,
+                                                 one launch id, run ids <launch id>-<arm>
   prereg.py check  PATH | RUN_DIR...             lines 2, 3, 7, 8, 12 and the counted gate, from items.jsonl
   prereg.py parity PATH                          the arm comparison: arms differ only in `varies` (line 13)
   prereg.py ledger PATH RUN_DIR                  append one line each time the test split is scored (line 9)
   prereg.py quote  REPORT PATH|RUN_DIR...        every rate or a/b in REPORT carries a run id (line 10)
   prereg.py induct PATH                          vet an old record after the fact; never refuses, never edits it
   prereg.py close  PATH [--note TEXT]            observed per arm, status -> closed
-  prereg.py ls     [DIR]                         records, and how well past predictions landed
+  prereg.py note   RUN_ID FINDING [--changes T]  append a one-sentence finding for a run to runs.jsonl
+  prereg.py ls     [QUERY | DIR]                 runs.jsonl newest first with findings, filtered by QUERY; with no
+                                                 runs.jsonl (or given a DIR), records and how past predictions landed
+  prereg.py backfill DIR                         seed runs.jsonl from the stamps and records already under DIR
 
 Stdlib only; never contacts a tracker (its run id is a string). Exit 1 on a refusal, with one line per thing to
 fix, naming the line of the skill it enforces. Records without "schema" (made before schema 2) are read as before
-by close, ls and parity, and hashed exactly as before. The skill's SKILL.md says when each command runs.
+by close, ls and parity, and hashed exactly as before. A run is counted or it is not: stamps and check results carry
+a boolean `counted`; ones written before it carry a `label` string and are read as before. stamp, run and close
+append one line each to runs.jsonl at the repository root (the run ledger: append-only, one write per line). The
+skill's SKILL.md says when each command runs.
 
 A run folder holds stamp.json (written by `stamp` at launch) and items.jsonl (written by the harness): one JSON
 object per line with id, arm, unit, score (number or null) and status (ok, error, empty, truncated, parse_failure).
@@ -46,7 +55,7 @@ TEMPLATE = {
     "watched": ["."],
     "arms": {"untreated": {"out": "runs/untreated", "command": "...", "data": []},
              "treated": {"out": "runs/treated", "command": "...", "data": []}},
-    "pilot": {"runs": [], "pass_at": 0.5},
+    "pilot": {"runs": [], "pass_at": 0.5, "noise_from": "runs"},
     "scorer": {"command": "... line 3: e.g. python3 score.py {output}", "file": "...", "broken": "...", "good": "..."},
     "floors": {"runs": [], "none_reason": ""},
     "resample_seed": 20261115,
@@ -302,7 +311,149 @@ def close_v1(a, rec):
 
 
 def cmd_ls(a):
-    recs = sorted(Path(a.dir).glob("*.json"))
+    q = a.query
+    if q is not None and Path(q).is_dir():
+        return records_ls(q)
+    rows = read_ledger(ledger_root())
+    if not rows:
+        if q is not None:
+            print(f"no {LEDGER} at {ledger_root()}: nothing to search; the records in prereg/ follow")
+        return records_ls("prereg")
+    ledger_ls(rows, q, a.limit)
+
+
+def pretty_utc(u):
+    m = re.fullmatch(r"(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})Z", str(u or ""))
+    return f"{m[1]}-{m[2]}-{m[3]} {m[4]}:{m[5]}Z" if m else str(u or "?")
+
+
+def ledger_ls(rows, query, limit):
+    """Runs newest first, each with its findings (notes, exit codes, closes of a record it belongs to); records
+    with no stamped run as their own entries. QUERY filters: every word of it, case-insensitively, somewhere in the fields shown."""
+    entries, by_run = [], {}
+    for r in rows:
+        if r.get("kind") in ("run", "record"):
+            e = {"row": r, "findings": []}
+            entries.append(e)
+            if r.get("run_id"):
+                by_run.setdefault(r["run_id"], e)
+    for r in rows:
+        k = r.get("kind")
+        if k == "note" and r.get("run_id") in by_run:
+            by_run[r["run_id"]]["findings"].append(f"finding: {r.get('finding', '')}" +
+                                                   (f" (changes: {r['changes']})" if r.get("changes") else ""))
+        elif k == "exit" and r.get("run_id") in by_run and r.get("exit_code") != 0:
+            by_run[r["run_id"]]["findings"].append(f"exit code {r.get('exit_code')}")
+        elif k == "close":
+            text_ = f"closed {r.get('record')}: {r.get('result', '')}"
+            for rid in r.get("run_ids") or []:
+                if rid in by_run:
+                    by_run[rid]["findings"].append(text_)
+            for e in entries:
+                if e["row"].get("kind") == "record" and e["row"].get("record") == r.get("record"):
+                    e["findings"].append(text_)
+    def text(e):
+        r = e["row"]
+        return " ".join(str(r.get(f) or "") for f in ("run_id", "question", "command", "folder", "record")) + \
+            " " + " ".join(e["findings"])
+    if query:      # every word of the query, in any order, case-insensitive
+        words = query.lower().split()
+        entries = [e for e in entries if all(w in text(e).lower() for w in words)]
+    order = {id(e): k for k, e in enumerate(entries)}      # within one minute, later lines are newer
+    entries.sort(key=lambda e: (str(e["row"].get("utc") or ""), order[id(e)]), reverse=True)
+    for e in entries[:limit]:
+        r = e["row"]
+        if r.get("kind") == "record":
+            print(f"{pretty_utc(r.get('utc'))}  record {r.get('record')}  ({r.get('status', '?')}; no stamped run)")
+        else:
+            print(f"{pretty_utc(r.get('utc'))}  {r.get('run_id')}  counted: {str(bool(r.get('counted'))).lower()}  "
+                  f"{r.get('folder') or ''}")
+        what = r.get("question") or r.get("command")
+        if what:
+            print(f"    {what[:160]}")
+        for f in e["findings"]:
+            print(f"    {f}")
+    if len(entries) > limit:
+        print(f"... {len(entries) - limit} older; --limit N shows more")
+    if not entries:
+        print(f"no run in {LEDGER} matches {query!r}" if query else f"{LEDGER} holds no runs")
+
+
+def cmd_note(a):
+    root = ledger_root()
+    known = {r.get("run_id") for r in read_ledger(root) if r.get("kind") == "run"}
+    if a.run_id not in known:
+        die(f"{a.run_id} is not a run id in {root / LEDGER}: a run with no stamp has no run id, and its numbers are "
+            f"not quoted; `prereg.py ls` lists the run ids")
+    append_ledger(root, {"kind": "note", "utc": now(), "run_id": a.run_id, "finding": a.finding, "changes": a.changes})
+    print(f"noted for {a.run_id} in {root / LEDGER}")
+
+
+def cmd_backfill(a):
+    """Seed runs.jsonl from what is already on disk under DIR: one run line per stamp.json (oldest first), one
+    record line per record in prereg/ that no stamp names, and one close line per closed record. Run ids and
+    records already in the ledger are skipped, so it can be rerun. Lines carry "backfilled": true."""
+    base = Path(a.dir).resolve()
+    root = ledger_root(base)
+    have = read_ledger(root)
+    seen_runs = {r.get("run_id") for r in have if r.get("kind") == "run"}
+    seen_recs = {r.get("record") for r in have if r.get("kind") in ("record", "close")}
+    skip_dirs = {".git", "node_modules", ".venv", "venv", "__pycache__"}
+    new, named = [], set()
+    for p in sorted(base.rglob("stamp.json")):
+        if skip_dirs & set(p.relative_to(base).parts):
+            continue
+        try:
+            st = load(p)
+        except (ValueError, OSError):
+            continue
+        if not isinstance(st, dict) or not st.get("run_id"):
+            continue
+        rp = st.get("record_repo_path") if st.get("record_repo_path") not in (None, NA) else None
+        if rp:
+            named.add(rp)
+        if st["run_id"] in seen_runs:
+            continue
+        seen_runs.add(st["run_id"])
+        rec = read_json(root / rp) if rp else None
+        new.append({"kind": "run", "utc": st.get("utc"), "run_id": st["run_id"], "counted": stamp_counted(st),
+                    "command": command_text(st.get("argv") or []), "record": rp,
+                    "question": (rec or {}).get("question"), "folder": repo_rel(str(p.parent), root),
+                    "launch_id": st.get("launch_id"), "backfilled": True})
+    for p in sorted((base / "prereg").glob("*.json")) if (base / "prereg").is_dir() else []:
+        rec = read_json(p)
+        if not isinstance(rec, dict) or "question" not in rec or not isinstance(rec.get("arms"), dict):
+            continue
+        rel = repo_rel(str(p), root)
+        if rel in seen_recs:
+            continue
+        opened = (rec.get("opened") or {}).get("utc")
+        if rel not in named:
+            new.append({"kind": "record", "utc": opened, "record": rel, "question": rec["question"],
+                        "status": rec.get("status"), "backfilled": True})
+        if rec.get("closed"):
+            obs = rec.get("observed") or {}
+            result = "; ".join(f"{arm} {observed_text(o)}" for arm, o in obs.items() if isinstance(o, dict))
+            run_ids = [(load_stamp(root / spec.get("out", "")) or {}).get("run_id")
+                       for spec in rec["arms"].values() if isinstance(spec, dict)]
+            new.append({"kind": "close", "utc": rec["closed"].get("utc"), "record": rel, "question": rec["question"],
+                        "run_ids": [r for r in run_ids if r], "result": result, "backfilled": True})
+    new.sort(key=lambda r: str(r.get("utc") or ""))
+    for r in new:
+        append_ledger(root, r)
+    kinds = collections.Counter(r["kind"] for r in new)
+    print(f"backfilled {root / LEDGER}: " + (", ".join(f"{n} {k}" for k, n in sorted(kinds.items())) or "nothing new"))
+
+
+def observed_text(o):
+    """One arm's observed result: schema 2 {n, mean}, or an old record's {metric: {num, den, rate}}."""
+    if "n" in o:
+        return f"n {o['n']} mean {fmt(o.get('mean'))}"
+    return ", ".join(f"{m} {v.get('num')}/{v.get('den')}" for m, v in o.items() if isinstance(v, dict))
+
+
+def records_ls(dir):
+    recs = sorted(Path(dir).glob("*.json"))
     hits = total = 0
     width = []
     for p in recs:
@@ -504,11 +655,28 @@ def pilot_rows(rec, root, probs):
             for run in pilot_folders(rec, root)]
 
 
+ITEM_UNITS_MIN = 100      # line 7 by item noise needs about this many units in the run
+
+
+def noise_from_items(rec):
+    """pilot.noise_from: "items" (one pilot; the independent unit is an item) or "runs" (two pilots; the default)."""
+    return (rec.get("pilot") or {}).get("noise_from") == "items"
+
+
 def pilot_gate(rec, root):
-    """Counted needs two distinct baseline pilot runs, each stamped, with different run ids."""
+    """Counted needs two distinct baseline pilot runs, each stamped, with different run ids; one, when the noise comes
+    from the items (pilot.noise_from "items")."""
     named = (rec.get("pilot") or {}).get("runs") or []
     folders = pilot_folders(rec, root)
     probs = []
+    if noise_from_items(rec):
+        for f in folders:
+            if load_stamp(root / f) is None:
+                probs.append(f"line 7: pilot run {f} has no stamp.json; stamp the pilot run at launch")
+        if not folders:
+            probs.append("line 7: pilot.noise_from is \"items\", and counted needs one stamped pilot run on the real "
+                         "items, listed in pilot.runs; none is listed")
+        return probs
     if len(folders) < len(named):
         probs.append(f"line 7: pilot.runs names the same folder more than once ({', '.join(named)}); a folder is one pilot run")
     ids = {}
@@ -567,6 +735,44 @@ def few(xs, k=3):
     return ", ".join(map(str, sorted(xs, key=str)[:k])) + (" ..." if len(xs) > k else "")
 
 
+def line7_items(rec, runs, arm_units=None, first_arm=None):
+    """Line 7 when the independent unit is an item (pilot.noise_from "items"): one pilot run gives the spread of unit
+    mean scores; the SE of a difference between two arms of n units each is sqrt(2) * sd / sqrt(n) (unpaired, so
+    conservative). n is the first arm's unit count at check, or intended_n projected to units at stamp. Needs about
+    100 units in the run, and pilot units that the arms score."""
+    if not runs:
+        return None
+    rows = [r for r in runs[0] if r["status"] == "ok"]
+    by_unit = {}
+    for r in rows:
+        by_unit.setdefault(str(r["unit"]), []).append(r["score"])
+    if not by_unit:
+        return None
+    means = [sum(v) / len(v) for v in by_unit.values()]
+    probs = []
+    if arm_units is not None:
+        n = len(arm_units)
+        extra = set(by_unit) - arm_units
+        if extra:
+            probs.append(f"the pilot scores units arm {first_arm} does not ({few(extra)}); the pilot runs on the real items")
+    else:
+        n_items = rec.get("intended_n")
+        n = round(n_items * len(by_unit) / len(rows)) if real_n(n_items) and rows else 0
+    if len(means) < 2:
+        probs.append(f"the pilot has ok items in {len(means)} unit; the SE needs at least two")
+    if n < ITEM_UNITS_MIN:
+        probs.append(f"the run has about {n} units, fewer than {ITEM_UNITS_MIN}: item noise alone does not estimate "
+                     f"the difference; set pilot.noise_from to \"runs\" in a new record and run two pilots")
+    sd = statistics.stdev(means) if len(means) > 1 else 0.0
+    se = math.sqrt(2) * sd / math.sqrt(n) if n else float("inf")
+    return {"se": se, "detectable": DETECT_Z * se, "units": len(means), "run_units": n, "pairs": len(rows),
+            "differing_items": None, "deterministic": None, "noise_from": "items", "problems": probs}
+
+
+def noise(rec, runs, arm_units=None, first_arm=None):
+    return (line7_items if noise_from_items(rec) else line7)(rec, runs, arm_units, first_arm)
+
+
 def line7(rec, runs, arm_units=None, first_arm=None):
     """SE of the mean paired difference between the first two baseline pilot runs, resampling units. None if < 2 runs.
     Its "problems" make it degenerate: identical scores on every shared item (a copied file, unless pilot.deterministic
@@ -615,16 +821,22 @@ def line7(rec, runs, arm_units=None, first_arm=None):
 def line7_text(l7, rec):
     eff = (rec.get("primary") or {}).get("smallest_effect")
     if l7 is None:
-        return "line 7: fewer than two baseline pilot runs with shared ok items: no detectable difference; the run is exploratory"
-    head = (f"line 7: SE {l7['se']:.4f}, detectable difference {l7['detectable']:.4f} (smallest effect {eff}) "
-            f"over {l7['units']} units: ")
+        if noise_from_items(rec):
+            return "line 7: no stamped pilot run with ok items: no detectable difference; the run is not counted"
+        return "line 7: fewer than two baseline pilot runs with shared ok items: no detectable difference; the run is not counted"
+    if l7.get("noise_from") == "items":
+        head = (f"line 7: SE {l7['se']:.4f}, detectable difference {l7['detectable']:.4f} (smallest effect {eff}) from "
+                f"item noise: {l7['units']} units in one pilot, projected to {l7['run_units']} units per arm, unpaired: ")
+    else:
+        head = (f"line 7: SE {l7['se']:.4f}, detectable difference {l7['detectable']:.4f} (smallest effect {eff}) "
+                f"over {l7['units']} units: ")
     if l7.get("problems"):
-        return head + "does not hold: " + "; ".join(l7["problems"]) + "; the run is exploratory"
+        return head + "does not hold: " + "; ".join(l7["problems"]) + "; the run is not counted"
     if l7.get("deterministic"):
         return head + (f"holds by declaration: pilot.deterministic ({l7['deterministic']}); the reruns agree on every "
                        f"item, so no run-to-run noise was measured and the detectable difference is zero by that declaration")
     holds = isinstance(eff, (int, float)) and l7["detectable"] <= eff
-    return head + ("holds" if holds else "does not hold; the run is exploratory")
+    return head + ("holds" if holds else "does not hold; the run is not counted")
 
 
 def line7_holds(l7, rec):
@@ -650,7 +862,8 @@ def line8(rec, runs):
     at0 = sum(1 for i in order if tally[i][0] == 0)
     at1 = sum(1 for i in order if tally[i][0] == tally[i][1])
     summary = (f"line 8: {len(order)} items over {len(runs)} baseline pilot runs; {at0} at 0, {at1} at 1, "
-               f"{len(order) - at0 - at1} in between")
+               f"{len(order) - at0 - at1} in between" +
+               ("; with one pilot run every item reads 0 or 1, so saturation is not measured" if len(runs) == 1 else ""))
     return {"items": len(order), "at_0": at0, "at_1": at1, "rates": {i: tally[i] for i in order}}, lines, summary
 
 
@@ -750,7 +963,7 @@ def stamp_record_problems(rec, path, root, stamps):
     probs, here, frozen = [], repo_rel(path, root), (rec.get("opened") or {}).get("frozen_sha256")
     sc_now = scorer_sha(rec, root)
     for arm, st in stamps.items():
-        if st.get("label") != "counted":
+        if not stamp_counted(st):
             continue
         r = st.get("record") if isinstance(st.get("record"), dict) else {}
         # a stamp from before record_repo_path: its path was given relative to where stamp ran, usually the root
@@ -784,7 +997,7 @@ def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran, by_a
         probs.append("the record's status is \"abandoned\": an abandoned record is never counted; start a new record")
     if len(arms) < 2:
         probs.append(f"counted needs at least two arms to compare; the record has {len(arms)} ({', '.join(arms)}); "
-                     f"a single arm against the bar is exploratory")
+                     f"a single arm against the bar is not counted")
     if not real_n(rec.get("intended_n")):
         probs.append(f"line 2: counted needs a whole number intended_n; the record has {rec.get('intended_n', 'none')!r}")
     if not line3_ran:
@@ -797,11 +1010,12 @@ def counted_problems(rec, stamps, l7, floors, means, arms, root, line3_ran, by_a
         probs.append("line 6: the record opened exploratory or without hashed line-6 fields (metric, comparison, smallest effect, unit)")
     for arm, st in stamps.items():
         r = st.get("record")
-        if st.get("label") != "counted" or not isinstance(r, dict) or r.get("line6_sha256") != l6:
+        if not stamp_counted(st) or not isinstance(r, dict) or r.get("line6_sha256") != l6:
             probs.append(f"line 6: counted needs every arm stamped --counted against this record's line-6 hash; {arm}'s stamp is not")
     if not line7_holds(l7, rec):
         if l7 is None:
-            probs.append("line 7: no detectable difference from two baseline pilot runs")
+            probs.append("line 7: no detectable difference from " +
+                         ("a stamped pilot run" if noise_from_items(rec) else "two baseline pilot runs"))
         elif l7.get("problems"):
             probs += [f"line 7: {p}" for p in l7["problems"]]
         else:
@@ -835,6 +1049,44 @@ def finish(probs, ok_msg=None):
     if ok_msg and not probs:
         print(ok_msg)
     sys.exit(1 if probs else 0)
+
+
+LEDGER = "runs.jsonl"
+
+
+def command_text(argv):
+    if not argv:
+        return ""
+    return argv[0] if len(argv) == 1 else shlex.join(argv)
+
+
+def append_ledger(root, row):
+    """Append one line to <root>/runs.jsonl in a single O_APPEND write, so concurrent writers never interleave
+    within a line and nothing already written is ever rewritten."""
+    line = (json.dumps({k: v for k, v in row.items() if v is not None}, ensure_ascii=False) + "\n").encode()
+    fd = os.open(Path(root) / LEDGER, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
+    try:
+        os.write(fd, line)
+    finally:
+        os.close(fd)
+
+
+def read_ledger(root):
+    p = Path(root) / LEDGER
+    out = []
+    if p.is_file():
+        for line in p.read_text().splitlines():
+            try:
+                r = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(r, dict):
+                out.append(r)
+    return out
+
+
+def ledger_root(cwd="."):
+    return repo_root(cwd) or Path(cwd).resolve()
 
 
 def cmd_new(a):
@@ -908,7 +1160,8 @@ def snapshot(root, out, run_id):
         out_rel = None
     def ls(*args):
         r = subprocess.run(["git", "ls-files", "-z", *args], cwd=root, capture_output=True, text=True)
-        return [f for f in r.stdout.split("\0") if f and not (out_rel and (f == out_rel or f.startswith(out_rel + "/")))]
+        return [f for f in r.stdout.split("\0") if f and f != LEDGER
+                and not (out_rel and (f == out_rel or f.startswith(out_rel + "/")))]
     tracked = set(ls())
     untracked = ls("-o", "--exclude-standard")
     modified = set((subprocess.run(["git", "diff", "--name-only", "-z", "HEAD"], cwd=root, capture_output=True, text=True).stdout
@@ -928,7 +1181,8 @@ def snapshot(root, out, run_id):
             g("read-tree", head)
         # Name each file to add rather than excluding paths: git refuses (exit 1) any pathspec, exclude ones included,
         # that touches an ignored path on disk, as when the run folder sits under an ignored, existing runs/.
-        keep = lambda f: f and f not in skip and not (out_rel and (f == out_rel or f.startswith(out_rel + "/")))
+        # the run ledger is not code: it changes with every stamp, so it stays as HEAD has it
+        keep = lambda f: f and f not in skip and f != LEDGER and not (out_rel and (f == out_rel or f.startswith(out_rel + "/")))
         names = sorted({f for f in (g("ls-files", "-z").split("\0") + g("ls-files", "-z", "-o", "--exclude-standard").split("\0"))
                         if keep(f)})
         if names:      # an empty pathspec list would mean "add everything"
@@ -954,51 +1208,97 @@ def packages(a):
     return {"python": sys.version.split()[0], "distributions": dists}
 
 
-def cmd_stamp(a):
-    out = Path(a.out_dir)
-    argv = a.argv
-    if (out / "stamp.json").exists():
-        die(f"{out / 'stamp.json'} exists; a stamp is never overwritten: stamp a new run folder")
-    root = repo_root() or Path(".")
-    rec, rec_info, data, scorer = None, NA, [], NA
-    if a.record:
-        rec = load(a.record)
-        if rec.get("schema") != 2:
-            die(f"{a.record} has no schema: an old record; `induct` it, or write a new one with `new`")
-        if not rec.get("opened"):
-            die(f"{a.record} was never opened; `open` it before any run")
-        if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
-            die(f"{a.record} changed after open; restore it or write a new record")
-        if a.arm not in rec.get("arms", {}):
+def stamp_counted(st):
+    """Whether a stamp claims counted: its boolean `counted`, or, for a stamp written before the boolean existed,
+    its label string ("counted" or "exploratory")."""
+    st = st or {}
+    return st["counted"] if isinstance(st.get("counted"), bool) else st.get("label") == "counted"
+
+
+def opened_record(path):
+    rec = load(path)
+    if rec.get("schema") != 2:
+        die(f"{path} has no schema: an old record; `induct` it, or write a new one with `new`")
+    if not rec.get("opened"):
+        die(f"{path} was never opened; `open` it before any run")
+    if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
+        die(f"{path} changed after open; restore it or write a new record")
+    return rec
+
+
+UNCOUNTED = "stamp without --counted to run it uncounted"
+
+
+def stamp_plan(a, rec):
+    """[(folder, arm, under_record)]: one entry, or one per --arms name in OUT/<name>. With --record, every name is
+    one of the record's arms, except names starting "floor", which are stamped as plain runs (line 12)."""
+    if not a.arms:
+        if rec is not None and a.arm not in rec.get("arms", {}):
             die(f"--arm must name one of the record's arms: {', '.join(rec.get('arms', {}))}")
-        data = check_data(rec["arms"][a.arm].get("data"), rec_root(a.record), a.arm)
+        return [(Path(a.out_dir), a.arm, rec is not None)]
+    if a.arm:
+        die("give --arm or --arms, not both")
+    names = [n.strip() for n in a.arms.split(",") if n.strip()]
+    if not names or len(set(names)) < len(names):
+        die(f"--arms {a.arms!r}: name each arm once, comma-separated")
+    plan = []
+    for n in names:
+        folder, under = Path(a.out_dir) / n, rec is not None and not n.startswith("floor")
+        if under:
+            if n not in rec.get("arms", {}):
+                die(f"--arms: {n} is not one of the record's arms ({', '.join(rec.get('arms', {}))}); a floor arm's "
+                    f"name starts with \"floor\"")
+            want = (rec_root(a.record) / rec["arms"][n]["out"]).resolve()
+            if folder.resolve() != want:
+                die(f"--arms writes {folder}, but the record's arm {n} has out {rec['arms'][n]['out']}: check would "
+                    f"not find it; make the record's out folders <OUT>/<arm>")
+        plan.append((folder, n, under))
+    return plan
+
+
+def do_stamp(a):
+    """Stamp every folder in the plan (each checked before any is written) and append each to the run ledger.
+    Returns [(folder, stamp)]."""
+    argv = a.argv
+    root = repo_root() or Path(".")
+    rec = opened_record(a.record) if a.record else None
+    plan = stamp_plan(a, rec)
+    for folder, _, _ in plan:
+        if (folder / "stamp.json").exists():
+            die(f"{folder / 'stamp.json'} exists; a stamp is never overwritten: stamp a new run folder")
+    if a.counted:
+        if rec is None:
+            die(f"line 6: --counted needs --record, an opened record whose line-6 fields were hashed; {UNCOUNTED}")
+        l6 = line6_part(rec)
+        if rec.get("status") == "exploratory" or not l6 or rec["opened"].get("line6_sha256") != l6:
+            die(f"line 6: the record opened without hashed line-6 fields (metric, comparison, smallest effect, unit); "
+                f"{UNCOUNTED}")
+        for folder, _, under in plan:
+            if under and (folder / "items.jsonl").is_file() and (folder / "items.jsonl").stat().st_size:
+                die(f"{folder / 'items.jsonl'} already holds scored items: a counted stamp comes before scoring. "
+                    f"Stamp a new, empty run folder")
+        if len(rec.get("arms") or {}) < 2:
+            die(f"counted needs at least two arms to compare; this record has one. {UNCOUNTED[0].upper()}{UNCOUNTED[1:]}")
+        l7 = noise(rec, pilot_rows(rec, rec_root(a.record), []))
+        if not line7_holds(l7, rec):
+            die(line7_text(l7, rec) + f"; {UNCOUNTED}")
+    rec_info, scorer = NA, NA
+    if rec is not None:
         rec_info = {"path": a.record, "sha256": full_sha(a.record), "frozen_sha256": rec["opened"]["frozen_sha256"],
                     "line6_sha256": rec["opened"].get("line6_sha256", NA)}
         sc = scorer_sha(rec, rec_root(a.record))
         scorer = {"file": rec["scorer"]["file"], "sha256": sc} if sc else NA
-    if a.counted:
-        if rec is None:
-            die("line 6: --counted needs --record, an opened record whose line-6 fields were hashed; stamp without --counted to run exploratory")
-        l6 = line6_part(rec)
-        if rec.get("status") == "exploratory" or not l6 or rec["opened"].get("line6_sha256") != l6:
-            die("line 6: the record opened without hashed line-6 fields (metric, comparison, smallest effect, unit); "
-                "stamp without --counted to run exploratory")
-        if (out / "items.jsonl").is_file() and (out / "items.jsonl").stat().st_size:
-            die(f"{out / 'items.jsonl'} already holds scored items: a counted stamp comes before scoring. "
-                f"Stamp a new, empty run folder")
-        if len(rec.get("arms") or {}) < 2:
-            die("counted needs at least two arms to compare; this record has one. Stamp without --counted to run exploratory")
-        probs = []
-        l7 = line7(rec, pilot_rows(rec, rec_root(a.record), probs))
-        if not line7_holds(l7, rec):
-            die(line7_text(l7, rec) + "; stamp without --counted to run exploratory")
-    # each file once: a --data file the record already lists (or one given twice) is not added again
-    seen = {(rec_root(a.record) / e["path"]).resolve() for e in data}
-    for d in a.data or []:
-        if Path(d).resolve() not in seen:
-            seen.add(Path(d).resolve())
-            data.append({"path": d, **data_facts(d)})
-    run_id = a.run_id or f"{out.name}-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    datas = {}
+    for folder, arm, under in plan:
+        data = check_data(rec["arms"][arm].get("data"), rec_root(a.record), arm) if under else []
+        # each file once: a --data file the record already lists (or one given twice) is not added again
+        seen = {(rec_root(a.record) / e["path"]).resolve() for e in data}
+        for d in a.data or []:
+            if Path(d).resolve() not in seen:
+                seen.add(Path(d).resolve())
+                data.append({"path": d, **data_facts(d)})
+        datas[folder] = data
+    launch_id = a.run_id or f"{Path(a.out_dir).name}-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     config = NA
     if a.config:
         try:
@@ -1006,22 +1306,58 @@ def cmd_stamp(a):
         except ValueError:
             values = NA
         config = {"path": a.config, "sha256": full_sha(a.config), "values": values}
-    snap = snapshot(root, out, run_id) if repo_root() else NA
-    stamp = {"schema": 2, "run_id": run_id, "tracker_run_id": a.run_id or NA, "utc": now(), "host": socket.gethostname(),
-             "argv": argv, "arm": a.arm or NA, "label": "counted" if a.counted else "exploratory", "record": rec_info,
-             "record_repo_path": repo_rel(a.record, rec_root(a.record)) if a.record else NA, "scorer": scorer,
-             "config": config,
-             "model": {"id": a.model or NA, "revision": a.model_revision or NA, "tokenizer_revision": a.tokenizer_revision or NA,
-                       "date": a.model_date or NA},
-             "data": data or NA, "seeds": a.seed or NA, "packages": packages(a),
-             "lab_inputs_sha256": full_sha(root / "lab-inputs.md") if (root / "lab-inputs.md").is_file() else NA,
-             "snapshot": snap}
-    out.mkdir(parents=True, exist_ok=True)
-    with open(out / "stamp.json", "x") as f:
-        f.write(json.dumps(stamp, indent=2) + "\n")
+    snap = snapshot(root, Path(a.out_dir), launch_id) if repo_root() else NA
+    done = []
+    for folder, arm, under in plan:
+        run_id = f"{launch_id}-{arm}" if a.arms else launch_id
+        counted = bool(a.counted and under)
+        stamp = {"schema": 2, "run_id": run_id, "tracker_run_id": a.run_id or NA, "launch_id": launch_id, "utc": now(),
+                 "host": socket.gethostname(), "argv": argv, "arm": arm or NA, "counted": counted,
+                 "record": rec_info if under else NA,
+                 "record_repo_path": repo_rel(a.record, rec_root(a.record)) if under else NA,
+                 "scorer": scorer if under else NA, "config": config,
+                 "model": {"id": a.model or NA, "revision": a.model_revision or NA,
+                           "tokenizer_revision": a.tokenizer_revision or NA, "date": a.model_date or NA},
+                 "data": datas[folder] or NA, "seeds": a.seed or NA, "packages": packages(a),
+                 "lab_inputs_sha256": full_sha(root / "lab-inputs.md") if (root / "lab-inputs.md").is_file() else NA,
+                 "snapshot": snap}
+        folder.mkdir(parents=True, exist_ok=True)
+        with open(folder / "stamp.json", "x") as f:
+            f.write(json.dumps(stamp, indent=2) + "\n")
+        append_ledger(root, {"kind": "run", "utc": stamp["utc"], "run_id": run_id, "counted": counted,
+                             "command": command_text(argv), "record": stamp["record_repo_path"] if under else None,
+                             "question": rec.get("question") if under else None,
+                             "folder": repo_rel(str(folder), root), "launch_id": launch_id})
+        print(f"stamped {folder} as {run_id} (counted: {str(counted).lower()})" +
+              (f" at {snap['commit'][:8]}" if snap != NA else ""))
+        done.append((folder, stamp))
     if snap == NA:
         print("warning: not a git repository: no snapshot of the code was taken", file=sys.stderr)
-    print(f"stamped {out} as {run_id} ({stamp['label']})" + (f" at {snap['commit'][:8]}" if snap != NA else ""))
+    return done
+
+
+def cmd_stamp(a):
+    do_stamp(a)
+
+
+def cmd_run(a):
+    """Stamp, then run the command with this process's stdin, stdout and stderr; exit with its exit code. A command
+    given as one string is run by the shell."""
+    if not a.argv:
+        die("run needs a command after --")
+    done = do_stamp(a)
+    sys.stdout.flush()
+    try:
+        rc = subprocess.call(a.argv[0], shell=True) if len(a.argv) == 1 else subprocess.call(a.argv)
+    except OSError as e:
+        print(f"prereg.py run: could not start {a.argv[0]}: {e}", file=sys.stderr)
+        rc = 127
+    except KeyboardInterrupt:
+        rc = 130
+    root = repo_root() or Path(".")
+    for _, st in done:
+        append_ledger(root, {"kind": "exit", "utc": now(), "run_id": st["run_id"], "exit_code": rc})
+    sys.exit(rc)
 
 
 def load_stamp(folder):
@@ -1048,7 +1384,7 @@ def cmd_check(a):
     line2(by_arm, arms, None, {}, probs, hint)
     print("line 3: no record, so no scorer declared; not checked")
     line12(by_arm, arms, None)
-    print("label: exploratory")
+    print("counted: false (run folders without a record are never counted)")
     finish(probs)
 
 
@@ -1072,7 +1408,7 @@ def check_record(path):
                 probs.append(f"line 10: arm {arm} has no stamp.json in {folder}; stamp each run at launch")
             else:
                 stamps[arm] = st
-                print(f"run {st['run_id']}: {arm} ({st.get('label')})")
+                print(f"run {st['run_id']}: {arm} (stamped counted: {str(stamp_counted(st)).lower()})")
         for r in read_items(root / folder, probs, score_range(rec)):
             if r["arm"] not in rec["arms"] and not str(r["arm"]).startswith("floor:"):
                 probs.append(f"line 2: {folder}/items.jsonl names arm {r['arm']!r}, neither a record arm nor floor:<name>")
@@ -1092,7 +1428,7 @@ def check_record(path):
         print("line 3: no scorer declared in the record; not checked")
     probs += data_drift(rec, root)
     runs = pilot_rows(rec, root, probs)
-    l7 = line7(rec, runs, {str(r["unit"]) for r in by_arm.get(arms[0], [])} if arms else set(), arms[0] if arms else None)
+    l7 = noise(rec, runs, {str(r["unit"]) for r in by_arm.get(arms[0], [])} if arms else set(), arms[0] if arms else None)
     if l7 and l7.get("deterministic") and not l7["differing_items"]:
         l7["problems"] += deterministic_seed_problems([load_stamp(root / f) for f in pilot_folders(rec, root)], stamps)
     result["line7"] = l7
@@ -1113,32 +1449,49 @@ def check_record(path):
         print(f"line 8: every item's pass rate is in {out} under line8.rates")
     floors, means = line12(by_arm, arms, rec)
     result["line12"] = {"floors": floors, "means": means}
-    label = "exploratory"
+    print_after_open(rec)
+    gate_ok = False
     line_refusals = list(probs)
-    if any(st.get("label") == "counted" for st in stamps.values()):
+    if any(stamp_counted(st) for st in stamps.values()):
         line3_ran = isinstance(result["line3"], dict) and "scorer_sha256" in result["line3"]
         probs += violated_for_counted(rec, by_arm, arms, floors, means)
         line_refusals = list(probs)
         cp = counted_problems(rec, {a: stamps.get(a, {}) for a in arms}, l7, floors, means, arms, root, line3_ran, by_arm,
                               path=path)
         earlier = len(probs)
-        probs += [f"{p} (counted refused; the run stands as exploratory)" for p in cp]
-        label = "counted" if not probs else "exploratory"
-        if label != "counted":
+        probs += [f"{p} (counted refused; the run stands, not counted)" for p in cp]
+        gate_ok = not probs
+        if not gate_ok:
             print(f"counted refused: {len(cp)} counted-gate requirement(s) unmet and {earlier} other refusal(s); each is listed on stderr")
-    pending = None
-    if label == "counted":
-        pending = parity_problem(path, rec, root, inputs)
-        if pending:
-            label = PENDING
-        if l7 and l7.get("deterministic"):
-            label += DET_LABEL
+    pending = parity_problem(path, rec, root, inputs) if gate_ok else None
+    det = declared_deterministic(rec) if gate_ok and l7 and l7.get("deterministic") else None
     # line_refusals: lines violated (quote and close refuse while any stands); refusals: those plus the counted gate's
-    result["label"], result["refusals"], result["line_refusals"], result["inputs"] = label, probs, line_refusals, inputs
+    result.update(counted=gate_ok and not pending, pending_parity=bool(pending), deterministic=det, refusals=probs,
+                  line_refusals=line_refusals, inputs=inputs)
     result["verdict_sha256"] = verdict_sha(result)
     out.write_text(json.dumps(result, indent=2) + "\n")
-    print(f"label: {label}" + (f" ({pending})" if pending else ""))
+    print(counted_line(result, pending))
     finish(probs)
+
+
+def counted_line(res, pending=None):
+    if res["counted"]:
+        return "counted: true" + (" (deterministic harness declared)" if res.get("deterministic") else "")
+    return "counted: false" + (f" (pending parity: {pending})" if res.get("pending_parity") else "")
+
+
+def print_after_open(rec):
+    """Harness fixes landed after open (record field after_open): each printed, so a reader sees them."""
+    ao = rec.get("after_open")
+    if not ao:
+        return
+    entries = ao if isinstance(ao, list) else [ao]
+    print(f"after open: {len(entries)} change(s) landed after the record was opened:")
+    for e in entries:
+        if isinstance(e, dict):
+            print(f"  {e.get('commit') or '(no commit named)'}: {e.get('change') or e.get('note') or json.dumps(e)}")
+        else:
+            print(f"  {e}")
 
 
 def flat(d, prefix):
@@ -1200,7 +1553,7 @@ def parity_v2(a, rec):
     problems += data_drift(rec, root)
     names = list(stamps)
     skip = [spec["out"] for spec in rec["arms"].values()] + list((rec.get("pilot") or {}).get("runs") or []) + \
-        list((rec.get("floors") or {}).get("runs") or [])
+        list((rec.get("floors") or {}).get("runs") or []) + [LEDGER]
     rp = Path(a.path).resolve()
     try:
         rel = rp.relative_to(root.resolve())
@@ -1244,13 +1597,18 @@ def parity_v2(a, rec):
         "run_ids": {arm: st.get("run_id") for arm, st in stamps.items()}, "inputs": inputs}, indent=2) + "\n")
     cp = Path(a.path).with_suffix(".check.json")
     check = read_json(cp)
-    if check and str(check.get("label", "")).startswith("counted") and not changed_inputs(check.get("inputs"), inputs):
-        new = (PENDING if problems else "counted") + (DET_LABEL if check["label"].endswith(DET_LABEL) else "")
-        if check["label"] != new and check.get("verdict_sha256") == verdict_sha(check):
-            check["label"] = new
+    if check and check_gate_passed(check) and not changed_inputs(check.get("inputs"), inputs) \
+            and check.get("verdict_sha256") == verdict_sha(check):
+        new = {"counted": not problems, "pending_parity": bool(problems)}
+        if "label" in check:      # a check.json written before the boolean: rewritten in the new form
+            det = declared_deterministic(rec) if DET_LABEL in check["label"] else None
+            check = {k: v for k, v in check.items() if k != "label"}
+            check["deterministic"] = det
+        if any(check.get(k) != v for k, v in new.items()) or "verdict_sha256" not in check:
+            check.update(new)
             check["verdict_sha256"] = verdict_sha(check)
             cp.write_text(json.dumps(check, indent=2) + "\n")
-            print(f"check label now: {new} ({cp})")
+            print(f"check now: {counted_line(check)} ({cp})")
     sys.exit(1 if problems else 0)
 
 
@@ -1258,7 +1616,15 @@ def parity_path(path):
     return Path(path).with_suffix(".parity.json")
 
 
-PENDING = "counted, pending parity"
+PENDING = "counted, pending parity"      # the label an older check.json gave a run that passed all but parity
+
+
+def check_gate_passed(check):
+    """Whether check.json says the counted gate passed (parity aside): its counted or pending_parity boolean, or,
+    in a file written before the boolean, a label starting "counted"."""
+    if isinstance(check.get("counted"), bool):
+        return check["counted"] or bool(check.get("pending_parity"))
+    return str(check.get("label", "")).startswith("counted")
 CLOSE_FIELDS = ("observed", "closed", "status")      # what `close` writes into the record after check and parity
 
 
@@ -1323,9 +1689,11 @@ def judged_inputs(rec, root):
 
 
 def verdict_sha(check):
-    """Hash of check.json's verdict: its label and line refusals with the judged-file hashes. quote and close
-    recompute it, so a hand-edited label or refusal list is refused. Not forgery-proof: anyone can recompute it."""
-    keep = {k: check.get(k) for k in ("label", "line_refusals", "inputs")}
+    """Hash of check.json's verdict: counted (or, in a file written before the boolean, its label) and line refusals
+    with the judged-file hashes. quote and close recompute it, so a hand-edited verdict or refusal list is refused.
+    Not forgery-proof: anyone can recompute it."""
+    keys = ("label",) if "label" in check else ("counted", "pending_parity", "deterministic")
+    keep = {k: check.get(k) for k in keys + ("line_refusals", "inputs")}
     return hashlib.sha256(json.dumps(keep, sort_keys=True).encode()).hexdigest()
 
 
@@ -1366,39 +1734,39 @@ def parity_problem(path, rec, root, inputs):
 
 
 def result_gate(path, rec, root):
-    """(refusals, label now). A schema-2 record, counted or exploratory, is quoted or closed only while check.json is
-    on file, hashes the files as they are now, carries its own verdict hash, and records no violated line; and, if it
-    says counted, a passing parity.json is current too. The label is "counted" only when all of that holds; else
-    "exploratory". An unmet counted gate alone (power, pilots, floors) leaves a quotable exploratory result."""
+    """(refusals, counted now). A schema-2 record, counted or not, is quoted or closed only while check.json is on
+    file, hashes the files as they are now, carries its own verdict hash, and records no violated line; and, if its
+    counted gate passed, a passing parity.json is current too. Counted is true only when all of that holds. An unmet
+    counted gate alone (power, pilots, floors) leaves a quotable result that is not counted."""
     cp = Path(path).with_suffix(".check.json")
     check = read_json(cp)
-    claimed = any((load_stamp(root / spec["out"]) or {}).get("label") == "counted" for spec in rec["arms"].values())
+    claimed = any(stamp_counted(load_stamp(root / spec["out"])) for spec in rec["arms"].values())
     inputs = judged_inputs(rec, root)
     if check is None:
         return [(f"line 13: {path} has arms stamped counted but no check result on file ({cp}); "
                  f"run `prereg.py check {path}`, then `prereg.py parity {path}`") if claimed else
                 (f"no check result on file for {path} ({cp}): run `prereg.py check {path}`; its numbers are quoted "
-                 f"or closed only after check refuses no line")], "exploratory"
+                 f"or closed only after check refuses no line")], False
     probs = []
     diff = changed_inputs(check.get("inputs"), inputs)
     if diff:
         probs.append(f"{cp} is stale: {stale_why(check, diff)} since check ran; rerun `prereg.py check {path}` "
                      f"and `prereg.py parity {path}`")
     if check.get("verdict_sha256") != verdict_sha(check):
-        probs.append(f"{cp}: its verdict (label, line refusals, file hashes) does not match its verdict hash: the file "
+        probs.append(f"{cp}: its verdict (counted, line refusals, file hashes) does not match its verdict hash: the file "
                      f"was edited by hand or written by an older prereg.py; rerun `prereg.py check {path}`")
     lines = check.get("line_refusals")
     if lines:
         probs += [f"check refused this line, so nothing from {path} is quoted or closed until it is fixed and "
                   f"`prereg.py check {path}` passes it: {p}" for p in lines]
-    label = str(check.get("label", ""))
-    if label.startswith("counted"):
+    passed = check_gate_passed(check)
+    if passed:
         if rec.get("status") == "abandoned":
-            probs.append(f"{path} is abandoned but {cp} says {label}; rerun `prereg.py check {path}`")
+            probs.append(f"{path} is abandoned but {cp} says counted; rerun `prereg.py check {path}`")
         p = parity_problem(path, rec, root, inputs)
         if p:
             probs.append(p)
-    return probs, ("counted" if label.startswith("counted") and not probs else "exploratory")
+    return probs, passed and not probs
 
 
 def cmd_parity(a):
@@ -1415,7 +1783,7 @@ def cmd_close(a):
     if frozen_part(rec) != rec["opened"]["frozen_sha256"]:
         die("a frozen field changed after open; restore it or write a new record")
     root, probs, observed = rec_root(a.path), [], {}
-    gate, _ = result_gate(a.path, rec, root)
+    gate, counted = result_gate(a.path, rec, root)
     if gate:
         finish(gate)
     for arm, spec in rec["arms"].items():
@@ -1429,6 +1797,11 @@ def cmd_close(a):
     if rec["status"] not in ("exploratory", "abandoned"):      # an abandoned record stays abandoned
         rec["status"] = "closed"
     save(a.path, rec)
+    run_ids = [(load_stamp(root / spec["out"]) or {}).get("run_id") for spec in rec["arms"].values()]
+    append_ledger(root, {"kind": "close", "utc": rec["closed"]["utc"], "record": repo_rel(a.path, root),
+                         "question": rec.get("question"), "run_ids": [r for r in run_ids if r], "counted": counted,
+                         "result": "; ".join(f"{arm} n {o['n']} mean {fmt(o['mean'])}" for arm, o in observed.items())
+                                   + (f" ({a.note})" if a.note else "")})
     print(f"closed {a.path}; `check` holds the lines, and a fresh agent signs off any number that leaves your hands.")
 
 
@@ -1464,27 +1837,27 @@ def id_pattern(ids):
     return re.compile(rf"(?<![\w-])(?<!\w\.)(?:{alts})(?![\w-])(?!\.\w)") if ids else None
 
 
-COUNTED_WORD = re.compile(r"\bcounted\b", re.IGNORECASE)
+COUNTED_WORD = re.compile(r"(?<![Nn]ot )\bcounted\b", re.IGNORECASE)      # "not counted" is always allowed
 
 
 def cmd_quote(a):
-    ids, gate, labels, old = set(), [], [], False
+    ids, gate, counted, old = set(), [], [], False
     for src in a.sources:
         p = Path(src)
         if p.is_dir():
             ids |= stamp_ids(p)
-            labels.append("exploratory")
-            if (load_stamp(p) or {}).get("label") == "counted":
+            counted.append(False)
+            if stamp_counted(load_stamp(p)):
                 gate.append(f"{src} carries a counted stamp: quote it through its record (`prereg.py quote {a.report} "
-                            f"<record>`), which requires a current check and parity; a run folder alone is exploratory")
+                            f"<record>`), which requires a current check and parity; a run folder alone is not counted")
             continue
         rec, root = load(p), rec_root(p)
         if rec.get("schema") == 2:
-            g, label = result_gate(src, rec, root)
+            g, c = result_gate(src, rec, root)
             gate += g
-            labels.append(label)
+            counted.append(c)
         else:
-            old = True      # an old record is quoted exactly as before: no label to compare the word with
+            old = True      # an old record is quoted exactly as before: no verdict to compare the word with
         for spec in (rec.get("arms") or {}).values():
             ids |= stamp_ids(root / spec["out"])
         for f in list((rec.get("pilot") or {}).get("runs") or []) + list((rec.get("floors") or {}).get("runs") or []):
@@ -1498,11 +1871,11 @@ def cmd_quote(a):
     bad = [(k, l) for k, l in enumerate(text, 1) if NUMBER.search(l) and not (pat and pat.search(l))]
     for k, l in bad:
         print(f"refused: line 10: {a.report}:{k} quotes a number with no run id: {l.strip()}", file=sys.stderr)
-    if not old and any(lab != "counted" for lab in labels):
+    if not old and not all(counted):
         for k, l in enumerate(text, 1):
             if COUNTED_WORD.search(l):
-                gate.append(f"{a.report}:{k} says counted, but the label is exploratory ({', '.join(a.sources)}): "
-                            f"call the result exploratory, or earn counted (check passes, then parity): {l.strip()}")
+                gate.append(f"{a.report}:{k} says counted, but the run is not counted ({', '.join(a.sources)}): "
+                            f"say it is not counted, or earn counted (check passes, then parity): {l.strip()}")
     for g in gate:
         print(f"refused: {g}", file=sys.stderr)
     if not bad:
@@ -1548,17 +1921,13 @@ def cmd_induct(a):
     print(f"inducted {a.path} -> {out}; the record itself is unchanged")
 
 
-def main(argv=None):
-    os.environ["GIT_OPTIONAL_LOCKS"] = "0"      # read-only git calls never rewrite the user's index
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("new", "open", "parity", "induct"):
-        sub.add_parser(name).add_argument("path")
-    s = sub.add_parser("stamp")
-    s.add_argument("out_dir")
+def stamp_args(s):
+    s.add_argument("out_dir", help="the run folder; with --arms, the parent of one folder per arm")
     s.add_argument("--record", help="the opened schema-2 record this run belongs to")
     s.add_argument("--arm", help="which of the record's arms this run is")
-    s.add_argument("--counted", action="store_true", help="claim the label counted (refused unless lines 6 and 7 hold)")
+    s.add_argument("--arms", help="comma-separated arms one command writes, each into OUT/<arm>; names starting "
+                                  "\"floor\" are stamped as plain runs")
+    s.add_argument("--counted", action="store_true", help="claim counted (refused unless lines 6 and 7 hold)")
     s.add_argument("--run-id", help="the tracker's run id (MLflow, W&B, Inspect log); default: folder name + time")
     s.add_argument("--config", help="the effective configuration file (JSON is stored whole)")
     s.add_argument("--model"); s.add_argument("--model-revision"); s.add_argument("--tokenizer-revision")
@@ -1566,8 +1935,23 @@ def main(argv=None):
     s.add_argument("--data", action="append", help="a data file read by the run (repeatable)")
     s.add_argument("--seed", action="append", help="a seed (repeatable)")
     s.add_argument("--image", help="image digest; else the running interpreter's package list is recorded")
+
+
+def main(argv=None):
+    os.environ["GIT_OPTIONAL_LOCKS"] = "0"      # read-only git calls never rewrite the user's index
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    for name in ("new", "open", "parity", "induct"):
+        sub.add_parser(name).add_argument("path")
+    for name in ("stamp", "run"):
+        stamp_args(sub.add_parser(name))
+    n = sub.add_parser("note")
+    n.add_argument("run_id"); n.add_argument("finding")
+    n.add_argument("--changes", help="what the finding changed: a decision, a plan, a later run")
+    b = sub.add_parser("backfill")
+    b.add_argument("dir")
     c = sub.add_parser("check")
-    c.add_argument("sources", nargs="+", help="a schema-2 record, or one or more run folders (exploratory)")
+    c.add_argument("sources", nargs="+", help="a schema-2 record, or one or more run folders (never counted)")
     c = sub.add_parser("close")
     c.add_argument("path")
     c.add_argument("--note")
@@ -1576,17 +1960,19 @@ def main(argv=None):
     q = sub.add_parser("quote")
     q.add_argument("report"); q.add_argument("sources", nargs="+")
     l = sub.add_parser("ls")
-    l.add_argument("dir", nargs="?", default="prereg")
+    l.add_argument("query", nargs="?", help="a search string over runs.jsonl; or a directory of records (as before)")
+    l.add_argument("--limit", type=int, default=30)
     argv = list(sys.argv[1:] if argv is None else argv)
     launch = []
-    if argv[:1] == ["stamp"] and "--" in argv:      # everything after -- is the launch command, options included
+    if argv[:1] in (["stamp"], ["run"]) and "--" in argv:      # everything after -- is the launch command, options included
         k = argv.index("--")
         argv, launch = argv[:k], argv[k + 1:]
     a = ap.parse_args(argv)
     a.argv = launch
     try:
         {"new": cmd_new, "open": cmd_open, "stamp": cmd_stamp, "parity": cmd_parity, "close": cmd_close, "ls": cmd_ls,
-         "check": cmd_check, "ledger": cmd_ledger, "quote": cmd_quote, "induct": cmd_induct}[a.cmd](a)
+         "check": cmd_check, "ledger": cmd_ledger, "quote": cmd_quote, "induct": cmd_induct, "run": cmd_run,
+         "note": cmd_note, "backfill": cmd_backfill}[a.cmd](a)
     except subprocess.CalledProcessError as e:      # an unexpected git failure: one line with git's own message
         cmd = e.cmd if isinstance(e.cmd, (list, tuple)) else [str(e.cmd)]
         msg = [l.strip() for l in (e.stderr or e.stdout or "").splitlines() if l.strip() and not l.startswith("hint:")]
