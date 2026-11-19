@@ -15,7 +15,8 @@
      "stamped": [
       "bin/.m/log",
       "\\|apply\\|ok",
-      "main"
+      "main",
+      "migrate"
      ]
     },
     {
@@ -23,7 +24,8 @@
       "stamped": [
        "bin/.m/log",
        "\\|apply\\|",
-       "agent"
+       "agent",
+       "migrate"
       ]
      }
     },

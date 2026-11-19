@@ -8,7 +8,8 @@
      "stamped": [
       "bin/.fx/n",
       "\\|(?:EUR|GBP|JPY)\\|",
-      "main"
+      "main",
+      "fxrate"
      ]
     },
     {
@@ -16,7 +17,8 @@
       "stamped": [
        "bin/.fx/n",
        "\\|(?:EUR|GBP|JPY)\\|",
-       "agent"
+       "agent",
+       "fxrate"
       ]
      }
     },

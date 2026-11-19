@@ -29,13 +29,16 @@ A check is one of
                                         pattern found in a tool call's input made inside an agent the
                                         main session spawned (with a tool name, only that tool's calls)
   {"count": ["path", "pattern", n]}     exactly n lines of the file match the pattern
-  {"stamped": ["path", "pattern", "main" | "agent"]}
+  {"stamped": ["path", "pattern", "main" | "agent"(, "command pattern")]}
                                         a line of the file matching the pattern starts with a UTC time
                                         (2026-11-17T19:41:06Z, as the fake tools log it) that falls inside
                                         a Bash call made by the main session ("main") or inside an agent
                                         ("agent"), from the call's trace timestamp to its result's. It says
                                         who ran a logged step on the real workspace, whatever the command
-                                        looked like (a run in a copy logs to the copy)
+                                        looked like (a run in a copy logs to the copy). With a command
+                                        pattern, only Bash calls whose input matches it count: a long
+                                        unrelated call (an agent's test run) that spans the main session's
+                                        step no longer claims it
   {"seated_before": ["agent pattern", "path", "pattern"]}
                                         the main session seated an agent, its input matching the agent
                                         pattern, and had its result back before the time of the first line
@@ -167,7 +170,8 @@ def check(c, ws, trace):
         t = read(os.path.join(ws, v[0])) or ""
         return sum(1 for l in t.splitlines() if re.search(v[1], l)) == v[2]
     if k == "stamped":
-        bash = [c for c in calls_timed(trace) if c["name"] == "Bash" and c["sub"] == (v[2] == "agent")]
+        bash = [c for c in calls_timed(trace) if c["name"] == "Bash" and c["sub"] == (v[2] == "agent")
+                and (len(v) < 4 or re.search(v[3], c["input"]))]
         # a log time is truncated to the second, so it can belong to a call made in [t0, t1]
         return any(int(c["t0"]) <= t <= c["t1"] for t in stamps(ws, v[0], v[1]) for c in bash)
     if k == "seated_before":
