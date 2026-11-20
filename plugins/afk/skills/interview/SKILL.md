@@ -33,7 +33,7 @@ A permission is secured when the harness no longer prompts for it, not when the 
 
 ## Fresh builder, then freeze
 
-Write the draft as `brief.md` in the run folder, `${CLAUDE_PLUGIN_DATA}/runs/<date>-<slug>/` unless the user keeps runs elsewhere, and cite it by absolute path: other agents cannot expand the variable. Beside it keep `rulings.md`: every user sentence that caps, grants or decides, verbatim and dated, appended as it comes and never rewritten or re-dated.
+Write the draft as `brief.md` in the run folder, `${CLAUDE_PLUGIN_DATA}/runs/<date>-<slug>/` unless the user keeps runs elsewhere, and cite it by absolute path: other agents cannot expand the variable. Beside it keep `rulings.md`: every user sentence that caps, grants or decides, verbatim and dated, recorded as it comes with `afk-ruling <rulings.md> "<topic>" "<their words>" [--proposal "<yours>"]` (on PATH from this plugin). It only appends; the file is never written any other way.
 
 With the cap asked for, seat one fresh agent on the model you would hand this build to as the builder of test 3, given the draft and nothing from this conversation. It red-teams the draft by planning from it alone: it runs what can be run (the bar's checking command, the commands and paths its plan would hit) and returns its questions and every permission its plan needs. Keep its reply as `brief.builder.md`. Before the freeze, everything it leaves open goes to the user in one more batch: questions with your proposed answers where a wrong guess changes what gets built or the user's word is needed, the rest as recommendations they can accept in a word. Anything that turns up after that is another batch, not an assumption.
 
