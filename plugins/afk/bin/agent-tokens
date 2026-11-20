@@ -3,7 +3,7 @@
 
 usage: agent-tokens [<subagents dir>] [--agent <id> | --match <text>] [--json]
   <subagents dir>  a session's subagents folder, holding agent-<id>.jsonl and agent-<id>.meta.json.
-                   Default: the most recently written one under ~/.claude/projects.
+                   Default: the most recently written one under $CLAUDE_CONFIG_DIR/projects or ~/.claude/projects.
   --agent <id>     report this agent and its descendants.
   --match <text>   find the agent whose description, or the start of whose first prompt, contains <text>
                    (case does not matter). An agent can find itself by quoting its own task.
@@ -65,7 +65,9 @@ def main(argv):
         elif a in ('-h', '--help'): print(__doc__); return 0
         else: d = a
     if not d:
-        dirs = glob.glob(os.path.expanduser('~/.claude/projects/*/*/subagents'))
+        roots = [os.environ['CLAUDE_CONFIG_DIR']] if os.environ.get('CLAUDE_CONFIG_DIR') else []
+        roots.append(os.path.expanduser('~/.claude'))
+        dirs = [d for r in roots for d in glob.glob(os.path.join(r, 'projects/*/*/subagents'))]
         if not dirs: sys.exit('no subagents folder found; pass one')
         d = max(dirs, key=os.path.getmtime)
     meta = {}
