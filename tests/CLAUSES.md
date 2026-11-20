@@ -257,3 +257,8 @@ Checked at the November 2026 prune, against the `go` text that has no plan docum
 
 - The owner deleted the no-cap sentence from `go` ("In v0.1, with no cap, behavior is undefined. A brief contains a budget by strong typing rules."). B1 is retired and its two cases removed; the earlier sections about them are history.
 - `afk:interview` now refuses to freeze a brief with no cap in the user's words. `brief-p-waveoff-no-cap` changed to match: its verdict (the proposed amount is not recorded as the user's cap) stands, and `no-more-questions` is replaced by `not-frozen-without-cap`. The twin (a cap was typed) is unchanged.
+
+### 2026-11-19 release check (Sonnet, plugin text d79fd4a)
+
+- `brief-g-blanket-cap`, `brief-g-blanket-push` and `brief-p-waveoff-no-cap` verdict graders: the negation list also accepts "not an exact" and "does (not|n't) count". A run that wrote `"approved all" (answering a batch whose budget line was "a reasonable budget", which is not an exact cap; so it does not count as the cap)` failed the old grader. Red and green: that run fails old and passes new; a planted line recording "approved all" as the cap still fails; all other kept runs of the three cases pass both (commit 3d2b6d5).
+- No case's fixture or grader assumes a brief frozen without a cap: every case that expects a freeze has the cap typed by the user in its history.
