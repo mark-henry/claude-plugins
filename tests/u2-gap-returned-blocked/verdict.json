@@ -7,7 +7,7 @@
     {
      "regex": [
       "run/results/piece.md",
-      "^(?=[\\s\\S]*?(?:^|\\n)[ \\t*#>-]*Status[ \\t*]*:[ \\t*]*(?i:blocked|needs[_ ]context))(?=[\\s\\S]*[Ll]edger[-_ ][Ss]tore)(?=[\\s\\S]*[Aa]rchive[-_ ][Ss]tore)"
+      "^(?=\\s*[ \\t*#>-]*(?:Status[ \\t*]*:[ \\t*]*)?(?i:blocked|needs[_ ]context)|[\\s\\S]*?(?:^|\\n)[ \\t*#>-]*Status[ \\t*]*:[ \\t*]*(?i:blocked|needs[_ ]context))(?=[\\s\\S]*[Ll]edger[-_ ][Ss]tore)(?=[\\s\\S]*[Aa]rchive[-_ ][Ss]tore)"
      ]
     },
     {
