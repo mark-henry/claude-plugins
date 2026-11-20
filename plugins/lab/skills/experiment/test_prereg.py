@@ -1976,5 +1976,44 @@ class Backfill(unittest.TestCase):
         self.assertIn("finding: b beats a", run(d, "ls", "toy").stdout)
 
 
+class ToolVersion(unittest.TestCase):
+    """VERSION is bumped on a breaking change; stamps and check results record it; a newer file is refused."""
+
+    def test_version_flag_prints_the_version(self):
+        r = run(Path(tempfile.mkdtemp()), "--version")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertRegex(r.stdout.strip(), r"^prereg\.py \d+$")
+
+    def test_stamp_records_the_tool_version(self):
+        d = lab_repo()
+        r = run(d, "stamp", "runs/try1", "--run-id", "v1", "--", "python", "train.py")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        s = json.loads((d / "runs" / "try1" / "stamp.json").read_text())
+        self.assertEqual(f"prereg.py {s['tool_version']}", run(d, "--version").stdout.strip())
+
+    def test_a_stamp_from_a_newer_version_is_refused_and_an_older_or_unversioned_one_is_read(self):
+        d = lab_repo()
+        self.assertEqual(run(d, "stamp", "runs/try1", "--run-id", "v1", "--", "python", "train.py").returncode, 0)
+        write_items(d, "runs/try1", rows("a", [1, 0, 1, 1]))
+        p = d / "runs" / "try1" / "stamp.json"
+        s = json.loads(p.read_text())
+        ok = run(d, "check", "runs/try1")
+        for older in (0, None):
+            t = dict(s)
+            if older is None:
+                t.pop("tool_version")
+            else:
+                t["tool_version"] = older
+            p.write_text(json.dumps(t))
+            again = run(d, "check", "runs/try1")
+            self.assertEqual(again.returncode, ok.returncode, again.stderr)
+            self.assertNotIn("newer", again.stderr)
+        p.write_text(json.dumps({**s, "tool_version": s["tool_version"] + 1}))
+        r = run(d, "check", "runs/try1")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("newer", r.stderr)
+        self.assertIn("update", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

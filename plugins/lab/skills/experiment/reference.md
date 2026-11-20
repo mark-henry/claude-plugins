@@ -35,3 +35,4 @@ One JSON object per line at the repository root, append-only (one `O_APPEND` wri
 ## Old records and other inputs
 
 An old record (no `schema`) still works with `close`, `ls <dir>` and `parity`; `prereg.py induct <record>` checks what can be checked after the fact and marks the rest "not established". List inputs outside the repository in `lab-inputs.md` at its root; `stamp` records its hash.
+\n\n`prereg.py --version` prints the tool version, a whole number bumped only when a change is breaking (an older script would misread what the new one writes). Stamps, opened records and check results record it as `tool_version`; the script refuses a file written by a newer version and reads older or unversioned ones as before.\n

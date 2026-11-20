@@ -23,7 +23,8 @@ fix, naming the line of the skill it enforces. Records without "schema" (made be
 by close, ls and parity, and hashed exactly as before. A run is counted or it is not: stamps and check results carry
 a boolean `counted`; ones written before it carry a `label` string and are read as before. stamp, run and close
 append one line each to runs.jsonl at the repository root (the run ledger: append-only, one write per line). The
-skill's SKILL.md says when each command runs.
+skill's SKILL.md says when each command runs. `prereg.py --version` prints VERSION, bumped only on a breaking change;
+stamps, opened records and check results carry it as `tool_version`, and a file from a newer version is refused.
 
 A run folder holds stamp.json (written by `stamp` at launch) and items.jsonl (written by the harness): one JSON
 object per line with id, arm, unit, score (number or null) and status (ok, error, empty, truncated, parse_failure).
@@ -108,8 +109,17 @@ def frozen_part(rec):
     return hashlib.sha256(json.dumps(keep, sort_keys=True).encode()).hexdigest()[:16]
 
 
+VERSION = 1      # bump on a BREAKING change (a stamp, record or check result an older prereg.py would misread)
+
+
 def load(path):
-    return json.loads(Path(path).read_text())
+    d = json.loads(Path(path).read_text())
+    made = max(d.get("tool_version") or 0, (d.get("opened") or {}).get("tool_version") or 0) if isinstance(d, dict) else 0
+    if made > VERSION:
+        print(f"refused: {path} was written by a newer prereg.py (version {made}; this is {VERSION}): update the lab "
+              f"plugin", file=sys.stderr)
+        sys.exit(1)
+    return d
 
 
 def save(path, rec):
@@ -1138,7 +1148,7 @@ def cmd_open(a):
         dp = Path(a.path).with_suffix(".diff")
         dp.write_text(diff)
         state["diff_file"] = dp.name
-    rec["opened"] = {"utc": now(), "host": socket.gethostname(), "frozen_sha256": frozen_part(rec),
+    rec["opened"] = {"utc": now(), "host": socket.gethostname(), "tool_version": VERSION, "frozen_sha256": frozen_part(rec),
                      "line6_sha256": line6_part(rec) or NA, **state}
     rec["status"] = "exploratory" if exploratory else "open"
     save(a.path, rec)
@@ -1311,7 +1321,7 @@ def do_stamp(a):
     for folder, arm, under in plan:
         run_id = f"{launch_id}-{arm}" if a.arms else launch_id
         counted = bool(a.counted and under)
-        stamp = {"schema": 2, "run_id": run_id, "tracker_run_id": a.run_id or NA, "launch_id": launch_id, "utc": now(),
+        stamp = {"schema": 2, "tool_version": VERSION, "run_id": run_id, "tracker_run_id": a.run_id or NA, "launch_id": launch_id, "utc": now(),
                  "host": socket.gethostname(), "argv": argv, "arm": arm or NA, "counted": counted,
                  "record": rec_info if under else NA,
                  "record_repo_path": repo_rel(a.record, rec_root(a.record)) if under else NA,
@@ -1414,7 +1424,7 @@ def check_record(path):
                 probs.append(f"line 2: {folder}/items.jsonl names arm {r['arm']!r}, neither a record arm nor floor:<name>")
                 continue
             by_arm.setdefault(r["arm"], []).append(r)
-    result = {"utc": now(), "record_frozen_sha256": rec["opened"]["frozen_sha256"]}
+    result = {"utc": now(), "tool_version": VERSION, "record_frozen_sha256": rec["opened"]["frozen_sha256"]}
     result["line2"] = line2(by_arm, arms, rec.get("intended_n"), rec.get("failure_threshold") or {}, probs)
     if scorer_declared(rec):
         res, p3 = run_scorer(rec["scorer"], root)
@@ -1940,6 +1950,7 @@ def stamp_args(s):
 def main(argv=None):
     os.environ["GIT_OPTIONAL_LOCKS"] = "0"      # read-only git calls never rewrite the user's index
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--version", action="version", version=f"prereg.py {VERSION}")
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("new", "open", "parity", "induct"):
         sub.add_parser(name).add_argument("path")
