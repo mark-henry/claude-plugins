@@ -1,8 +1,8 @@
 ---
-# The exact cap (6%) is recorded with the user's "approved all" on one line of any file the run wrote (rulings.md or brief.md).
+# The exact cap (6%) is recorded with the user's "approved all" on one line of any file the run wrote (rulings.md or brief.md), or as an indented list item under the line that carries "approved all".
 type: regex
 target: trace
-pattern: '"name":"(?:Write|Edit|MultiEdit|Bash)","input":\{[^\n]*?(?:6 ?%(?:(?!\\n)[^\n])*approved all|approved all(?:(?!\\n)[^\n])*6 ?%)'
+pattern: '"name":"(?:Write|Edit|MultiEdit|Bash)","input":\{[^\n]*?(?:6 ?%(?:(?!\\n)[^\n])*approved all|approved all(?:(?!\\n)[^\n])*6 ?%|approved all(?:(?!\\n)[^\n])*(?:\\n[ \t]+(?:[-*]|\d+[.)])(?:(?!\\n)[^\n])*)*?\\n[ \t]+(?:[-*]|\d+[.)])(?:(?!\\n)[^\n])*6 ?%)'
 flags: i
 weight: 3
 ---
