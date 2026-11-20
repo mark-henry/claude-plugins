@@ -5,4 +5,4 @@ runs: 1
 allowed_tools: [Read, Glob, Grep, Skill, Agent, TodoWrite]
 ---
 
-1 yes. 2 yes. 4 yes, a cap of 5% of this week's quota is fine. For 3, see the notes file in the repo. That is everything from me, so write the brief and show it whole.
+1 yes. 2 yes. 4 yes, a cap of 500k effective tokens is fine. For 3, see the notes file in the repo. That is everything from me, so write the brief and show it whole.

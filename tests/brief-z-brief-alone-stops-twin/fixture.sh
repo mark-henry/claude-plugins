@@ -34,17 +34,17 @@ EOF
 cat > run/2026-11-12-word-counter/rulings.md <<'EOF'
 # Rulings: word counter, 2026-11-12
 
-- Goal: `count_words(text)` in `./wordcount.py` takes a string and returns the number of words in it as an int: user "yes to 1 and 2", 2026-11-12
-- Purpose: a small notes tool will call it to show a word count under each note: user "yes to 1 and 2", 2026-11-12
-- Out of scope, must not change: no command line, no file reading, no other module: user "yes to 1 and 2. for 3 also don't touch test_wordcount.py, it's mine", 2026-11-12
-- Fails even if it passes: special-casing the test strings, or any edit to `test_wordcount.py`: user "yes to 1", 2026-11-12
-- Simpler route: use `len(text.split())` but skip tokens with no letter or digit in them: user "for 2 use split but ignore tokens with no letter or digit", 2026-11-12
-- Cap: user "cap: approved up to 3% of this week's quota", 2026-11-12
-- Permissions: read and edit `./wordcount.py` only, run `python -m unittest` if a shell is available; nothing posted, pushed, deleted, installed or sent: user "yes to both", 2026-11-12
-- Stop rule: after three honest failed attempts, stop and report which cases fail and why; never edit the test file: user "yes to both", 2026-11-12
-- Would change their mind: user "1 yes, if the notes tool already counts words I'd drop this.", 2026-11-12
-- Grants: user "2 right, no grants.", 2026-11-12
-- Raised eyebrow, answered: user "keep it as is. the notes tool has no word count, I checked. my notes are all English, so text without spaces is out of scope.", 2026-11-12
+- 2026-11-12 20:06, goal. My proposal: `count_words(text)` in `./wordcount.py` takes a string and returns the number of words in it as an int: user "yes to 1 and 2"
+- 2026-11-12 20:06, purpose. My proposal: a small notes tool will call it to show a word count under each note: user "yes to 1 and 2"
+- 2026-11-12 20:06, out of scope, must not change. My proposal: no command line, no file reading, no other module: user "yes to 1 and 2. for 3 also don't touch test_wordcount.py, it's mine"
+- 2026-11-12 20:06, fails even if it passes. My proposal: special-casing the test strings, or any edit to `test_wordcount.py`: user "yes to 1"
+- 2026-11-12 20:10, simpler route. My proposal: use `len(text.split())` but skip tokens with no letter or digit in them: user "for 2 use split but ignore tokens with no letter or digit"
+- 2026-11-12 20:10, cap: user "cap: approved up to 300k effective tokens"
+- 2026-11-12 20:14, permissions. My proposal: read and edit `./wordcount.py` only, run `python -m unittest` if a shell is available; nothing posted, pushed, deleted, installed or sent: user "yes to both"
+- 2026-11-12 20:14, stop rule. My proposal: after three honest failed attempts, stop and report which cases fail and why; never edit the test file: user "yes to both"
+- 2026-11-12 20:18, would change their mind: user "1 yes, if the notes tool already counts words I'd drop this."
+- 2026-11-12 20:18, grants: user "2 right, no grants."
+- 2026-11-12 20:22, raised eyebrow, answered: user "keep it as is. the notes tool has no word count, I checked. my notes are all English, so text without spaces is out of scope."
 EOF
 cat > run/2026-11-12-word-counter/brief.md <<'EOF'
 ## Draft brief (not frozen)
@@ -57,7 +57,7 @@ Drafted 2026-11-12 20:23, ./run/2026-11-12-word-counter/brief.md    Builder: ./r
 - **Out of scope, must not change:** no command line, no file reading, no other module: user "yes to 1 and 2. for 3 also don't touch test_wordcount.py, it's mine" (2026-11-12)
 - **Fails even if it passes the bar:** special-casing the test strings, or any edit to test_wordcount.py: user "yes to 1" (2026-11-12)
 - **Would change their mind:** "1 yes, if the notes tool already counts words I'd drop this." (2026-11-12)
-- **Cap:** "cap: approved up to 3% of this week's quota" (2026-11-12)
+- **Cap:** "cap: approved up to 300k effective tokens" (2026-11-12)
 - **Grants:** "2 right, no grants." (2026-11-12)
 
 ### Settled with the user
@@ -66,7 +66,7 @@ Drafted 2026-11-12 20:23, ./run/2026-11-12-word-counter/brief.md    Builder: ./r
 - **Requirements:** firm: use `len(text.split())` but skip tokens with no letter or digit: user "for 2 use split but ignore tokens with no letter or digit"; firm: English only: user "my notes are all English, so text without spaces is out of scope."
 - **Stop rules:** three honest failed attempts: stop and report; never edit test_wordcount.py
 - **Named things:** ./wordcount.py, ./test_wordcount.py, `str.split`; no substitute: stop
-- **Budget:** about 1% of this week's quota, a guess, no record; cap 3% of this week's quota; nothing to cut first, the job is one function
+- **Budget:** about 100k effective tokens, a guess, no record; cap 300k effective tokens; nothing to cut first, the job is one function
 - **Permissions:** read and edit ./wordcount.py only; run `python -m unittest` in the workspace; stall to expect: a prompt for the test command if the shell is not allowed, in which case the run says the tests were not run
 - **Context facts:** ./wordcount.py is a stub that raises NotImplementedError; ./test_wordcount.py holds five tests
 - **Raised eyebrow:** a fresh agent on the strongest model: the method is standard; the trap is text with no spaces between words; the likeliest reason it is unnecessary is a count the notes tool already shows. The search for the case against found nothing against the method, and the notes tool's code is not here. User: "keep it as is. the notes tool has no word count, I checked. my notes are all English, so text without spaces is out of scope."

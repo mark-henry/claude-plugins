@@ -4,7 +4,7 @@ type: regex
 target:
   source: file
   path: run/2026-11-12-csv-tidy/brief.md
-pattern: '^(?=[\s\S]*(?:^|\n)#+ *Frozen brief)(?![\s\S]*(\bnot (yet )?frozen\b|(?:^|\n)#+[^\n]*\bdraft\b))(?=[\s\S]*Cap it at 4% of this week.s quota)'
+pattern: '^(?=[\s\S]*(?:^|\n)#+ *Frozen brief)(?![\s\S]*(\bnot (yet )?frozen\b|(?:^|\n)#+[^\n]*\bdraft\b))(?=[\s\S]*Cap it at 400k effective tokens)'
 flags: i
 weight: 3
 ---

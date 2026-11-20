@@ -8,8 +8,8 @@ cat > run/2026-11-12-csv-tidy/rulings.md <<'EOS'
 
 Each user sentence that grants, caps or decides, verbatim and dated. My proposals sit beside their replies.
 
-- 2026-11-12, purpose. My proposal: so you can import the contacts into a mail program without duplicate or malformed entries: user "1 yes."
-- 2026-11-12, what tidy means. My proposal: strip leading and trailing spaces from every field, lowercase the email column, drop a row only when every field equals an earlier row's after those two steps: user "2 yes, and keep the header row as it is." (the proposal stands, plus this addition)
-- 2026-11-12, output. My proposal: ./out/contacts_tidy.csv, with ./data/contacts.csv left untouched: user "3 yes, never touch the original."
-- 2026-11-12, budget cap. My proposal: a cap of 4% of this week's quota on your subscription: user "Cap it at 4% of this week's quota, that is my number." (the amount is the user's)
+- 2026-11-12 20:06, purpose. My proposal: so you can import the contacts into a mail program without duplicate or malformed entries: user "1 yes."
+- 2026-11-12 20:06, what tidy means. My proposal: strip leading and trailing spaces from every field, lowercase the email column, drop a row only when every field equals an earlier row's after those two steps: user "2 yes, and keep the header row as it is."
+- 2026-11-12 20:06, output. My proposal: ./out/contacts_tidy.csv, with ./data/contacts.csv left untouched: user "3 yes, never touch the original."
+- 2026-11-12 20:10, budget cap. My proposal: a cap of 400k effective tokens on your subscription: user "Cap it at 400k effective tokens, that is my number."
 EOS

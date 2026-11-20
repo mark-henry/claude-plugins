@@ -21,7 +21,7 @@ cat > run/2026-11-12-merge-exports/rulings.md <<'EOS'
 
 Each user sentence that grants, caps or decides, verbatim and dated. My proposals sit beside their replies.
 
-- 2026-11-12, purpose. My proposal: so you have one file to open instead of a folder of monthly ones: user "1 yes."
-- 2026-11-12, what a merged row is. My proposal: every data row from every monthly file, one header line at the top, sorted by the date column, oldest first: user "2 yes, and keep duplicate rows, don't drop any." (the proposal stands, plus this addition)
-- 2026-11-12, output. My proposal: ./out/merged.csv, replaced on each run: user "3 yes."
+- 2026-11-12 20:06, purpose. My proposal: so you have one file to open instead of a folder of monthly ones: user "1 yes."
+- 2026-11-12 20:06, what a merged row is. My proposal: every data row from every monthly file, one header line at the top, sorted by the date column, oldest first: user "2 yes, and keep duplicate rows, don't drop any."
+- 2026-11-12 20:06, output. My proposal: ./out/merged.csv, replaced on each run: user "3 yes."
 EOS

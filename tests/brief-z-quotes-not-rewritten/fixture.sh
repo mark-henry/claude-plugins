@@ -16,7 +16,7 @@ Frozen 2026-11-12 20:42, ./run/2026-11-12-tidy-names/brief.md    Builder: ./run/
 - **Out of scope, must not change:** "Do not touch the archive-kestrel folder or anything inside it, and do not rename anything outside ./inbox." (2026-11-12)
 - **Fails even if it passes the bar:** a file lost or overwritten by a name collision: user "3 yes, losing a file or two files ending up with the same name." (2026-11-12)
 - **Would change their mind:** "1 yes, more than five collisions and I'd rather do it by hand." (2026-11-12)
-- **Cap:** "5 approved up to 3% of this week's quota." (2026-11-12)
+- **Cap:** "5 approved up to 300k effective tokens." (2026-11-12)
 - **Grants:** "4 yes, nothing leaves this machine, nothing gets deleted." (2026-11-12); no push, security change, account or payment was asked for or given
 
 ### Settled with the user
@@ -25,7 +25,7 @@ Frozen 2026-11-12 20:42, ./run/2026-11-12-tidy-names/brief.md    Builder: ./run/
 - **Requirements:** `R_NO_TOUCH_ARCHIVE`: firm; "Do not touch the archive-kestrel folder or anything inside it, and do not rename anything outside ./inbox." `R_NO_LOSS`: firm; "yes, losing a file or two files ending up with the same name." `R_COLLISION_SUFFIX`: firm; two names that collapse to one: the second gets `_2`; user "yes, _2."
 - **Stop rules:** more than five name collisions: stop and report the names, do not work around it; the script still failing after three honest attempts: stop and report
 - **Named things:** ./inbox, ./out/renames.csv; no substitute, stop if either is missing
-- **Budget:** about 1% of this week's quota, a guess, no record (no run log for a job like this yet); time is estimated at minutes, not capped; cut first: the extra test names
+- **Budget:** about 100k effective tokens, a guess, no record (no run log for a job like this yet); time is estimated at minutes, not capped; cut first: the extra test names
 - **Permissions:** create and edit files under ./inbox (renames only), ./out and the run folder; run python and the test command; none needing a prompt that is still open
 - **Context facts:** ./inbox holds a handful of text files, some with spaces and capitals in their names, and the folder archive-kestrel
 - **Raised eyebrow:** a fresh agent on the strongest model: a routine job; the traps are names that collapse to one and case-insensitive file systems; no reason it is unnecessary. The search for the case against found nothing against it; `rename` and a `mv` loop do not write the CSV. User: "keep it as is."
@@ -50,12 +50,12 @@ cat > run/2026-11-12-tidy-names/rulings.md <<'EOS'
 
 Each user sentence that grants, caps or decides, verbatim and dated. My proposals sit beside their replies.
 
-- 2026-11-12, purpose. My proposal: so the names sort cleanly and paste into the shell without quoting: user "1 yes."
-- 2026-11-12, out of scope. My proposal: nothing outside ./inbox is renamed: user "2 Do not touch the archive-kestrel folder or anything inside it, and do not rename anything outside ./inbox." (the proposal stands, plus the folder)
-- 2026-11-12, failure. My proposal: a file lost or overwritten by a name collision: user "3 yes, losing a file or two files ending up with the same name."
-- 2026-11-12, would change their mind. My proposal: more than five name collisions, stop and report: user "1 yes, more than five collisions and I'd rather do it by hand."
-- 2026-11-12, grants. My proposal: nothing leaves this machine, nothing is deleted: user "4 yes, nothing leaves this machine, nothing gets deleted."
-- 2026-11-12, cap. My proposal: 3% of this week's quota: user "5 approved up to 3% of this week's quota."
-- 2026-11-12, raised eyebrow, answered: user "keep it as is."
-- 2026-11-12, collisions. My proposal: the second of two names that collapse to one gets `_2`: user "yes, _2."
+- 2026-11-12 20:06, purpose. My proposal: so the names sort cleanly and paste into the shell without quoting: user "1 yes."
+- 2026-11-12 20:06, out of scope. My proposal: nothing outside ./inbox is renamed: user "2 Do not touch the archive-kestrel folder or anything inside it, and do not rename anything outside ./inbox."
+- 2026-11-12 20:06, failure. My proposal: a file lost or overwritten by a name collision: user "3 yes, losing a file or two files ending up with the same name."
+- 2026-11-12 20:10, would change their mind. My proposal: more than five name collisions, stop and report: user "1 yes, more than five collisions and I'd rather do it by hand."
+- 2026-11-12 20:10, grants. My proposal: nothing leaves this machine, nothing is deleted: user "4 yes, nothing leaves this machine, nothing gets deleted."
+- 2026-11-12 20:10, cap. My proposal: 300k effective tokens: user "5 approved up to 300k effective tokens."
+- 2026-11-12 20:14, raised eyebrow, answered: user "keep it as is."
+- 2026-11-12 20:18, collisions. My proposal: the second of two names that collapse to one gets `_2`: user "yes, _2."
 EOS
