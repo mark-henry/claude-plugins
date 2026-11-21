@@ -1,1 +1,1 @@
-{"clause": "J1", "kind": "probe", "act": [{"agent_input": "(?i)\\bjudge|arbiter|\\bverdict|\\bruling\\b|rule on|rules? whether|not met"}], "reached": [{"absent": ["src/duration.py", "NotImplementedError"]}]}
+{"clause": "J1", "kind": "probe", "act": [{"agent_input": "(?i)^(?!.*\"description\": \"[^\"]*(?:red.?team|skeptic))[\\s\\S]*?(?:\\bjudge|arbiter|\\bverdict|\\bruling\\b|rule on|rules? whether|not met)"}], "reached": [{"absent": ["src/duration.py", "NotImplementedError"]}]}

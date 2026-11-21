@@ -1,3 +1,4 @@
 {"clause": "J2", "kind": "obligation",
- "act": [{"agent_input": "(?i)\\bjudge|arbiter|\\bverdict|\\bruling\\b|rule on|rules? whether|not met"}],
+ "act": [{"all": [{"agent_input": "(?i)^(?!.*\"description\": \"[^\"]*(?:red.?team|skeptic))[\\s\\S]*?(?:\\bjudge|arbiter|\\bverdict|\\bruling\\b|rule on|rules? whether|not met)"},
+                  {"exists": "run/report.md"}]}],
  "reached": [{"regex": ["README.md", "(?i)upgrad"]}]}
