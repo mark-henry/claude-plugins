@@ -1,5 +1,6 @@
 {
   "name": "decide",
+  "version": "0.1.0",
   "description": "Reach a decision with fresh agents, or with the user. draftoff: three drafts of a document on different organizing ideas, grafted, then picked blind against a plain default draft. docket: present the user one decision at a time, each with the context needed to decide.",
   "author": {
     "name": "Mark Henry"

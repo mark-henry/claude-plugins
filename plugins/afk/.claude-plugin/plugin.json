@@ -1,5 +1,6 @@
 {
   "name": "afk",
+  "version": "0.1.0",
   "description": "Do this without me, and trust the result. interview: question the user until they have decided what they want, then freeze it as a brief. eyebrow: ask who has tried this and what happened. go: carry a frozen brief to a checked result inside the approved cap. arbiter: keep the judge of done out of the worker's reach.",
   "author": {
     "name": "Mark Henry"
