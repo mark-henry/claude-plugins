@@ -76,8 +76,8 @@ t "protected, inside its last 10%: takes everything when nothing else is left" "
 
 # Per-account reserves: each target runs down to that account's reserve.
 out=$(RES="main@example.invalid=10,side@example.invalid=5" report "$(cred side 1 0.50 84)" "$(cred main 1 0.50 84)")
-t "report: a second reserve shows" "$out" "side (weight 1): keeps 5%, 50% left"
-t "report: the first reserve shows" "$out" "main (weight 1): keeps 10%, 50% left, 5 pts over pace (pace 55%)"
+t "report: a second reserve shows" "$out" "claude/side: weight 1, 50% left (pace 5"
+t "report: the first reserve shows" "$out" "-5% over pace  claude/main: weight 1, 50% left (pace 55%), keeps 10%"
 out=$(RES="main@example.invalid=10" report "$(cred side 1 0.50 84)")
 nt "report: no reserve, no note" "$out" "keeps"
 

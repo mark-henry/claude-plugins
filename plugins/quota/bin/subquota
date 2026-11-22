@@ -219,31 +219,36 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg mine "$session_auth" \
   | ($creds | map(select(.fblocked))) as $fblocked
   | ($creds | map(select(.fok))) as $fok
 
-  # Report lines
-  | ($creds[] | "L\t- \(.provider) \(.email | split("@")[0])" + (if .plan then " \(.plan)" else "" end)
-      + (if .weight != null then " (weight \(.weight))" else "" end) + ": "
-      + (if .sig == null then "no data yet"
-         elif .used == null then "format not understood"
-         else (if .provider == "codex" and .mins != 10080 then (if .mins > 0 then "\(.mins / 60 | round)h window " else "? window " end) else "" end)
-           + (if .res > 0 then "keeps \(.res)%, " else "" end)
-           + (if .passed then "reset since seen (~100%)"
-              else (.left | pct)
-                + " left"
-                + (if .target then (.left - .target | round) as $p
-                   | ", " + (if $p < 0 then "\(-$p) pts over pace" elif $p > 0 then "\($p) pts under pace" else "on pace" end)
-                     + " (pace \(.target | pct))" else "" end)
-                + (if .reset then ", \(resets)" else "" end)
-              end)
-           + ", seen \(.seen | ago)"
-         end)
-      + (if .fblocked then "; Fable blocked, back in \(until(.freset))"
-         elif .fleft != null then "; Fable \(.fleft | pct) left" else "" end)
-      + (if .excluded | index($fpat) then " (Fable reserve held: last resort only)" else "" end)
-      + (if $mine != "" and .auth_index == $mine then "  ← this session" else "" end)),
+  # Report lines: the pace verdict first (what a person scans for), then the account and its numbers
+  | def verdict: (.left - .target | round) as $p
+      | if $p > 0 then "+\($p)% headroom" elif $p < 0 then "\($p)% over pace" else "on pace" end;
+  def pad(n): . + ([range([n - length, 0] | max)] | map(" ") | join(""));
+  ($creds[] | "L\t"
+      + ((if .sig == null then "no data yet"
+          elif .used == null then "format?"
+          elif .passed then "reset"
+          elif .target then verdict
+          else "" end) | pad(15))
+      + "\(.provider)/\(who)" + (if .plan then " \(.plan)" else "" end)
+      + (if $mine != "" and .auth_index == $mine then " ← this session" else "" end)
+      + ": "
+      + ([ (if .weight != null then "weight \(.weight)" else empty end),
+           (if .sig == null or .used == null then empty
+            else (if .provider == "codex" and .mins != 10080 then (if .mins > 0 then "\(.mins / 60 | round)h window " else "? window " end) else "" end)
+              + (if .passed then "~100% left (reset since seen)"
+                 else (.left | pct) + " left" + (if .target then " (pace \(.target | pct))" else "" end) end)
+            end),
+           (if .fblocked then "Fable blocked, back in \(until(.freset))"
+            elif .fleft != null then "Fable \(.fleft | pct) left" else empty end),
+           (if .excluded | index($fpat) then "Fable reserve held: last resort only" else empty end),
+           (if .res > 0 then "keeps \(.res)%" else empty end),
+           (if .reset and (.passed | not) and .used != null then "\(until(.reset)) to reset" else empty end),
+           (if .sig != null then "seen \(.seen | ago)" else empty end)
+         ] | join(", "))),
 
   # Accounts at or over pace
   ($creds[] | select(.left != null and .target != null) | (.left - .target | round) as $p | select($p <= 0)
-   | "P\t\(.provider) \(who) (\(if $p < 0 then "\(-$p) over" else "on pace" end))"),
+   | "P\t\(.provider)/\(who) (\(if $p < 0 then "\($p)% over pace" else "on pace" end))"),
 
   # Fable note: which accounts have hit the Fable cap, and where their sessions fail over to
   (if ($fblocked | length) == 0 then empty
@@ -279,11 +284,11 @@ rows=$(jq -r --argjson now "$(date +%s)" --arg mine "$session_auth" \
   "H\t\([$creds[] | select(.fguard and .fhold_until != null) | {(.name): .fhold_until}] | add // {} | tojson)"
 ' <<<"$json")
 
-echo "Quota (weekly % left; pace = what spending evenly to the reset would leave; over pace = spending too fast):"
+echo "Quota, weekly % left (pace = what even spending to the reset would leave):"
 grep '^L' <<<"$rows" | cut -f2- || true
 over=$(grep '^P' <<<"$rows" | cut -f2- || true)
 fable=$(grep '^F' <<<"$rows" | cut -f2- || true)
-[[ -n $over ]] && echo "At or over pace: $(paste -sd ';' - <<<"$over" | sed 's/;/, /g')."
+[[ -n $over ]] && echo "Over pace or at it: $(paste -sd ';' - <<<"$over" | sed 's/;/, /g')."
 [[ -n $fable ]] && echo "$fable"
 if [[ -n $over || -n $fable ]]; then
   echo "(Tell the user this in one line in your first reply of the session; don't repeat it after that.)"
