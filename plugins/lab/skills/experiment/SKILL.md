@@ -19,7 +19,7 @@ python3 prereg.py check runs/try1                                      # lines 2
 python3 prereg.py note <run id> "<one-sentence finding>" [--changes "<what it changed>"]
 ```
 
-`run` snapshots the working tree under `refs/lab/<run id>`, writes `stamp.json` and appends to `runs.jsonl`. Use `stamp` (same options, does not execute) when the harness launches elsewhere. One command writing several arm folders: `--arms base,A,Q5,floors` stamps `<out>/<arm>` each, run ids `<id>-<arm>`; `floor*` names are stamped as plain runs. The harness writes `items.jsonl` in each folder: `id`, `arm`, `unit`, `score` (number or null), `status` (`ok`, `error`, `empty`, `truncated`, `parse_failure`). Note a finding for every run you learn something from.
+`run` snapshots the working tree under `refs/lab/<run id>`, writes `stamp.json` and appends to `runs.jsonl`. A launch that dies before writing anything (bad argument, import error) is a failed launch, not a run: `run` frees the folder and says so; fix the cause and rerun the same command, same run id, as attempt 2. A crash after outputs exist is a failed run: its stamp stands, so resume it with the harness under the same id. Use `stamp` (same options, does not execute) when the harness launches elsewhere. One command writing several arm folders: `--arms base,A,Q5,floors` stamps `<out>/<arm>` each, run ids `<id>-<arm>`; `floor*` names are stamped as plain runs. The harness writes `items.jsonl` in each folder: `id`, `arm`, `unit`, `score` (number or null), `status` (`ok`, `error`, `empty`, `truncated`, `parse_failure`). Note a finding for every run you learn something from.
 
 ## Counted run
 

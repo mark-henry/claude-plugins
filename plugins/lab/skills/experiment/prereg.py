@@ -4,7 +4,10 @@
   prereg.py new    PATH                          write a template record (schema 2) to fill in
   prereg.py open   PATH                          validate; hash the frozen fields and the line-6 fields; hash arm data
   prereg.py stamp  OUT [options] -- CMD...       snapshot the tree under refs/lab/<run id>, write OUT/stamp.json
-  prereg.py run    OUT [options] -- CMD...       stamp, then run CMD (output streamed, its exit code returned)
+  prereg.py run    OUT [options] -- CMD...       stamp, then run CMD (output streamed, its exit code returned); a
+                                                 non-zero exit with no outputs is a failed launch: the folder is
+                                                 freed and the same command retries the same run id as attempt 2
+                   --outputs GLOB                (run) outputs are files matching GLOB under OUT, written since launch
                    --arms a,b,c                  (stamp or run) one command writing OUT/a, OUT/b, OUT/c: a stamp each,
                                                  one launch id, run ids <launch id>-<arm>
   prereg.py check  PATH | RUN_DIR...             lines 2, 3, 7, 8, 12 and the counted gate, from items.jsonl
@@ -33,7 +36,7 @@ primary.range [lo, hi], or not finite, is a failed item (out_of_range, non_finit
 """
 from __future__ import annotations
 
-import argparse, collections, datetime, hashlib, json, math, os, random, re, shlex, socket, statistics, subprocess, sys, tempfile
+import argparse, collections, datetime, glob, hashlib, json, math, os, random, re, shlex, socket, statistics, subprocess, sys, tempfile, threading, time
 from pathlib import Path
 
 IGNORED_ARGS = {"out", "max_usd", "dry_run", "max_connections"}
@@ -328,7 +331,9 @@ def cmd_ls(a):
     if not rows:
         if q is not None:
             print(f"no {LEDGER} at {ledger_root()}: nothing to search; the records in prereg/ follow")
-        return records_ls("prereg")
+        if not records_ls("prereg"):
+            print(f"no runs yet: no {LEDGER} at {ledger_root()} and no records in prereg/")
+        return
     ledger_ls(rows, q, a.limit)
 
 
@@ -343,7 +348,11 @@ def ledger_ls(rows, query, limit):
     entries, by_run = [], {}
     for r in rows:
         if r.get("kind") in ("run", "record"):
-            e = {"row": r, "findings": []}
+            prev = by_run.get(r.get("run_id")) if r.get("kind") == "run" and r.get("run_id") else None
+            if prev and (r.get("attempt") or 1) > 1:      # a retry after a failed launch: the same run, its newest stamp
+                prev["row"], prev["attempts"] = r, max(prev["attempts"], r["attempt"])
+                continue
+            e = {"row": r, "findings": [], "attempts": r.get("attempt") or 1, "failed": []}
             entries.append(e)
             if r.get("run_id"):
                 by_run.setdefault(r["run_id"], e)
@@ -352,6 +361,8 @@ def ledger_ls(rows, query, limit):
         if k == "note" and r.get("run_id") in by_run:
             by_run[r["run_id"]]["findings"].append(f"finding: {r.get('finding', '')}" +
                                                    (f" (changes: {r['changes']})" if r.get("changes") else ""))
+        elif k == "exit" and r.get("run_id") in by_run and r.get("launch_failed"):
+            by_run[r["run_id"]]["failed"].append(r)
         elif k == "exit" and r.get("run_id") in by_run and r.get("exit_code") != 0:
             by_run[r["run_id"]]["findings"].append(f"exit code {r.get('exit_code')}")
         elif k == "close":
@@ -362,6 +373,9 @@ def ledger_ls(rows, query, limit):
             for e in entries:
                 if e["row"].get("kind") == "record" and e["row"].get("record") == r.get("record"):
                     e["findings"].append(text_)
+    for e in entries:      # failed launches are attempts of their run, not runs of their own
+        if e["failed"]:
+            e["findings"].insert(0, attempts_text(e["attempts"], e["failed"]))
     def text(e):
         r = e["row"]
         return " ".join(str(r.get(f) or "") for f in ("run_id", "question", "command", "folder", "record")) + \
@@ -376,8 +390,9 @@ def ledger_ls(rows, query, limit):
         if r.get("kind") == "record":
             print(f"{pretty_utc(r.get('utc'))}  record {r.get('record')}  ({r.get('status', '?')}; no stamped run)")
         else:
+            last_failed = any((f.get("attempt") or 1) == e["attempts"] for f in e["failed"])
             print(f"{pretty_utc(r.get('utc'))}  {r.get('run_id')}  counted: {str(bool(r.get('counted'))).lower()}  "
-                  f"{r.get('folder') or ''}")
+                  f"{r.get('folder') or ''}" + ("  LAUNCH FAILED, nothing scored" if last_failed else ""))
         what = r.get("question") or r.get("command")
         if what:
             print(f"    {what[:160]}")
@@ -387,6 +402,18 @@ def ledger_ls(rows, query, limit):
         print(f"... {len(entries) - limit} older; --limit N shows more")
     if not entries:
         print(f"no run in {LEDGER} matches {query!r}" if query else f"{LEDGER} holds no runs")
+
+
+def attempts_text(attempts, failed):
+    """One finding line for a run with failed launches: how many attempts, which failed, and the last stderr line of
+    the first failure (where a traceback names its error)."""
+    ns = sorted({f.get("attempt") or 1 for f in failed})
+    first = min(failed, key=lambda f: f.get("attempt") or 1)
+    cause = ([l for l in first.get("stderr_tail") or [] if l.strip()] or ["no stderr"])[-1].strip()[:200]
+    if attempts == 1:
+        return f"launch failed (exit {first.get('exit_code')}): {cause}"
+    which = "first" if ns == [1] else "all" if len(ns) == attempts else "attempts " + ", ".join(map(str, ns))
+    return f"{attempts} attempts, {which} failed at launch: {cause}"
 
 
 def cmd_note(a):
@@ -463,8 +490,9 @@ def observed_text(o):
 
 
 def records_ls(dir):
+    """Print the records in dir; returns how many it listed."""
     recs = sorted(Path(dir).glob("*.json"))
-    hits = total = 0
+    hits = total = listed = 0
     width = []
     for p in recs:
         try:
@@ -473,6 +501,7 @@ def records_ls(dir):
             continue
         if "question" not in r:
             continue
+        listed += 1
         print(f"  {r.get('status', '?'):<11} {p.name}  {r['question'][:70]}")
         if r.get("closed"):
             hits += r["closed"]["hits"]
@@ -480,6 +509,7 @@ def records_ls(dir):
             width += [iv[1] - iv[0] for arm in r.get("predictions", {}).values() for iv in arm.values()]
     if total:
         print(f"calibration: {hits}/{total} intervals hit, mean width {sum(width) / len(width):.2f}")
+    return listed
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -1275,7 +1305,22 @@ def do_stamp(a):
     plan = stamp_plan(a, rec)
     for folder, _, _ in plan:
         if (folder / "stamp.json").exists():
-            die(f"{folder / 'stamp.json'} exists; a stamp is never overwritten: stamp a new run folder")
+            held = (read_json(folder / "stamp.json") or {}).get("run_id")
+            die(f"{folder / 'stamp.json'} exists{f' (run {held})' if held else ''}; a stamp is never overwritten: "
+                f"launch into a new run folder with a new --run-id. To continue a run that crashed after writing "
+                f"outputs, resume it with the harness's own command; its stamp and run id stand")
+    # a folder freed by a failed launch (stamp.failed-<n>.json, no stamp.json) is retried as the same run, attempt n+1
+    earlier = [(n, read_json(p) or {}) for folder, _, _ in plan for n, p in failed_stamps(folder)]
+    attempt = max((n for n, _ in earlier), default=0) + 1
+    retried = {st.get("launch_id") for _, st in earlier}
+    if len(retried) > 1 or None in retried:
+        die(f"the failed launches on file under {a.out_dir} are not attempts of one run "
+            f"({', '.join(sorted(map(str, retried)))}): launch into a new run folder")
+    retried = retried.pop() if retried else None
+    if retried and a.run_id and a.run_id != retried:
+        die(f"{a.out_dir} holds {attempt - 1} failed launch attempt(s) of run {retried}: retry it with --run-id "
+            f"{retried} (or no --run-id), or launch {a.run_id} into a new run folder")
+    tracker_id = a.run_id or next((st.get("tracker_run_id") for _, st in earlier if st.get("tracker_run_id") not in (None, NA)), None)
     if a.counted:
         if rec is None:
             die(f"line 6: --counted needs --record, an opened record whose line-6 fields were hashed; {UNCOUNTED}")
@@ -1308,7 +1353,7 @@ def do_stamp(a):
                 seen.add(Path(d).resolve())
                 data.append({"path": d, **data_facts(d)})
         datas[folder] = data
-    launch_id = a.run_id or f"{Path(a.out_dir).name}-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    launch_id = retried or a.run_id or f"{Path(a.out_dir).name}-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     config = NA
     if a.config:
         try:
@@ -1321,7 +1366,7 @@ def do_stamp(a):
     for folder, arm, under in plan:
         run_id = f"{launch_id}-{arm}" if a.arms else launch_id
         counted = bool(a.counted and under)
-        stamp = {"schema": 2, "tool_version": VERSION, "run_id": run_id, "tracker_run_id": a.run_id or NA, "launch_id": launch_id, "utc": now(),
+        stamp = {"schema": 2, "tool_version": VERSION, "run_id": run_id, "tracker_run_id": tracker_id or NA, "launch_id": launch_id, "utc": now(),
                  "host": socket.gethostname(), "argv": argv, "arm": arm or NA, "counted": counted,
                  "record": rec_info if under else NA,
                  "record_repo_path": repo_rel(a.record, rec_root(a.record)) if under else NA,
@@ -1331,15 +1376,19 @@ def do_stamp(a):
                  "data": datas[folder] or NA, "seeds": a.seed or NA, "packages": packages(a),
                  "lab_inputs_sha256": full_sha(root / "lab-inputs.md") if (root / "lab-inputs.md").is_file() else NA,
                  "snapshot": snap}
+        if attempt > 1:      # absent on a first attempt: a stamp without it reads as attempt 1
+            stamp["attempt"] = attempt
         folder.mkdir(parents=True, exist_ok=True)
         with open(folder / "stamp.json", "x") as f:
             f.write(json.dumps(stamp, indent=2) + "\n")
         append_ledger(root, {"kind": "run", "utc": stamp["utc"], "run_id": run_id, "counted": counted,
                              "command": command_text(argv), "record": stamp["record_repo_path"] if under else None,
                              "question": rec.get("question") if under else None,
-                             "folder": repo_rel(str(folder), root), "launch_id": launch_id})
+                             "folder": repo_rel(str(folder), root), "launch_id": launch_id,
+                             "attempt": attempt if attempt > 1 else None})
         print(f"stamped {folder} as {run_id} (counted: {str(counted).lower()})" +
-              (f" at {snap['commit'][:8]}" if snap != NA else ""))
+              (f" at {snap['commit'][:8]}" if snap != NA else "") +
+              (f", attempt {attempt} (attempt {attempt - 1} failed at launch)" if attempt > 1 else ""))
         done.append((folder, stamp))
     if snap == NA:
         print("warning: not a git repository: no snapshot of the code was taken", file=sys.stderr)
@@ -1350,29 +1399,166 @@ def cmd_stamp(a):
     do_stamp(a)
 
 
+FAILED_STAMP = re.compile(r"stamp\.failed-(\d+)\.json")
+TAIL_LINES, TAIL_BYTES = 5, 16384      # how much of the launch command's stderr a failed launch keeps
+ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-_]")
+
+
+def failed_stamps(folder):
+    """[(n, path)] for the stamp.failed-<n>.json files in a run folder: its launches that failed, oldest first."""
+    folder = Path(folder)
+    found = [(int(m[1]), p) for p in (folder.iterdir() if folder.is_dir() else []) if (m := FAILED_STAMP.fullmatch(p.name))]
+    return sorted(found)
+
+
+def attempt_of(st):
+    a = (st or {}).get("attempt")
+    return a if isinstance(a, int) and not isinstance(a, bool) and a > 1 else 1
+
+
+def is_stamp_file(p, folder=None):
+    return (folder is None or p.parent == Path(folder)) and (p.name == "stamp.json" or bool(FAILED_STAMP.fullmatch(p.name)))
+
+
+def has_outputs(a, folders, since):
+    """Whether the launch left anything behind. By default: any file in a run folder besides its stamps (items.jsonl
+    included; empty directories are nothing). With --outputs: any file matching a glob, read against OUT, written
+    since the launch began (so outputs kept in a shared folder count only when this launch wrote them)."""
+    if a.outputs:
+        for g in a.outputs:
+            for m in glob.glob(os.path.join(a.out_dir, g), recursive=True):
+                p = Path(m)
+                if p.is_file() and not is_stamp_file(p) and p.stat().st_mtime >= since - 2:
+                    return True
+        return False
+    for folder in folders:
+        for p in Path(folder).rglob("*"):
+            if not p.is_dir() and not is_stamp_file(p, folder) and p.name != ".DS_Store":
+                return True
+    return False
+
+
+def run_streaming(argv):
+    """Run the launch command with this process's stdin and stdout. Its stderr is copied on as it arrives, through a
+    pseudo-terminal when ours is a terminal (so progress bars and colors stay) and a pipe otherwise, and the last of
+    it is kept. Returns (exit code, the last few stderr lines). A command given as one string is run by the shell."""
+    shell = len(argv) == 1
+    master = slave = None
+    try:
+        if sys.stderr.isatty():
+            import fcntl, pty, termios
+            master, slave = pty.openpty()
+            try:      # our terminal's size, and no newline translation of its own: the real terminal does that
+                fcntl.ioctl(slave, termios.TIOCSWINSZ, fcntl.ioctl(sys.stderr.fileno(), termios.TIOCGWINSZ, b"\0" * 8))
+                attrs = termios.tcgetattr(slave)
+                attrs[1] &= ~termios.OPOST
+                termios.tcsetattr(slave, termios.TCSANOW, attrs)
+            except (OSError, termios.error):
+                pass
+    except (ImportError, OSError, ValueError):      # no pty here: a pipe does
+        master = slave = None
+    try:
+        p = subprocess.Popen(argv[0] if shell else argv, shell=shell, stderr=subprocess.PIPE if slave is None else slave)
+    except OSError as e:
+        for fd in (master, slave):
+            if fd is not None:
+                os.close(fd)
+        msg = f"prereg.py run: could not start {argv[0]}: {e}"
+        print(msg, file=sys.stderr)
+        return 127, [msg]
+    if slave is not None:
+        os.close(slave)
+    fd, kept = (p.stderr.fileno() if master is None else master), bytearray()
+    def pump():
+        while True:
+            try:
+                chunk = os.read(fd, 65536)
+            except OSError:      # a pty reads as an error once the command has closed it
+                return
+            if not chunk:
+                return
+            try:
+                if hasattr(sys.stderr, "buffer"):
+                    sys.stderr.buffer.write(chunk)
+                else:
+                    sys.stderr.write(chunk.decode("utf-8", "replace"))
+                sys.stderr.flush()
+            except (OSError, ValueError):
+                pass
+            kept.extend(chunk)
+            del kept[:-TAIL_BYTES]
+    t = threading.Thread(target=pump, daemon=True)
+    t.start()
+    try:
+        rc = p.wait()
+    except KeyboardInterrupt:
+        try:
+            p.wait(timeout=0.25)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+        rc = 130
+    t.join(timeout=5)      # a child that outlives the command may hold stderr open: do not wait for it
+    if master is not None:
+        os.close(master)
+    lines = [l.rstrip()[:300] for l in re.split(r"[\r\n]+", ANSI.sub("", bytes(kept).decode("utf-8", "replace")))]
+    return rc, [l for l in lines if l.strip()][-TAIL_LINES:]
+
+
+def free_failed_launch(root, done, rc):
+    """A launch that failed before writing anything is an attempt, not a run: keep its snapshot under
+    <ref>.failed-<n> (freeing the run id's ref) and its stamp as stamp.failed-<n>.json (freeing the folder), so the
+    same command retries the same run id. Returns False, changing nothing, when the snapshot ref cannot be moved."""
+    snap, n = done[0][1].get("snapshot"), attempt_of(done[0][1])
+    kept_ref = None
+    if isinstance(snap, dict):
+        kept_ref = f"{snap['ref']}.failed-{n}"
+        if sh("git", "update-ref", kept_ref, snap["commit"], "0" * 40, cwd=root) is None:
+            return False
+        if sh("git", "update-ref", "-d", snap["ref"], snap["commit"], cwd=root) is None:
+            sh("git", "update-ref", "-d", kept_ref, snap["commit"], cwd=root)
+            return False
+    for folder, st in done:
+        st = {**st, "launch_failed": {"utc": now(), "exit_code": rc}}
+        if kept_ref:
+            st["snapshot"] = {**snap, "ref": kept_ref}
+        with open(folder / f"stamp.failed-{n}.json", "x") as f:
+            f.write(json.dumps(st, indent=2) + "\n")
+        (folder / "stamp.json").unlink()
+    return True
+
+
 def cmd_run(a):
-    """Stamp, then run the command with this process's stdin, stdout and stderr; exit with its exit code. A command
-    given as one string is run by the shell."""
+    """Stamp, then run the command with this process's stdin, stdout and stderr; exit with its exit code. A non-zero
+    exit that left no outputs is a failed launch: recorded in the ledger with the end of its stderr, and the folder
+    and run id are freed for a retry. A non-zero exit with outputs is a failed run: its stamp stands."""
     if not a.argv:
         die("run needs a command after --")
+    began = time.time()
     done = do_stamp(a)
     sys.stdout.flush()
-    try:
-        rc = subprocess.call(a.argv[0], shell=True) if len(a.argv) == 1 else subprocess.call(a.argv)
-    except OSError as e:
-        print(f"prereg.py run: could not start {a.argv[0]}: {e}", file=sys.stderr)
-        rc = 127
-    except KeyboardInterrupt:
-        rc = 130
+    rc, tail = run_streaming(a.argv)
     root = repo_root() or Path(".")
+    failed = rc != 0 and not has_outputs(a, [folder for folder, _ in done], began) and free_failed_launch(root, done, rc)
+    n = attempt_of(done[0][1])
     for _, st in done:
-        append_ledger(root, {"kind": "exit", "utc": now(), "run_id": st["run_id"], "exit_code": rc})
+        append_ledger(root, {"kind": "exit", "utc": now(), "run_id": st["run_id"], "exit_code": rc,
+                             **({"launch_failed": True, "attempt": n, "stderr_tail": tail} if failed else {})})
+    if failed:
+        sys.stdout.flush()
+        print(f"prereg.py run: launch failed (exit {rc}), nothing scored; rerun the same command to retry as attempt {n + 1}",
+              file=sys.stderr)
     sys.exit(rc)
 
 
 def load_stamp(folder):
     p = Path(folder) / "stamp.json"
     return load(p) if p.is_file() else None
+
+
+def failed_hint(folder):
+    n = len(failed_stamps(folder))
+    return f" ({n} launch attempt(s) failed here and nothing was scored: rerun the launch command to retry)" if n else ""
 
 
 def cmd_check(a):
@@ -1383,9 +1569,10 @@ def cmd_check(a):
     for src in a.sources:
         st = load_stamp(src)
         if st is None:
-            probs.append(f"line 10: {src} has no stamp.json; stamp the run at launch (`prereg.py stamp {src} -- <command>`)")
+            probs.append(f"line 10: {src} has no stamp.json; stamp the run at launch (`prereg.py stamp {src} -- <command>`)"
+                         + failed_hint(src))
             continue
-        print(f"run {st['run_id']}: {src}")
+        print(f"run {st['run_id']}: {src}" + (f" (attempt {attempt_of(st)})" if attempt_of(st) > 1 else ""))
         for r in read_items(src, probs):
             by_arm.setdefault(r["arm"], []).append(r)
     arms = [x for x in by_arm if not str(x).startswith("floor:")]
@@ -1415,10 +1602,12 @@ def check_record(path):
         if arm is not None:
             st = load_stamp(root / folder)
             if st is None:
-                probs.append(f"line 10: arm {arm} has no stamp.json in {folder}; stamp each run at launch")
+                probs.append(f"line 10: arm {arm} has no stamp.json in {folder}; stamp each run at launch"
+                             + failed_hint(root / folder))
             else:
                 stamps[arm] = st
-                print(f"run {st['run_id']}: {arm} (stamped counted: {str(stamp_counted(st)).lower()})")
+                print(f"run {st['run_id']}: {arm} (stamped counted: {str(stamp_counted(st)).lower()}"
+                      + (f"; attempt {attempt_of(st)}" if attempt_of(st) > 1 else "") + ")")
         for r in read_items(root / folder, probs, score_range(rec)):
             if r["arm"] not in rec["arms"] and not str(r["arm"]).startswith("floor:"):
                 probs.append(f"line 2: {folder}/items.jsonl names arm {r['arm']!r}, neither a record arm nor floor:<name>")
@@ -1955,7 +2144,13 @@ def main(argv=None):
     for name in ("new", "open", "parity", "induct"):
         sub.add_parser(name).add_argument("path")
     for name in ("stamp", "run"):
-        stamp_args(sub.add_parser(name))
+        sp = sub.add_parser(name)
+        stamp_args(sp)
+        if name == "run":
+            sp.add_argument("--outputs", action="append", metavar="GLOB",
+                            help="what counts as output when the command exits non-zero: a file matching GLOB (read "
+                                 "against OUT; repeatable) written since launch. Default: any file in the run folder "
+                                 "besides its stamp. No output means a failed launch, and the folder is freed for a retry")
     n = sub.add_parser("note")
     n.add_argument("run_id"); n.add_argument("finding")
     n.add_argument("--changes", help="what the finding changed: a decision, a plan, a later run")

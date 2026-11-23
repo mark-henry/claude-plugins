@@ -19,7 +19,7 @@ Detail moved out of SKILL.md. Read it when filling in a record or when `prereg.p
 
 ## What the script enforces
 
-- Stamps are never overwritten; a run id is used once (`refs/lab/<run id>`). Uncommitted and untracked code is in the snapshot; `.gitignore`d files and files over 5 MB (listed by hash) are not; `runs.jsonl` is not.
+- Stamps are never overwritten; a run id is used once (`refs/lab/<run id>`), failed launches aside (next section). Uncommitted and untracked code is in the snapshot; `.gitignore`d files and files over 5 MB (listed by hash) are not; `runs.jsonl` is not.
 - A stamp or check result carries `counted: true|false`. Ones written before the boolean carry a `label` string ("exploratory", "counted", "counted, pending parity", with the deterministic-harness suffix) and are read the same way; `parity` rewrites an old check result in the new form when it updates it.
 - `check` given several run folders reads them as one run: check each pilot folder on its own.
 - `--counted` is refused without `--record`, without hashed line-6 fields, with fewer than two arms, into a folder that already holds scored items, or when line 7 fails.
@@ -28,9 +28,18 @@ Detail moved out of SKILL.md. Read it when filling in a record or when `prereg.p
 - `quote` and `close` refuse until `check` has run and refused no line, and whenever anything `check` or `parity` judged has changed since. A run failing only the counted gate (power, pilots, floors) is quoted and closed, not counted. `quote` refuses the word "counted" unless the run is ("not counted" is always allowed).
 - Line 10: `quote` refuses a report line with a percentage or `a/b` and no run id of the record's arms, pilots, floors or test-split ledger.
 
+## Failed launches
+
+- `run` calls a non-zero exit a failed launch when the run folder holds no file besides its stamps (empty directories are nothing; a log file is something). `--outputs GLOB` (repeatable, read against OUT, `**` allowed) replaces that test for a harness that logs into the folder before it dies or writes its outputs elsewhere: an output is then a file matching a glob and written since the launch began. With `--arms`, the launch failed only if every arm folder is empty, and then every arm is freed.
+- On a failed launch `run` moves `stamp.json` to `stamp.failed-<n>.json` and the snapshot to `refs/lab/<launch id>.failed-<n>`, writes the `exit` line with `launch_failed: true`, `attempt` and `stderr_tail` (the last five stderr lines), prints `launch failed (exit N), nothing scored; rerun the same command to retry as attempt <n+1>`, and exits with the command's code. The command's stderr still streams as it arrives.
+- A `run` or `stamp` into a freed folder keeps the run id (a generated one too; another `--run-id` is refused), takes a fresh snapshot and writes `attempt: <n+1>` in the stamp and its ledger line; no `attempt` means 1. A counted arm may be retried this way: nothing was scored. A code change between attempts is still a harness change after `open` (`after_open`).
+- `ls` shows one entry per run id (`2 attempts, first failed at launch: <last stderr line>`; `LAUNCH FAILED` on a run not yet retried). `check` prints the attempt when it is over 1.
+- A non-zero exit with outputs is a failed run: the stamp stands and the folder stays refused. Resume it with the harness's own command, or start again in a new folder under a new run id.
+- `stamp` does not execute, so it cannot see a failed launch or free a folder; it does retry into one `run` freed.
+
 ## The run ledger (`runs.jsonl`)
 
-One JSON object per line at the repository root, append-only (one `O_APPEND` write per line; nothing is rewritten). Kinds: `run` (from `stamp`/`run`: utc, run_id, counted, command, record, question, folder, launch_id), `exit` (from `run`), `note` (from `note`: finding, changes), `close` (from `close`: record, run_ids, result), `record` (from `backfill`, for a record no stamp names). `ls [query]` prints runs newest first with their findings, filtered to entries holding every word of the query (case-insensitive) across run id, question, command, folder, record and findings; `ls <dir>` or a repository with no ledger lists records as before. `backfill <dir>` seeds a ledger from stamps and records already on disk and can be rerun.
+One JSON object per line at the repository root, append-only (one `O_APPEND` write per line; nothing is rewritten). Kinds: `run` (from `stamp`/`run`: utc, run_id, counted, command, record, question, folder, launch_id), `exit` (from `run`: exit_code; launch_failed, attempt and stderr_tail after a failed launch), `note` (from `note`: finding, changes), `close` (from `close`: record, run_ids, result), `record` (from `backfill`, for a record no stamp names). `ls [query]` prints runs newest first with their findings, filtered to entries holding every word of the query (case-insensitive) across run id, question, command, folder, record and findings; `ls <dir>` or a repository with no ledger lists records as before. `backfill <dir>` seeds a ledger from stamps and records already on disk and can be rerun.
 
 ## Old records and other inputs
 

@@ -1738,7 +1738,7 @@ class RunCommand(unittest.TestCase):
     def test_run_stamps_then_runs_the_command_streaming_and_returning_its_exit_code(self):
         d = lab_repo()
         r = run(d, "run", "runs/a", "--run-id", "a1", "--", sys.executable, "-c",
-                "import os, sys; print('hello from', os.getcwd()); sys.exit(3)")
+                "import os, sys; print('hello from', os.getcwd()); open('runs/a/out.txt', 'w').write('x'); sys.exit(3)")
         self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
         self.assertIn("hello from", r.stdout)
         self.assertLess(r.stdout.index("stamped runs/a as a1"), r.stdout.index("hello from"))
@@ -1760,6 +1760,213 @@ class RunCommand(unittest.TestCase):
         r = run(d, "run", "runs/a", "--", "touch", "ran.txt")
         self.assertEqual(r.returncode, 1)
         self.assertFalse((d / "ran.txt").exists())
+
+
+BOOM = "import sys; print('working'); print('Traceback\\n  File x\\nImportError: boom', file=sys.stderr); sys.exit(1)"
+
+
+def fails_then(d, out, *opts, run_id="r1"):
+    """A launch that dies with nothing written."""
+    return run(d, "run", out, "--run-id", run_id, *opts, "--", sys.executable, "-c", BOOM)
+
+
+class FailedLaunch(unittest.TestCase):
+    def test_a_failed_launch_frees_the_folder_and_records_the_stderr_tail(self):
+        d = lab_repo()
+        r = fails_then(d, "runs/a")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("working", r.stdout)                      # still streamed
+        self.assertIn("ImportError: boom", r.stderr)
+        self.assertEqual(r.stderr.strip().splitlines()[-1],
+                         "prereg.py run: launch failed (exit 1), nothing scored; rerun the same command to retry as attempt 2")
+        self.assertFalse((d / "runs" / "a" / "stamp.json").exists())
+        st = json.loads((d / "runs" / "a" / "stamp.failed-1.json").read_text())
+        self.assertEqual((st["run_id"], st["launch_failed"]["exit_code"]), ("r1", 1))
+        self.assertNotIn("attempt", st)
+        rows = ledger(d)
+        self.assertEqual([r_["kind"] for r_ in rows], ["run", "exit"])
+        self.assertEqual((rows[1]["launch_failed"], rows[1]["exit_code"], rows[1]["attempt"]), (True, 1, 1))
+        self.assertEqual(rows[1]["stderr_tail"], ["Traceback", "  File x", "ImportError: boom"])
+        # the snapshot is kept under the attempt's own ref, and the run id's ref is free
+        self.assertEqual(st["snapshot"]["ref"], "refs/lab/r1.failed-1")
+        self.assertEqual(git(d, "rev-parse", "refs/lab/r1.failed-1"), st["snapshot"]["commit"])
+        self.assertEqual(git(d, "for-each-ref", "refs/lab/r1"), "")
+
+    def test_the_stderr_tail_is_the_last_five_lines(self):
+        d = lab_repo()
+        run(d, "run", "runs/a", "--", sys.executable, "-c",
+            "import sys; [print('line', k, file=sys.stderr) for k in range(9)]; sys.exit(2)")
+        self.assertEqual(ledger(d)[-1]["stderr_tail"], [f"line {k}" for k in range(4, 9)])
+
+    def test_a_command_that_cannot_start_is_a_failed_launch(self):
+        d = lab_repo()
+        r = run(d, "run", "runs/a", "--", "no-such-program-xyz", "--flag")
+        self.assertEqual(r.returncode, 127)
+        self.assertTrue(ledger(d)[-1]["launch_failed"])
+        self.assertIn("could not start", ledger(d)[-1]["stderr_tail"][0])
+        self.assertTrue((d / "runs" / "a" / "stamp.failed-1.json").exists())
+
+    def test_a_retry_is_attempt_2_of_the_same_run_and_both_snapshots_are_kept(self):
+        d = lab_repo()
+        fails_then(d, "runs/a")
+        (d / "train.py").write_text("lr = 2  # fixed\n")
+        r = run(d, "run", "runs/a", "--run-id", "r1", "--", "echo ok > runs/a/items.jsonl")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("attempt 2", r.stdout)
+        st = json.loads((d / "runs" / "a" / "stamp.json").read_text())
+        old = json.loads((d / "runs" / "a" / "stamp.failed-1.json").read_text())
+        self.assertEqual((st["run_id"], st["attempt"], st["snapshot"]["ref"]), ("r1", 2, "refs/lab/r1"))
+        self.assertEqual(git(d, "rev-parse", "refs/lab/r1"), st["snapshot"]["commit"])
+        self.assertEqual(git(d, "rev-parse", "refs/lab/r1.failed-1"), old["snapshot"]["commit"])
+        self.assertEqual(git(d, "show", "refs/lab/r1.failed-1:train.py"), "lr = 1")
+        self.assertEqual(git(d, "show", "refs/lab/r1:train.py"), "lr = 2  # fixed")
+        rows = ledger(d)
+        self.assertEqual([(r_["kind"], r_["run_id"]) for r_ in rows], [("run", "r1"), ("exit", "r1"), ("run", "r1"), ("exit", "r1")])
+        self.assertEqual(rows[2]["attempt"], 2)
+        self.assertNotIn("launch_failed", rows[3])
+        # a second launch into the now-stamped folder is refused as ever, and told what to do
+        r = run(d, "run", "runs/a", "--run-id", "r1", "--", "true")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("never overwritten", r.stderr)
+        self.assertIn("new run folder with a new --run-id", r.stderr)
+
+    def test_a_retry_without_a_run_id_keeps_the_generated_one_and_a_third_attempt_counts_on(self):
+        d = lab_repo()
+        run(d, "run", "runs/a", "--", "exit 4")
+        run(d, "run", "runs/a", "--", "exit 4")
+        r = run(d, "stamp", "runs/a", "--", "python", "train.py")      # stamp honors a folder that run freed
+        self.assertEqual(r.returncode, 0, r.stderr)
+        sts = [json.loads((d / "runs" / "a" / n).read_text()) for n in ("stamp.failed-1.json", "stamp.failed-2.json", "stamp.json")]
+        self.assertEqual(len({st["run_id"] for st in sts}), 1)
+        self.assertEqual([st.get("attempt", 1) for st in sts], [1, 2, 3])
+        rid = sts[0]["run_id"]
+        self.assertEqual(len(git(d, "for-each-ref", "refs/lab/").splitlines()), 3)
+        self.assertEqual(git(d, "rev-parse", f"refs/lab/{rid}.failed-2"), sts[1]["snapshot"]["commit"])
+
+    def test_a_retry_under_another_run_id_is_refused(self):
+        d = lab_repo()
+        fails_then(d, "runs/a")
+        r = run(d, "stamp", "runs/a", "--run-id", "other", "--", "x")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("failed launch attempt(s) of run r1", r.stderr)
+        self.assertFalse((d / "runs" / "a" / "stamp.json").exists())
+
+    def test_a_nonzero_exit_with_items_is_a_failed_run_and_the_folder_stays_taken(self):
+        d = lab_repo()
+        r = run(d, "run", "runs/a", "--run-id", "r1", "--", "echo '{}' > runs/a/items.jsonl; echo died >&2; exit 1")
+        self.assertEqual(r.returncode, 1)
+        self.assertNotIn("launch failed", r.stderr)
+        self.assertTrue((d / "runs" / "a" / "stamp.json").exists())
+        self.assertEqual(failed := list((d / "runs" / "a").glob("stamp.failed-*")), [], failed)
+        self.assertEqual(ledger(d)[-1], {**ledger(d)[-1], "kind": "exit", "exit_code": 1})
+        self.assertNotIn("launch_failed", ledger(d)[-1])
+        self.assertEqual(run(d, "run", "runs/a", "--run-id", "r1", "--", "true").returncode, 1)
+        self.assertIn("exit code 1", run(d, "ls").stdout)
+
+    def test_any_file_is_an_output_and_an_empty_directory_is_not(self):
+        d = lab_repo()
+        run(d, "run", "runs/a", "--", "mkdir -p runs/a/logs/deep; exit 1")
+        self.assertTrue((d / "runs" / "a" / "stamp.failed-1.json").exists())
+        run(d, "run", "runs/b", "--", "mkdir -p runs/b/logs; echo x > runs/b/logs/train.log; exit 1")
+        self.assertTrue((d / "runs" / "b" / "stamp.json").exists())
+
+    def test_outputs_globs_say_what_an_output_is(self):
+        d = lab_repo()
+        (d / "logs").mkdir(); (d / "logs" / "old.eval").write_text("an earlier run's log")
+        old = os.path.getmtime(d / "logs" / "old.eval") - 3600
+        os.utime(d / "logs" / "old.eval", (old, old))
+        # a log file in the folder is not an output when the globs name something else; nor is an older file elsewhere
+        r = run(d, "run", "runs/a", "--outputs", "results/*.json", "--outputs", "../../logs/*.eval", "--",
+                "echo x > runs/a/launch.log; exit 1")
+        self.assertIn("launch failed", r.stderr)
+        self.assertTrue((d / "runs" / "a" / "stamp.failed-1.json").exists())
+        # a matching file written by this launch is an output: a failed run
+        r = run(d, "run", "runs/a", "--outputs", "results/*.json", "--outputs", "../../logs/*.eval", "--",
+                "echo x > logs/new.eval; exit 1")
+        self.assertNotIn("launch failed", r.stderr)
+        self.assertEqual(json.loads((d / "runs" / "a" / "stamp.json").read_text())["attempt"], 2)
+
+    def test_arms_fail_together_only_when_every_arm_folder_is_empty(self):
+        d = lab_repo()
+        r = fails_then(d, "runs/l1", "--arms", "base,A", run_id="wb")
+        self.assertIn("launch failed", r.stderr)
+        for arm in ("base", "A"):
+            self.assertFalse((d / "runs" / "l1" / arm / "stamp.json").exists())
+            st = json.loads((d / "runs" / "l1" / arm / "stamp.failed-1.json").read_text())
+            self.assertEqual((st["run_id"], st["snapshot"]["ref"]), (f"wb-{arm}", "refs/lab/wb.failed-1"))
+        self.assertEqual([(r_["run_id"], r_.get("launch_failed")) for r_ in ledger(d) if r_["kind"] == "exit"],
+                         [("wb-base", True), ("wb-A", True)])
+        # the retry writes one arm's items and then dies: a failed run, every arm's stamp stands
+        r = run(d, "run", "runs/l1", "--arms", "base,A", "--run-id", "wb", "--", "echo '{}' > runs/l1/A/items.jsonl; exit 1")
+        self.assertEqual(r.returncode, 1)
+        self.assertNotIn("launch failed", r.stderr)
+        for arm in ("base", "A"):
+            st = json.loads((d / "runs" / "l1" / arm / "stamp.json").read_text())
+            self.assertEqual((st["run_id"], st["attempt"]), (f"wb-{arm}", 2))
+        self.assertEqual(len(list((d / "runs" / "l1").rglob("stamp.failed-*"))), 2)
+
+    def test_ls_folds_failed_attempts_into_the_run(self):
+        d = lab_repo()
+        fails_then(d, "runs/a")
+        out = run(d, "ls").stdout
+        self.assertEqual(out.count("  r1  "), 1)
+        self.assertIn("LAUNCH FAILED", out)                       # a run whose only attempt failed still shows
+        self.assertIn("launch failed (exit 1): ImportError: boom", out)
+        run(d, "run", "runs/a", "--run-id", "r1", "--", "echo ok > runs/a/items.jsonl")
+        run(d, "stamp", "runs/b", "--run-id", "r2", "--", "x")
+        out = run(d, "ls").stdout
+        self.assertEqual(out.count("  r1  "), 1)
+        self.assertNotIn("LAUNCH FAILED", out)
+        self.assertIn("2 attempts, first failed at launch: ImportError: boom", out)
+        self.assertNotIn("exit code", out)
+        self.assertIn("r1", run(d, "ls", "importerror").stdout)
+        self.assertEqual(run(d, "note", "r1", "a finding").returncode, 0)
+
+    def test_check_prints_the_attempt_count_when_a_launch_was_retried(self):
+        d = lab_repo()
+        run(d, "stamp", "runs/b", "--run-id", "plain", "--", "x")
+        write_items(d, "runs/b", rows("b", [1, 0]))
+        self.assertNotIn("attempt", run(d, "check", "runs/b").stdout)
+        fails_then(d, "runs/a")
+        r = run(d, "check", "runs/a")
+        self.assertIn("1 launch attempt(s) failed here", r.stderr)
+        run(d, "stamp", "runs/a", "--run-id", "r1", "--", "x")
+        write_items(d, "runs/a", rows("a", [1, 0]))
+        self.assertIn("run r1: runs/a (attempt 2)", run(d, "check", "runs/a").stdout)
+
+    def test_a_counted_arm_is_retried_after_a_failed_launch_and_check_says_so(self):
+        d = lab_repo()
+        rp = record(d, scorer=SCORER, floors={"none_reason": "no trivial policy can be scored on this toy"})
+        quiet_pilots(d, 40)
+        self.assertEqual(run(d, "open", rp).returncode, 0)
+        launch = lambda arm, model, cmd: run(d, "run", f"runs/{arm}", "--record", rp, "--arm", arm, "--counted", "--run-id",
+                                             f"toy-{arm}", "--", cmd, "--model", model)
+        self.assertEqual(launch("untreated", "a", "true").returncode, 0)
+        self.assertEqual(launch("treated", "b", "false").returncode, 1)
+        r = launch("treated", "b", "true")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        write_items(d, "runs/untreated", rows("untreated", [k % 2 for k in range(40)]))
+        write_items(d, "runs/treated", rows("treated", [1 if k % 4 else 0 for k in range(40)]))
+        r = run(d, "check", rp)
+        self.assertIn("run toy-treated: treated (stamped counted: true; attempt 2)", r.stdout)
+        self.assertIn("run toy-untreated: untreated (stamped counted: true)", r.stdout)
+        self.assertGatePassed(r.stdout)
+
+    def test_ls_with_nothing_on_file_says_so(self):
+        d = lab_repo()
+        r = run(d, "ls")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("no runs yet", r.stdout)
+
+    def test_a_ledger_and_stamp_from_before_attempts_read_as_before(self):
+        d = lab_repo()
+        (d / "runs.jsonl").write_text(
+            json.dumps({"kind": "run", "utc": "20261101T0000Z", "run_id": "old", "counted": False, "folder": "runs/o"}) + "\n" +
+            json.dumps({"kind": "exit", "utc": "20261101T0001Z", "run_id": "old", "exit_code": 2}) + "\n" +
+            json.dumps({"kind": "run", "utc": "20261102T0000Z", "run_id": "old", "counted": False, "folder": "runs/p"}) + "\n")
+        out = run(d, "ls").stdout
+        self.assertEqual(out.count("  old  "), 2)      # no attempt field: two runs, as before
+        self.assertIn("exit code 2", out)
 
 
 class Arms(unittest.TestCase):
